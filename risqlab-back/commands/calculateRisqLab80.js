@@ -97,8 +97,8 @@ async function calculateIndexForTimestamp(indexConfig, timestamp, verbose = fals
   // Filter out excluded symbols and select top 80 by market cap
   const constituents = selectConstituents(marketData, verbose);
 
-  if (constituents.length === 0) {
-    throw new Error(`No valid constituents found for timestamp ${timestamp}`);
+  if (constituents.length < MAX_CONSTITUENTS) {
+    throw new Error(`Not enough constituents for timestamp ${timestamp}: ${constituents.length}/${MAX_CONSTITUENTS}`);
   }
 
   // Calculate total market capitalization
