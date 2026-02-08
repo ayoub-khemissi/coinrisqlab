@@ -251,19 +251,23 @@ async function getConstituentsForDate(indexConfigId, timestamp, date) {
       o.close as price_usd,
       md.circulating_supply,
       (o.close * md.circulating_supply) as market_cap_usd
-    FROM ohlc o
+    FROM (
+      SELECT crypto_id, close,
+             ROW_NUMBER() OVER (PARTITION BY crypto_id ORDER BY timestamp DESC) as rn
+      FROM ohlc
+      WHERE crypto_id IN (${cryptoIds.join(',')})
+        AND DATE(timestamp) = ?
+        AND close > 0
+    ) o
     INNER JOIN (
-      SELECT crypto_id, circulating_supply
+      SELECT crypto_id, circulating_supply,
+             ROW_NUMBER() OVER (PARTITION BY crypto_id ORDER BY timestamp DESC) as rn
       FROM market_data
       WHERE crypto_id IN (${cryptoIds.join(',')})
         AND price_date <= ?
         AND circulating_supply > 0
-      ORDER BY timestamp DESC
-    ) md ON o.crypto_id = md.crypto_id
-    WHERE o.crypto_id IN (${cryptoIds.join(',')})
-      AND DATE(o.timestamp) = ?
-      AND o.close > 0
-    GROUP BY o.crypto_id
+    ) md ON o.crypto_id = md.crypto_id AND md.rn = 1
+    WHERE o.rn = 1
   `, [date, date]);
 
   // Build a map of crypto_id -> data
