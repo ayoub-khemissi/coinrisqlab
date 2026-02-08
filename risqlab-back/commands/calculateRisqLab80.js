@@ -131,7 +131,8 @@ async function calculateIndexForTimestamp(indexConfig, timestamp, verbose = fals
 }
 
 /**
- * Get existing index configuration or calculate divisor if needed
+ * Get existing index configuration or calculate divisor if needed.
+ * The divisor is based on the OLDEST market_data timestamp so the index starts at 100.
  */
 async function getOrCreateIndexConfig() {
   // Try to get active index config
@@ -140,69 +141,66 @@ async function getOrCreateIndexConfig() {
     [INDEX_NAME]
   );
 
-  // Get initial market data to calculate divisor
-  const marketData = await getMostRecentMarketData();
+  // If index config exists and divisor already initialized, return as-is
+  if (rows.length > 0 && parseFloat(rows[0].divisor) !== 1.0) {
+    return rows[0];
+  }
+
+  // Divisor needs initialization — use the OLDEST market data as base
+  log.info('Divisor not yet calculated, initializing with oldest market data...');
+
+  const { marketData, baseDate } = await getOldestMarketData();
   const constituents = selectConstituents(marketData, true);
 
   if (constituents.length === 0) {
     throw new Error('Cannot initialize index: no valid constituents found. Please run fetch-crypto-data first.');
   }
 
-  const currentMarketCap = constituents.reduce((sum, c) => sum + (parseFloat(c.price_usd) * parseFloat(c.circulating_supply)), 0);
-  const calculatedDivisor = currentMarketCap / BASE_LEVEL;
+  const baseMarketCap = constituents.reduce((sum, c) => sum + (parseFloat(c.price_usd) * parseFloat(c.circulating_supply)), 0);
+  const calculatedDivisor = baseMarketCap / BASE_LEVEL;
 
-  // If index config exists
   if (rows.length > 0) {
+    // Update existing config
     const config = rows[0];
 
-    // Check if divisor needs to be initialized (still at default value of 1.0)
-    if (parseFloat(config.divisor) === 1.0) {
-      log.info('Divisor not yet calculated, initializing with current market data...');
+    await Database.execute(
+      `UPDATE index_config
+       SET divisor = ?, base_date = ?, updated_at = CURRENT_TIMESTAMP
+       WHERE id = ?`,
+      [calculatedDivisor, baseDate, config.id]
+    );
 
-      const now = new Date().toISOString().slice(0, 19).replace('T', ' ');
+    log.info(`Initialized divisor: ${calculatedDivisor}`);
+    log.info(`Base market cap: $${(baseMarketCap / 1e9).toFixed(2)}B`);
+    log.info(`Base date (oldest data): ${baseDate}`);
 
-      await Database.execute(
-        `UPDATE index_config
-         SET divisor = ?, base_date = ?, updated_at = CURRENT_TIMESTAMP
-         WHERE id = ?`,
-        [calculatedDivisor, now, config.id]
-      );
-
-      log.info(`Initialized divisor: ${calculatedDivisor}`);
-      log.info(`Base market cap: $${(currentMarketCap / 1e9).toFixed(2)}B`);
-      log.info(`Base date: ${now}`);
-
-      return {
-        ...config,
-        divisor: calculatedDivisor,
-        base_date: now,
-      };
-    }
-
-    return config;
+    return {
+      ...config,
+      divisor: calculatedDivisor,
+      base_date: baseDate,
+    };
   }
 
-  // Create new index config if doesn't exist
+  // Create new index config
   log.info('No active index config found, creating new one...');
-
-  const now = new Date().toISOString().slice(0, 19).replace('T', ' ');
 
   const [result] = await Database.execute(
     `INSERT INTO index_config
     (index_name, base_level, divisor, base_date, max_constituents, is_active)
     VALUES (?, ?, ?, ?, ?, TRUE)`,
-    [INDEX_NAME, BASE_LEVEL, calculatedDivisor, now, MAX_CONSTITUENTS]
+    [INDEX_NAME, BASE_LEVEL, calculatedDivisor, baseDate, MAX_CONSTITUENTS]
   );
 
   log.info(`Created new index config with divisor: ${calculatedDivisor}`);
-  log.info(`Initial market cap: $${(currentMarketCap / 1e9).toFixed(2)}B`);
+  log.info(`Base market cap: $${(baseMarketCap / 1e9).toFixed(2)}B`);
+  log.info(`Base date (oldest data): ${baseDate}`);
 
   return {
     id: result.insertId,
     index_name: INDEX_NAME,
     base_level: BASE_LEVEL,
     divisor: calculatedDivisor,
-    base_date: now,
+    base_date: baseDate,
     max_constituents: MAX_CONSTITUENTS,
     is_active: true,
   };
@@ -240,9 +238,11 @@ async function getMarketDataForTimestamp(timestamp) {
 }
 
 /**
- * Get the most recent market data (used for initial divisor calculation)
+ * Get the oldest market data (used for initial divisor calculation).
+ * The index base level (100) is anchored to the oldest available timestamp.
+ * @returns {Promise<{marketData: Array, baseDate: string}>}
  */
-async function getMostRecentMarketData() {
+async function getOldestMarketData() {
   const [rows] = await Database.execute(`
     SELECT
       md.id as market_data_id,
@@ -262,12 +262,16 @@ async function getMostRecentMarketData() {
     FROM market_data md
     INNER JOIN cryptocurrencies c ON md.crypto_id = c.id
     LEFT JOIN cryptocurrency_metadata cm ON c.id = cm.crypto_id
-    WHERE md.timestamp = (SELECT MAX(timestamp) FROM market_data)
+    WHERE md.timestamp = (SELECT MIN(timestamp) FROM market_data)
       AND (md.price_usd * md.circulating_supply) > 0
     ORDER BY (md.price_usd * md.circulating_supply) DESC
   `);
 
-  return rows;
+  const baseDate = rows.length > 0
+    ? new Date(rows[0].timestamp).toISOString().slice(0, 19).replace('T', ' ')
+    : new Date().toISOString().slice(0, 19).replace('T', ' ');
+
+  return { marketData: rows, baseDate };
 }
 
 /**

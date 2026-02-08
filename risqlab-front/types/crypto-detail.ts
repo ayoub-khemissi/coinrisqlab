@@ -4,7 +4,7 @@ export interface CryptoBasicInfo {
   id: number;
   symbol: string;
   name: string;
-  cmc_id: number;
+  image_url: string | null;
   logo_url: string | null;
   description: string | null;
   category: string | null;
@@ -36,13 +36,14 @@ export interface CryptoMarket {
   fully_diluted_valuation: number | null;
   rank: number | null;
   index_rank: number | null;
-  cmc_rank: number | null;
+  market_cap_rank: number | null;
   percent_change_1h: number | null;
   percent_change_24h: number | null;
   percent_change_7d: number | null;
+  percent_change_14d: number | null;
   percent_change_30d: number | null;
-  percent_change_60d: number | null;
-  percent_change_90d: number | null;
+  percent_change_200d: number | null;
+  percent_change_1y: number | null;
   last_updated: string;
 }
 

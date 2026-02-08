@@ -24,7 +24,7 @@ export interface PortfolioVolatilityConstituent {
   crypto_id: number;
   symbol: string;
   name: string;
-  cmc_id: number;
+  image_url: string | null;
   weight: number;
   daily_volatility: number;
   annualized_volatility: number;
@@ -86,7 +86,7 @@ export interface TopVolatileCrypto {
   id: number;
   symbol: string;
   name: string;
-  cmc_id: number;
+  image_url: string | null;
   annualized_volatility: number;
   date: string;
 }

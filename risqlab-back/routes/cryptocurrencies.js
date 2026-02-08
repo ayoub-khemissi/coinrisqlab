@@ -52,7 +52,7 @@ api.get('/cryptocurrencies', async (req, res) => {
         c.id,
         c.symbol,
         c.name,
-        c.cmc_id,
+        c.image_url,
         md.price_usd,
         (md.price_usd * md.circulating_supply) as market_cap_usd,
         md.volume_24h_usd,

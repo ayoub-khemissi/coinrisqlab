@@ -14,7 +14,6 @@ CREATE TABLE IF NOT EXISTS `app` (
   `id` int UNSIGNED NOT NULL AUTO_INCREMENT,
   `name` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
   PRIMARY KEY (`id`),
-  UNIQUE KEY `id_UNIQUE` (`id`),
   UNIQUE KEY `name_UNIQUE` (`name`)
 ) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -28,7 +27,6 @@ CREATE TABLE IF NOT EXISTS `app_instance` (
   `version` varchar(10) COLLATE utf8mb4_unicode_ci NOT NULL,
   `created_at` bigint UNSIGNED NOT NULL,
   PRIMARY KEY (`id`),
-  UNIQUE KEY `id_UNIQUE` (`id`),
   FOREIGN KEY (`app_id`) REFERENCES app(`id`),
   KEY `fk_app_instance_app_idx` (`app_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -38,7 +36,6 @@ CREATE TABLE IF NOT EXISTS `log_level` (
   `id` int UNSIGNED NOT NULL AUTO_INCREMENT,
   `level` varchar(10) COLLATE utf8mb4_unicode_ci NOT NULL,
   PRIMARY KEY (`id`),
-  UNIQUE KEY `id_UNIQUE` (`id`),
   UNIQUE KEY `level_UNIQUE` (`level`)
 ) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -56,7 +53,6 @@ CREATE TABLE IF NOT EXISTS `log` (
   `text` text COLLATE utf8mb4_unicode_ci NOT NULL,
   `created_at` bigint UNSIGNED NOT NULL,
   PRIMARY KEY (`id`),
-  UNIQUE KEY `id_UNIQUE` (`id`),
   FOREIGN KEY (`level`) REFERENCES log_level(`id`),
   FOREIGN KEY (`app_instance_id`) REFERENCES app_instance(`id`),
   KEY `fk_log_log_level_idx` (`level`),
@@ -93,17 +89,20 @@ CREATE TABLE IF NOT EXISTS `cryptocurrencies` (
     `symbol` VARCHAR(20) NOT NULL,
     `name` VARCHAR(100) NOT NULL,
     `cmc_id` INT UNSIGNED NULL,
+    `coingecko_id` VARCHAR(100) NULL,
+    `image_url` VARCHAR(500) NULL,
     `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     UNIQUE KEY `idx_symbol` (`symbol`),
-    UNIQUE KEY `idx_cmc_id` (`cmc_id`)
+    UNIQUE KEY `idx_cmc_id` (`cmc_id`),
+    UNIQUE KEY `idx_coingecko_id` (`coingecko_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 DROP TABLE IF EXISTS `cryptocurrency_metadata`;
 CREATE TABLE IF NOT EXISTS `cryptocurrency_metadata` (
     `id` INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     `crypto_id` INT UNSIGNED NOT NULL,
-    `cmc_id` INT UNSIGNED NOT NULL,
+    `cmc_id` INT UNSIGNED NULL,
     `tags` JSON NULL,
     `category` VARCHAR(100) NULL,
     `description` TEXT NULL,
@@ -118,24 +117,24 @@ CREATE TABLE IF NOT EXISTS `cryptocurrency_metadata` (
     `github_url` VARCHAR(500) NULL,
     `max_supply` DECIMAL(30, 8) NULL,
     `total_supply` DECIMAL(30, 8) NULL,
-    `is_stablecoin` BOOLEAN GENERATED ALWAYS AS (JSON_CONTAINS(tags, '"stablecoin"')) STORED,
+    `is_stablecoin` BOOLEAN GENERATED ALWAYS AS (JSON_CONTAINS(tags, '"Stablecoins"')) STORED,
     `is_wrapped` BOOLEAN GENERATED ALWAYS AS (
-        JSON_CONTAINS(tags, '"wrapped-tokens"') OR
-        JSON_CONTAINS(tags, '"bridged-tokens"')
+        JSON_CONTAINS(tags, '"Wrapped Tokens"')
     ) STORED,
     `is_liquid_staking` BOOLEAN GENERATED ALWAYS AS (
-        JSON_CONTAINS(tags, '"liquid-staking-derivatives"') OR
-        JSON_CONTAINS(tags, '"staking"')
+        JSON_CONTAINS(tags, '"Liquid Staking Tokens"') OR
+        JSON_CONTAINS(tags, '"Liquid Staking Derivatives"')
     ) STORED,
     `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY `fk_metadata_crypto_idx` (`crypto_id`) REFERENCES `cryptocurrencies`(`id`) ON DELETE CASCADE,
     UNIQUE KEY `idx_crypto_id` (`crypto_id`),
-    UNIQUE KEY `idx_cmc_id` (`cmc_id`),
     KEY `idx_stablecoin` (`is_stablecoin`),
     KEY `idx_wrapped` (`is_wrapped`),
     KEY `idx_liquid_staking` (`is_liquid_staking`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- market_data: highest-write table (~144K inserts/day with 5-min cron)
+-- Every redundant index costs write performance here
 DROP TABLE IF EXISTS `market_data`;
 CREATE TABLE IF NOT EXISTS `market_data` (
     `id` BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
@@ -146,10 +145,11 @@ CREATE TABLE IF NOT EXISTS `market_data` (
     `percent_change_1h` DECIMAL(12, 4) NULL,
     `percent_change_24h` DECIMAL(12, 4) NULL,
     `percent_change_7d` DECIMAL(12, 4) NULL,
+    `percent_change_14d` DECIMAL(12, 4) NULL,
     `percent_change_30d` DECIMAL(12, 4) NULL,
-    `percent_change_60d` DECIMAL(12, 4) NULL,
-    `percent_change_90d` DECIMAL(12, 4) NULL,
-    `cmc_rank` INT UNSIGNED NULL COMMENT 'CoinMarketCap ranking',
+    `percent_change_200d` DECIMAL(12, 4) NULL,
+    `percent_change_1y` DECIMAL(12, 4) NULL,
+    `market_cap_rank` INT UNSIGNED NULL COMMENT 'Market cap ranking',
     `max_supply` DECIMAL(30, 8) NULL,
     `total_supply` DECIMAL(30, 8) NULL,
     `fully_diluted_valuation` DECIMAL(40, 8) NULL,
@@ -158,7 +158,7 @@ CREATE TABLE IF NOT EXISTS `market_data` (
     `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY `fk_market_data_crypto_idx` (`crypto_id`) REFERENCES `cryptocurrencies`(`id`) ON DELETE CASCADE,
     KEY `idx_timestamp` (`timestamp`),
-    KEY `idx_timestamp_desc` (`timestamp` DESC),
+    -- idx_timestamp_desc removed: InnoDB traverses indexes in both directions
     KEY `idx_crypto_price_date` (`crypto_id`, `price_date`),
     UNIQUE KEY `idx_crypto_timestamp` (`crypto_id`, `timestamp`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -177,7 +177,7 @@ CREATE TABLE IF NOT EXISTS `index_history` (
     `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY `fk_index_history_index_config_idx` (`index_config_id`) REFERENCES `index_config`(`id`) ON DELETE CASCADE,
     KEY `idx_timestamp` (`timestamp`),
-    KEY `idx_index_level` (`index_level`),
+    -- idx_index_level removed: never used in WHERE/ORDER BY
     KEY `idx_config_snapshot_date` (`index_config_id`, `snapshot_date`),
     UNIQUE KEY `idx_config_timestamp` (`index_config_id`, `timestamp`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -196,9 +196,9 @@ CREATE TABLE IF NOT EXISTS `index_constituents` (
     FOREIGN KEY `fk_index_constituents_index_history_idx` (`index_history_id`) REFERENCES `index_history`(`id`) ON DELETE CASCADE,
     FOREIGN KEY `fk_index_constituents_crypto_idx` (`crypto_id`) REFERENCES `cryptocurrencies`(`id`),
     FOREIGN KEY `fk_index_constituents_market_data_idx` (`market_data_id`) REFERENCES `market_data`(`id`),
-    KEY `idx_history` (`index_history_id`),
+    -- idx_history removed: covered by UNIQUE KEY idx_history_crypto (leftmost prefix)
     KEY `idx_crypto` (`crypto_id`),
-    KEY `idx_rank` (`rank_position`),
+    -- idx_rank removed: never used alone, ordering always within a filtered index_history_id
     UNIQUE KEY `idx_history_crypto` (`index_history_id`, `crypto_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -217,7 +217,7 @@ CREATE TABLE IF NOT EXISTS `global_metrics` (
     `total_volume_24h_change` DECIMAL(10, 4) NOT NULL,
     `timestamp` DATETIME NOT NULL,
     `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    KEY `idx_timestamp` (`timestamp`),
+    -- idx_timestamp removed: redundant with UNIQUE KEY (a unique key IS an index)
     UNIQUE KEY `idx_timestamp_unique` (`timestamp`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -227,7 +227,7 @@ CREATE TABLE IF NOT EXISTS `fear_and_greed` (
     `value` TINYINT UNSIGNED NOT NULL,
     `timestamp` DATETIME NOT NULL,
     `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    KEY `idx_timestamp` (`timestamp`),
+    -- idx_timestamp removed: redundant with UNIQUE KEY
     UNIQUE KEY `idx_timestamp_unique` (`timestamp`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -258,8 +258,8 @@ CREATE TABLE IF NOT EXISTS `crypto_volatility` (
     `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY `fk_volatility_crypto_idx` (`crypto_id`) REFERENCES `cryptocurrencies`(`id`) ON DELETE CASCADE,
     UNIQUE KEY `idx_crypto_date_window` (`crypto_id`, `date`, `window_days`),
-    KEY `idx_date` (`date`),
-    KEY `idx_annualized_volatility` (`annualized_volatility`)
+    KEY `idx_date` (`date`)
+    -- idx_annualized_volatility removed: ORDER BY with correlated subquery in WHERE prevents index use
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 DROP TABLE IF EXISTS `portfolio_volatility`;
@@ -276,8 +276,8 @@ CREATE TABLE IF NOT EXISTS `portfolio_volatility` (
     `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY `fk_portfolio_vol_index_config_idx` (`index_config_id`) REFERENCES `index_config`(`id`) ON DELETE CASCADE,
     UNIQUE KEY `idx_index_date_window` (`index_config_id`, `date`, `window_days`),
-    KEY `idx_date` (`date`),
-    KEY `idx_annualized_volatility` (`annualized_volatility`)
+    KEY `idx_date` (`date`)
+    -- idx_annualized_volatility removed: same reason as crypto_volatility
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 DROP TABLE IF EXISTS `portfolio_volatility_constituents`;
@@ -296,37 +296,19 @@ CREATE TABLE IF NOT EXISTS `portfolio_volatility_constituents` (
     KEY `idx_crypto` (`crypto_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-DROP TABLE IF EXISTS `ohlcvs`;
-CREATE TABLE IF NOT EXISTS `ohlcvs` (
+DROP TABLE IF EXISTS `ohlc`;
+CREATE TABLE IF NOT EXISTS `ohlc` (
     `id` BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     `crypto_id` INT UNSIGNED NOT NULL,
-    `unit` ENUM('DAY', 'HOUR') NOT NULL DEFAULT 'DAY' COMMENT 'Time granularity: DAY or HOUR',
-    `timestamp` DATETIME NOT NULL COMMENT 'Timestamp of the OHLCV data point',
+    `timestamp` DATETIME NOT NULL COMMENT 'Timestamp of the OHLC data point',
     `open` DECIMAL(30, 18) NOT NULL DEFAULT 0 COMMENT 'Opening price',
     `high` DECIMAL(30, 18) NOT NULL DEFAULT 0 COMMENT 'Highest price',
     `low` DECIMAL(30, 18) NOT NULL DEFAULT 0 COMMENT 'Lowest price',
     `close` DECIMAL(30, 18) NOT NULL DEFAULT 0 COMMENT 'Closing price',
-    `volume` DECIMAL(30, 8) NOT NULL DEFAULT 0 COMMENT 'Trading volume',
-    `quote_volume` DECIMAL(40, 8) NOT NULL DEFAULT 0 COMMENT 'Quote volume (in USD)',
-    `volume_top_tier` DECIMAL(30, 8) NOT NULL DEFAULT 0 COMMENT 'Volume from top tier exchanges',
-    `quote_volume_top_tier` DECIMAL(40, 8) NOT NULL DEFAULT 0 COMMENT 'Quote volume from top tier exchanges',
-    `volume_direct` DECIMAL(30, 8) NOT NULL DEFAULT 0 COMMENT 'Direct trading volume',
-    `quote_volume_direct` DECIMAL(40, 8) NOT NULL DEFAULT 0 COMMENT 'Direct quote volume',
-    `volume_top_tier_direct` DECIMAL(30, 8) NOT NULL DEFAULT 0 COMMENT 'Direct volume from top tier exchanges',
-    `quote_volume_top_tier_direct` DECIMAL(40, 8) NOT NULL DEFAULT 0 COMMENT 'Direct quote volume from top tier exchanges',
-    `supply_circulating` DECIMAL(30, 8) NOT NULL DEFAULT 0 COMMENT 'Circulating supply',
-    `supply_total` DECIMAL(30, 8) NOT NULL DEFAULT 0 COMMENT 'Total supply',
-    `supply_burnt` DECIMAL(30, 8) NOT NULL DEFAULT 0 COMMENT 'Burnt supply',
-    `supply_max` DECIMAL(30, 8) NOT NULL DEFAULT -1 COMMENT 'Maximum supply (-1 if unlimited)',
-    `supply_staked` DECIMAL(30, 8) NOT NULL DEFAULT 0 COMMENT 'Staked supply',
-    `supply_future` DECIMAL(30, 8) NOT NULL DEFAULT -1 COMMENT 'Future supply (-1 if not applicable)',
-    `supply_issued` DECIMAL(30, 8) NOT NULL DEFAULT 0 COMMENT 'Issued supply',
-    `supply_locked` DECIMAL(30, 8) NOT NULL DEFAULT 0 COMMENT 'Locked supply',
     `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY `fk_ohlcvs_crypto_idx` (`crypto_id`) REFERENCES `cryptocurrencies`(`id`) ON DELETE CASCADE,
-    UNIQUE KEY `idx_crypto_unit_timestamp` (`crypto_id`, `unit`, `timestamp`),
-    KEY `idx_timestamp` (`timestamp`),
-    KEY `idx_unit` (`unit`)
+    FOREIGN KEY `fk_ohlc_crypto_idx` (`crypto_id`) REFERENCES `cryptocurrencies`(`id`) ON DELETE CASCADE,
+    UNIQUE KEY `idx_crypto_timestamp` (`crypto_id`, `timestamp`),
+    KEY `idx_timestamp` (`timestamp`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 DROP TABLE IF EXISTS `crypto_distribution_stats`;
@@ -343,9 +325,8 @@ CREATE TABLE IF NOT EXISTS `crypto_distribution_stats` (
     `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY `fk_distribution_stats_crypto_idx` (`crypto_id`) REFERENCES `cryptocurrencies`(`id`) ON DELETE CASCADE,
     UNIQUE KEY `idx_crypto_date_window` (`crypto_id`, `date`, `window_days`),
-    KEY `idx_date` (`date`),
-    KEY `idx_skewness` (`skewness`),
-    KEY `idx_kurtosis` (`kurtosis`)
+    KEY `idx_date` (`date`)
+    -- idx_skewness, idx_kurtosis removed: values only displayed, never filtered/sorted on
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 DROP TABLE IF EXISTS `crypto_var`;
@@ -366,9 +347,8 @@ CREATE TABLE IF NOT EXISTS `crypto_var` (
     `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY `fk_var_crypto_idx` (`crypto_id`) REFERENCES `cryptocurrencies`(`id`) ON DELETE CASCADE,
     UNIQUE KEY `idx_crypto_date_window` (`crypto_id`, `date`, `window_days`),
-    KEY `idx_date` (`date`),
-    KEY `idx_var_95` (`var_95`),
-    KEY `idx_var_99` (`var_99`)
+    KEY `idx_date` (`date`)
+    -- idx_var_95, idx_var_99 removed: values only displayed, never filtered/sorted on
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 DROP TABLE IF EXISTS `crypto_beta`;
@@ -385,8 +365,8 @@ CREATE TABLE IF NOT EXISTS `crypto_beta` (
     `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY `fk_beta_crypto_idx` (`crypto_id`) REFERENCES `cryptocurrencies`(`id`) ON DELETE CASCADE,
     UNIQUE KEY `idx_crypto_date_window` (`crypto_id`, `date`, `window_days`),
-    KEY `idx_date` (`date`),
-    KEY `idx_beta` (`beta`)
+    KEY `idx_date` (`date`)
+    -- idx_beta removed: value only displayed, never filtered/sorted on
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 DROP TABLE IF EXISTS `crypto_sml`;
@@ -405,8 +385,8 @@ CREATE TABLE IF NOT EXISTS `crypto_sml` (
     `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY `fk_sml_crypto_idx` (`crypto_id`) REFERENCES `cryptocurrencies`(`id`) ON DELETE CASCADE,
     UNIQUE KEY `idx_crypto_date_window` (`crypto_id`, `date`, `window_days`),
-    KEY `idx_date` (`date`),
-    KEY `idx_alpha` (`alpha`)
+    KEY `idx_date` (`date`)
+    -- idx_alpha removed: value only displayed, never filtered/sorted on
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 COMMIT;

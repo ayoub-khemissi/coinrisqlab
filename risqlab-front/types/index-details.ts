@@ -2,7 +2,7 @@ export interface IndexConstituent {
   rank_position: number;
   symbol: string;
   name: string;
-  cmc_id: number;
+  image_url: string | null;
   price_usd: string;
   market_cap_usd: string;
   circulating_supply: string;

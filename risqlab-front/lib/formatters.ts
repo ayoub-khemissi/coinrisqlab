@@ -142,16 +142,6 @@ export function getPercentageColor(
 }
 
 /**
- * Get CoinMarketCap image URL
- */
-export function getCoinImageUrl(
-  cmcId: number,
-  size: 64 | 128 | 200 = 64,
-): string {
-  return `https://s2.coinmarketcap.com/static/img/coins/${size}x${size}/${cmcId}.png`;
-}
-
-/**
  * Format large numbers with T (trillion) or B (billion) suffix
  */
 export function formatCompactUSD(value: number | string): string {

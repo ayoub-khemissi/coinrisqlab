@@ -12,13 +12,12 @@ async function calculateLogReturns() {
   try {
     log.info('Starting logarithmic returns calculation...');
 
-    // Get all cryptocurrencies with at least 2 days of OHLCV data
+    // Get all cryptocurrencies with at least 2 days of OHLC data
     const [cryptos] = await Database.execute(`
       SELECT DISTINCT c.id, c.symbol, c.name
       FROM cryptocurrencies c
-      INNER JOIN ohlcvs o ON c.id = o.crypto_id
-      WHERE o.unit = 'DAY'
-        AND o.close > 0
+      INNER JOIN ohlc o ON c.id = o.crypto_id
+      WHERE o.close > 0
       GROUP BY c.id, c.symbol, c.name
       HAVING COUNT(DISTINCT DATE(o.timestamp)) >= 2
       ORDER BY c.symbol
@@ -80,14 +79,13 @@ function areConsecutiveDays(date1, date2) {
  * @returns {Promise<{inserted: number, skipped: number, invalid: number}>}
  */
 async function calculateLogReturnsForCrypto(cryptoId, symbol) {
-  // Get daily closing prices from OHLCV table (unit = 'DAY')
+  // Get daily closing prices from OHLC table
   const [prices] = await Database.execute(`
     SELECT
       DATE(timestamp) as date,
       close as price_usd
-    FROM ohlcvs
+    FROM ohlc
     WHERE crypto_id = ?
-      AND unit = 'DAY'
       AND close > 0
     ORDER BY timestamp ASC
   `, [cryptoId]);

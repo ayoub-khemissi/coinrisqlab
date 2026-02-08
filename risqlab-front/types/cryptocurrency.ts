@@ -2,7 +2,7 @@ export interface Cryptocurrency {
   id: number;
   symbol: string;
   name: string;
-  cmc_id: number;
+  image_url: string | null;
   price_usd: string;
   market_cap_usd: string;
   volume_24h_usd: string;

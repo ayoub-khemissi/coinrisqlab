@@ -84,7 +84,7 @@ api.get('/volatility/portfolio/constituents', async (req, res) => {
         pvc.crypto_id,
         c.symbol,
         c.name,
-        c.cmc_id,
+        c.image_url,
         pvc.weight,
         pvc.daily_volatility,
         pvc.annualized_volatility,
@@ -102,7 +102,7 @@ api.get('/volatility/portfolio/constituents', async (req, res) => {
         ic.crypto_id,
         c.symbol,
         c.name,
-        c.cmc_id
+        c.image_url
       FROM index_constituents ic
       INNER JOIN index_history ih ON ic.index_history_id = ih.id
       INNER JOIN cryptocurrencies c ON ic.crypto_id = c.id
@@ -142,7 +142,7 @@ api.get('/volatility/portfolio/constituents', async (req, res) => {
           crypto_id: constituent.crypto_id,
           symbol: constituent.symbol,
           name: constituent.name,
-          cmc_id: constituent.cmc_id,
+          image_url: constituent.image_url,
           weight: 0,
           daily_volatility: 0,
           annualized_volatility: 0,
@@ -253,7 +253,7 @@ api.get('/volatility/crypto/top/volatile', async (req, res) => {
         c.id,
         c.symbol,
         c.name,
-        c.cmc_id,
+        c.image_url,
         cv.annualized_volatility,
         cv.date
       FROM crypto_volatility cv
@@ -295,7 +295,7 @@ api.get('/volatility/crypto/top/stable', async (req, res) => {
         c.id,
         c.symbol,
         c.name,
-        c.cmc_id,
+        c.image_url,
         cv.annualized_volatility,
         cv.date
       FROM crypto_volatility cv

@@ -9,12 +9,9 @@ export default {
     LOG_LEVEL_WARN: 3,
     LOG_LEVEL_ERROR: 4,
 
-    // CoinMarketCap API
+    // CoinMarketCap API (global metrics + fear & greed only)
     get COINMARKETCAP_BASE_URL() {
         return 'https://pro-api.coinmarketcap.com';
-    },
-    get COINMARKETCAP_LISTINGS_LATEST() {
-        return `${this.COINMARKETCAP_BASE_URL}/v1/cryptocurrency/listings/latest`;
     },
     get COINMARKETCAP_GLOBAL_METRICS() {
         return `${this.COINMARKETCAP_BASE_URL}/v1/global-metrics/quotes/latest`;
@@ -22,21 +19,21 @@ export default {
     get COINMARKETCAP_FEAR_AND_GREED() {
         return `${this.COINMARKETCAP_BASE_URL}/v3/fear-and-greed/historical`;
     },
-    get COINMARKETCAP_CRYPTO_INFO() {
-        return `${this.COINMARKETCAP_BASE_URL}/v2/cryptocurrency/info`;
-    },
 
-    // CoinDesk Data API
-    get COINDESK_BASE_URL() {
-        return 'https://data-api.coindesk.com';
+    // CoinGecko API
+    get COINGECKO_BASE_URL() {
+        return 'https://pro-api.coingecko.com/api/v3';
     },
-    get COINDESK_OHLCVS_DAILY() {
-        return `${this.COINDESK_BASE_URL}/index/cc/v1/historical/days`;
+    get COINGECKO_COINS_MARKETS() {
+        return `${this.COINGECKO_BASE_URL}/coins/markets`;
     },
-    get COINDESK_OHLCVS_HOURLY() {
-        return `${this.COINDESK_BASE_URL}/index/cc/v1/historical/hours`;
+    get COINGECKO_COIN_DETAIL() {
+        return `${this.COINGECKO_BASE_URL}/coins`;
     },
-    get COINDESK_SUPPLY_DAILY() {
-        return `${this.COINDESK_BASE_URL}/onchain/v2/historical/supply/days`;
+    get COINGECKO_COIN_OHLC() {
+        return `${this.COINGECKO_BASE_URL}/coins`;
+    },
+    get COINGECKO_COIN_MARKET_CHART() {
+        return `${this.COINGECKO_BASE_URL}/coins`;
     },
 }

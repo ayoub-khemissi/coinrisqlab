@@ -17,7 +17,6 @@ import { Search, AlertTriangle } from "lucide-react";
 
 import { RiskContribution } from "@/types/volatility";
 import { VolatilityBadge } from "@/components/volatility";
-import { getCoinImageUrl } from "@/lib/formatters";
 import { sStorage } from "@/lib/sessionStorage";
 
 interface RiskContributorsTableProps {
@@ -235,7 +234,7 @@ export function RiskContributorsTable({
                     alt={item.name}
                     className="rounded-full min-w-8 min-h-8"
                     height={32}
-                    src={getCoinImageUrl(item.cmc_id)}
+                    src={item.image_url || undefined}
                     width={32}
                   />
                   <div className="flex flex-col">

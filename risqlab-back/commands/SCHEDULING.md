@@ -1,65 +1,98 @@
 # Data Orchestration & Scheduling
 
-This document outlines the strategy for scheduling the data fetching and processing scripts to maximize data freshness while staying within the CoinMarketCap API limit of 10,000 credits per month.
+This document outlines the strategy for scheduling the data fetching and processing scripts using **CoinGecko** (Basic plan, 100K credits/month) as the primary data source, and **CoinMarketCap** (10K credits/month) for global metrics and fear & greed only.
 
 ## API Credit Cost Analysis
 
-Each call to a CoinMarketCap API endpoint costs at least 1 credit. Based on the project's scripts, the cost breakdown is as follows:
+### CoinGecko (100K credits/month)
 
-1.  **`fetchCryptoMarketData.js`**: This is the most credit-intensive script. As calculated, running it every 15 minutes consumes **8,640 credits/month**.
-    *   `(60 min / 15 min) * 24 hours * 30 days = 2,880 calls`
-    *   `2,880 calls * 3 credits = 8,640 credits`
+Each call to a CoinGecko API endpoint costs 1 credit.
 
-2.  **`calculateRisqLab80.js`**: This script performs internal calculations on the local database to compute the RisqLab80 index. It makes **no external API calls** and therefore consumes no credits.
-
-3.  **`updateVolatility.js`**: This script orchestrates the full risk metrics calculation pipeline:
-    - Logarithmic returns calculation
-    - Individual cryptocurrency volatility
-    - Portfolio volatility
-    - **Distribution statistics (skewness & kurtosis)** via `calculateDistributionStats.js`
-    - **VaR/CVaR statistics** via `calculateVaRStats.js`
-    - **Beta/Alpha statistics** via `calculateBetaStats.js`
-    - **SML statistics** via `calculateSMLStats.js`
-
-    It makes **no external API calls** and consumes no credits. Given the computational nature of these metrics (which require historical price data), it is scheduled to run **once per day at 2:00 AM** rather than every 15 minutes.
-
-    All risk metrics calculations support **retroactive backfill** - they automatically calculate missing historical values if they weren't computed for certain days.
-
-4.  **`fetchGlobalMetrics.js`**: This script fetches global metrics (e.g., BTC dominance). It consumes **1 credit per call**.
-
-5.  **`fetchFearAndGreed.js`**: This script fetches the Fear and Greed Index. It consumes **1 credit per call**.
-
-6.  **`fetchCryptoMetadata.js`**: This script fetches metadata (logos, descriptions, links) for all cryptocurrencies in the database. The cost depends on the number of assets, but it's typically low (**~5 credits** per full run). This data changes very infrequently.
-
-7.  **`fetchOHLCVS.js`**: This script fetches daily OHLCVS (Open, High, Low, Close, Volume + Supply) data from the **CoinDesk Data API** (separate from CoinMarketCap). For daily data, it also fetches supply data (circulating, total, burnt, max, staked, future, issued, locked). It has its own rate limits:
-    *   Per second: 20 requests max
-    *   Per day: 7,500 requests max
-    *   Per month: 11,000 requests max
-
-    On initial run, it fetches up to 365 days of historical data. On subsequent runs, it only fills gaps (missing dates). This script makes **no CoinMarketCap API calls**.
-
-## Optimized Scheduling Strategy
-
-With 8,640 credits already allocated to the main data pipeline, we have **1,360 credits** remaining to distribute for other tasks.
-
-Here is the proposed strategy to optimize data freshness without exceeding the monthly budget:
-
-| Task | Frequency | Monthly Cost (Credits) | Justification |
+| Task | Frequency | Calls/run | Credits/month |
 | :--- | :--- | :--- | :--- |
-| **Main Pipeline** (Market Data + Index) | Every 15 minutes | **8,640** | Ensures maximum freshness for market data and the RisqLab80 index, which are the core of the application. |
-| **End-of-Day Snapshot** (Market Data only) | Daily at 23:59 | **90** | Captures a consistent "closing price" for each day, used for volatility calculations and daily exports. |
-| **Risk Metrics Update** | Once a day (2:00 AM) | **0** | All risk metrics (volatility, skewness, kurtosis, VaR, Beta, SML) are computationally intensive and based on historical data. Daily updates are sufficient. No API calls required. Supports retroactive backfill. |
-| **Global Metrics** | Every 45 minutes | **~960** | This data (dominance, total market cap) is important but less volatile than prices. A 45-minute interval is an excellent trade-off. |
-| **Fear & Greed Index** | Every 3 hours | **240** | The index provides real-time market sentiment. Fetching it 8 times daily ensures consistent updates throughout the day while staying within budget. |
-| **Crypto Metadata** | Once a week | **~20** | Project logos, descriptions, and websites almost never change. A weekly update is more than sufficient. |
-| **OHLCVS Data** (CoinDesk API) | Once a day | **0** (CMC) | Fetches historical OHLCV + supply data from CoinDesk API. Daily run fills any gaps. Uses separate API quota. |
-| **Total Estimated** | | **~9,950 credits/month** | |
+| **Market Data + Index** (`/coins/markets`) | Every 5 min | 2 (pages) | 17,280 |
+| **Daily Backfill** (`/coins/{id}/market_chart`) | 1x/day 01:00 | ~500 | 15,000 |
+| **Metadata** (`/coins/{id}`) | 1x/week | ~500 | 2,150 |
+| **Total CoinGecko** | | | **~34,430** (34%) |
 
-This plan uses approximately 99.5% of the monthly quota, leaving a small buffer (~50 credits) for safety while ensuring high data freshness where it matters most.
+### CoinMarketCap (10K credits/month, reduced usage)
+
+| Task | Frequency | Calls/run | Credits/month |
+| :--- | :--- | :--- | :--- |
+| **Global Metrics** | Every hour | 1 | 720 |
+| **Fear & Greed** | 2x/day (08:00, 20:00) | 1 | 60 |
+| **Total CMC** | | | **~780** (7.8%) |
+
+### Internal (no API credits)
+
+1. **`calculateRisqLab80.js`**: Internal calculations on local database for the RisqLab80 index. No external API calls.
+
+2. **`updateVolatility.js`**: Orchestrates the full risk metrics pipeline:
+   - Logarithmic returns calculation
+   - Individual cryptocurrency volatility
+   - Portfolio volatility
+   - Distribution statistics (skewness & kurtosis)
+   - VaR/CVaR statistics
+   - Beta/Alpha statistics
+   - SML statistics
+
+   All risk metrics support **retroactive backfill** - they automatically calculate missing historical values.
+
+## Daily Backfill Strategy (`fetchOHLC.js`)
+
+The `fetchOHLC.js` script uses CoinGecko's `/coins/{id}/market_chart` endpoint to run two backfill passes:
+
+1. **Daily pass** (`days=730`) → fills `ohlc` + `market_data` with daily data for up to 2 years
+2. **Hourly pass** (`days=90`) → fills `market_data` only with hourly data for the last 90 days (~2,160 points/crypto)
+
+### Pass 1: Daily backfill
+
+1. **Batch gap detection**: A single SQL query identifies all cryptos where yesterday is missing from either `ohlc` or `market_data`. Cryptos that are fully up-to-date cost 0 credits.
+
+2. **Detailed gap analysis**: For each crypto with gaps, the script generates all expected dates within the `RECOVERY_WINDOW_DAYS` and compares them against both tables to find exact missing dates - including intermediate gaps.
+
+3. **Adaptive lookback**: The API `days` parameter is set to `(today - oldest_gap) + DAYS_BUFFER`, capped at `RECOVERY_WINDOW_DAYS`. If only yesterday is missing, `days=3`. If 30 days are missing, `days=32`.
+
+4. **Dual insertion**: Each API call returns `prices[]`, `market_caps[]`, and `total_volumes[]`. The script inserts into:
+   - `ohlc`: `open=high=low=close=price` (only close is used by log returns)
+   - `market_data`: `price_usd`, `circulating_supply` (derived: `market_cap / price`), `volume_24h_usd`
+
+### Pass 2: Hourly backfill
+
+1. **Detection**: Counts `market_data` entries per crypto in the last 90 days. If fewer than 500 entries, hourly data is missing.
+
+2. **Fetch**: Calls `/market_chart?days=90` (CoinGecko auto-returns hourly granularity for ≤90 days).
+
+3. **Insert**: Each hourly data point is inserted into `market_data` with timestamp `YYYY-MM-DD HH:00:00`. Does NOT touch `ohlc` (stays daily for log returns).
+
+4. **Idempotent**: After the first run + a few days of the live `*/5` cron, cryptos naturally exceed the 500-entry threshold → hourly backfill skips them (0 credits).
+
+### Common behavior
+
+- **Safe inserts**: `ON DUPLICATE KEY UPDATE` ensures idempotency. For `market_data`, existing records from the live cron are preserved (not overwritten).
+- **Today excluded**: Data for the current day is always excluded since it's incomplete.
+
+### Recovery scenarios
+
+| Scenario | Daily pass | Hourly pass | Total credits |
+| :--- | :--- | :--- | :--- |
+| Normal day (yesterday missing) | ~500 (`days=3`) | 0 (skipped) | ~500 |
+| All up-to-date | 0 | 0 | 0 |
+| After 3-day outage | ~500 (`days=5`) | 0 | ~500 |
+| After 7-day outage | ~500 (`days=9`) | 0 | ~500 |
+| First run (empty tables) | ~500 (`days=730`) | ~500 (`days=90`) | ~1,000 |
+
+### Configuration
+
+| Parameter | Value | Description |
+| :--- | :--- | :--- |
+| `RECOVERY_WINDOW_DAYS` | 730 | Max daily gap detection window (= API max on Basic plan: 2 years) |
+| `HOURLY_BACKFILL_DAYS` | 90 | Hourly backfill window (CoinGecko auto-hourly for ≤90 days) |
+| `HOURLY_ENTRY_THRESHOLD` | 500 | Skip hourly backfill if crypto has ≥500 entries in 90 days |
+| `API_DELAY_MS` | 250 | Rate limit safety: 240 calls/min (Basic limit: 250/min) |
+| `DAYS_BUFFER` | 2 | Extra margin beyond the oldest daily gap |
 
 ## Crontab Configuration for Ubuntu
-
-To implement this schedule, open your crontab file by running `crontab -e` in your Ubuntu terminal and add the following content.
 
 **Important:** The paths below are configured for the project located at `/home/ubuntu/risqlab/risqlab`.
 
@@ -67,64 +100,35 @@ To implement this schedule, open your crontab file by running `crontab -e` in yo
 # =================================================================
 # RisqLab Crypto Dashboard - CRON Jobs
 # =================================================================
-#
-# Note: Ensure 'node' is in the cron user's PATH, or specify the full
-# path (e.g., /usr/bin/node).
-#
-# For debugging, you can redirect output to a log file:
-# >> /home/ubuntu/risqlab/risqlab/risqlab-back/log/cron.log 2>&1
-#
 
-# 1. Main Pipeline: Fetch market data and calculate the RisqLab80 index.
-#    Runs every 15 minutes.
-*/15 * * * * cd /home/ubuntu/risqlab/risqlab/risqlab-back && node commands/fetchCryptoMarketData.js && node commands/calculateRisqLab80.js
+# === CoinGecko ===
 
-# 2. End-of-Day Snapshot: Fetch market data at 23:59.
-#    Captures the "closing price" for daily volatility calculations.
-59 23 * * * cd /home/ubuntu/risqlab/risqlab/risqlab-back && node commands/fetchCryptoMarketData.js
+# Market data + RisqLab80 index (every 5 min, 2 credits CoinGecko)
+*/5 * * * * cd /home/ubuntu/risqlab/risqlab/risqlab-back && node commands/fetchCryptoMarketData.js && node commands/calculateRisqLab80.js
 
-# 3. Risk Metrics Update: Calculate all risk metrics (volatility, skewness,
-#    kurtosis, VaR, Beta, SML). Supports retroactive backfill for missing dates.
-#    Runs once a day at 02:00 AM (1 hour after OHLCVS data fetch).
-0 2 * * * cd /home/ubuntu/risqlab/risqlab/risqlab-back && node commands/updateVolatility.js
+# Daily Backfill via /market_chart (01:00, ~500 credits CoinGecko)
+# Fills gaps in both ohlc and market_data tables
+0 1 * * * cd /home/ubuntu/risqlab/risqlab/risqlab-back && node commands/fetchOHLC.js
 
-# 4. Global Metrics: Fetch BTC/ETH dominance, total market cap, etc.
-#    Runs every 45 minutes.
-*/45 * * * * cd /home/ubuntu/risqlab/risqlab/risqlab-back && node commands/fetchGlobalMetrics.js
-
-# 5. Fear & Greed Index:
-#    Runs every 3 hours (8 times per day: 0h, 3h, 6h, 9h, 12h, 15h, 18h, 21h).
-0 */3 * * * cd /home/ubuntu/risqlab/risqlab/risqlab-back && node commands/fetchFearAndGreed.js
-
-# 6. Crypto Metadata (logos, descriptions, etc.):
-#    Runs once a week, on Sunday at 3:05 AM.
+# Metadata weekly, Sunday 03:05 (~500 credits CoinGecko)
 5 3 * * 0 cd /home/ubuntu/risqlab/risqlab/risqlab-back && node commands/fetchCryptoMetadata.js
 
-# 7. OHLCVS Data: Fetch historical OHLCVS data from CoinDesk API.
-#    Uses CoinDesk API (separate from CoinMarketCap quota).
-#
-#    Daily OHLCVS (365 days lookback) - runs once a day at 01:00
-0 1 * * * cd /home/ubuntu/risqlab/risqlab/risqlab-back && node commands/fetchOHLCVS.js --daily
-#
-#    Hourly OHLCVS (90 days lookback) - runs every hour at minute 30
-30 * * * * cd /home/ubuntu/risqlab/risqlab/risqlab-back && node commands/fetchOHLCVS.js --hourly
+# === CoinMarketCap ===
 
+# Global Metrics (every hour, 1 credit CMC)
+0 * * * * cd /home/ubuntu/risqlab/risqlab/risqlab-back && node commands/fetchGlobalMetrics.js
+
+# Fear & Greed (2x/day at 08:00 and 20:00, 1 credit CMC — daily metric)
+0 8,20 * * * cd /home/ubuntu/risqlab/risqlab/risqlab-back && node commands/fetchFearAndGreed.js
+
+# === Internal (0 credits) ===
+
+# Risk Metrics (02:00, after daily backfill)
+0 2 * * * cd /home/ubuntu/risqlab/risqlab/risqlab-back && node commands/updateVolatility.js
 ```
 
 ### Crontab Notes:
 
-*   `cd /home/ubuntu/risqlab/risqlab/risqlab-back`: This command is critical. It ensures that the scripts run from the correct directory, allowing them to resolve local dependencies (`.env`, `utils`, etc.).
-*   `&&`: This operator chains commands. The next command only executes if the previous one succeeds. This is ideal for the main pipeline.
-*   The execution times for less frequent jobs are slightly offset to prevent them from running at the exact same time as the main pipeline, which helps distribute the system load.
-
-### Alternative Configuration for Fear & Greed Index
-
-If you want to reduce API credit consumption slightly, you can use a 4-hour interval instead:
-
-```cron
-# Alternative: Fear & Greed Index every 4 hours (6 times per day)
-# Cost: ~180 credits/month (saves 60 credits compared to 3-hour interval)
-0 */4 * * * cd /home/ubuntu/risqlab/risqlab/risqlab-back && node commands/fetchFearAndGreed.js
-```
-
-This would bring the total monthly cost to **~9,800 credits** (98%), leaving 200 credits as a buffer.
+*   `cd /home/ubuntu/risqlab/risqlab/risqlab-back`: Ensures scripts run from the correct directory for resolving local dependencies (`.env`, `utils`, etc.).
+*   `&&`: Chains commands so the next one only runs if the previous succeeds.
+*   Execution times for less frequent jobs are offset to prevent overlap with the main pipeline.

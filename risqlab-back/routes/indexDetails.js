@@ -101,7 +101,7 @@ api.get('/index-details', async (req, res) => {
         ic.rank_position,
         c.symbol,
         c.name,
-        c.cmc_id,
+        c.image_url,
         ic.price_usd,
         (ic.price_usd * ic.circulating_supply) as market_cap_usd,
         ic.circulating_supply,

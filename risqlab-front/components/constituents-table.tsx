@@ -23,7 +23,6 @@ import {
   formatUSD,
   formatPercentage,
   getPercentageColor,
-  getCoinImageUrl,
 } from "@/lib/formatters";
 import { sStorage } from "@/lib/sessionStorage";
 
@@ -117,7 +116,7 @@ function ConstituentsTableComponent({ constituents }: ConstituentsTableProps) {
               alt={constituent.name}
               className="rounded-full min-w-8 min-h-8"
               height={32}
-              src={getCoinImageUrl(constituent.cmc_id)}
+              src={constituent.image_url || undefined}
               width={32}
             />
             <div className="flex flex-col">
@@ -257,7 +256,7 @@ function ConstituentsTableComponent({ constituents }: ConstituentsTableProps) {
       >
         {(item) => (
           <TableRow
-            key={item.cmc_id}
+            key={item.symbol}
             className="cursor-pointer hover:bg-default-100 transition-colors"
             onClick={() => {
               sStorage.set(

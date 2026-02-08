@@ -26,7 +26,6 @@ import {
   formatCirculatingSupply,
   formatPercentage,
   getPercentageColor,
-  getCoinImageUrl,
 } from "@/lib/formatters";
 import { sStorage } from "@/lib/sessionStorage";
 
@@ -82,7 +81,7 @@ function CryptoTableComponent({
               alt={crypto.name}
               className="rounded-full min-w-8 min-h-8"
               height={32}
-              src={getCoinImageUrl(crypto.cmc_id)}
+              src={crypto.image_url || undefined}
               width={32}
             />
             <div className="flex flex-col">

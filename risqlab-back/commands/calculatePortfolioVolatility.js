@@ -110,7 +110,7 @@ async function calculatePortfolioVolatilityForDate(indexConfigId, date, timestam
     return { calculated: false };
   }
 
-  // Get constituents for this date (uses ohlcvs for price and supply)
+  // Get constituents for this date (uses ohlc + market_data)
   const constituents = await getConstituentsForDate(indexConfigId, timestamp, date);
 
   if (constituents.length === 0) {
@@ -220,7 +220,7 @@ async function calculatePortfolioVolatilityForDate(indexConfigId, date, timestam
 
 /**
  * Get index constituents for a specific date
- * Uses ohlcvs for both price (close) and supply_circulating
+ * Uses ohlc for close price and market_data for circulating_supply
  */
 async function getConstituentsForDate(indexConfigId, timestamp, date) {
   // Get the list of constituents from index_constituents
@@ -243,38 +243,46 @@ async function getConstituentsForDate(indexConfigId, timestamp, date) {
 
   const cryptoIds = constituents.map(c => c.crypto_id);
 
-  // Get the close price and supply_circulating from ohlcvs
-  const [ohlcvsData] = await Database.execute(`
+  // Get close price from ohlc and circulating_supply from market_data
+  // For market_data, use the most recent record on or before the date
+  const [ohlcData] = await Database.execute(`
     SELECT
-      crypto_id,
-      close as price_usd,
-      supply_circulating,
-      (close * supply_circulating) as market_cap_usd
-    FROM ohlcvs
-    WHERE crypto_id IN (${cryptoIds.join(',')})
-      AND unit = 'DAY'
-      AND DATE(timestamp) = ?
-      AND close > 0
-      AND supply_circulating > 0
-  `, [date]);
+      o.crypto_id,
+      o.close as price_usd,
+      md.circulating_supply,
+      (o.close * md.circulating_supply) as market_cap_usd
+    FROM ohlc o
+    INNER JOIN (
+      SELECT crypto_id, circulating_supply
+      FROM market_data
+      WHERE crypto_id IN (${cryptoIds.join(',')})
+        AND price_date <= ?
+        AND circulating_supply > 0
+      ORDER BY timestamp DESC
+    ) md ON o.crypto_id = md.crypto_id
+    WHERE o.crypto_id IN (${cryptoIds.join(',')})
+      AND DATE(o.timestamp) = ?
+      AND o.close > 0
+    GROUP BY o.crypto_id
+  `, [date, date]);
 
-  // Build a map of crypto_id -> ohlcvs data
-  const ohlcvsDataMap = new Map();
-  for (const row of ohlcvsData) {
-    ohlcvsDataMap.set(row.crypto_id, row);
+  // Build a map of crypto_id -> data
+  const dataMap = new Map();
+  for (const row of ohlcData) {
+    dataMap.set(row.crypto_id, row);
   }
 
   // Log any missing constituents for debugging
-  const missingConstituents = constituents.filter(c => !ohlcvsDataMap.has(c.crypto_id));
+  const missingConstituents = constituents.filter(c => !dataMap.has(c.crypto_id));
   if (missingConstituents.length > 0) {
-    log.warn(`${date}: ${missingConstituents.length} constituents missing ohlcvs data: ${missingConstituents.map(c => c.symbol).join(', ')}`);
+    log.warn(`${date}: ${missingConstituents.length} constituents missing ohlc/market data: ${missingConstituents.map(c => c.symbol).join(', ')}`);
   }
 
-  // Combine constituents with their ohlcvs data
+  // Combine constituents with their data
   return constituents
-    .filter(c => ohlcvsDataMap.has(c.crypto_id))
+    .filter(c => dataMap.has(c.crypto_id))
     .map(c => {
-      const data = ohlcvsDataMap.get(c.crypto_id);
+      const data = dataMap.get(c.crypto_id);
       return {
         crypto_id: c.crypto_id,
         symbol: c.symbol,
