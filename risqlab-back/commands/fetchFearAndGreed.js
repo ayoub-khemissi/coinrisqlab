@@ -3,7 +3,7 @@ import Constants from '../utils/constants.js';
 import Database from '../lib/database.js';
 import log from '../lib/log.js';
 
-const MAX_BACKFILL_DAYS = 730;
+const MAX_BACKFILL_DAYS = 500;
 
 /**
  * Main function to fetch Fear and Greed Index from CoinMarketCap.
