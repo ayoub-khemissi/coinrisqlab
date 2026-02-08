@@ -285,37 +285,27 @@ function MetricsCardsComponent({
     const pointerX = centerX + radius * Math.cos(angle);
     const pointerY = centerY + radius * Math.sin(angle);
 
+    // Risk thresholds (annualized %) — daily derived via /√365
+    const SQRT_365 = Math.sqrt(365);
+    const divisor = volatilityMode === "annualized" ? 1 : SQRT_365;
+    const lowThreshold = 10 / divisor;
+    const mediumThreshold = 30 / divisor;
+    const highThreshold = 60 / divisor;
+
     const getZoneColor = () => {
-      if (volatilityMode === "annualized") {
-        if (volatilityPercent < 10) return "#16C784"; // Green - Low
-        if (volatilityPercent < 30) return "#F3D42F"; // Yellow - Medium
-        if (volatilityPercent < 60) return "#EA580C"; // Orange - High
+      if (volatilityPercent < lowThreshold) return "#16C784"; // Green - Low
+      if (volatilityPercent < mediumThreshold) return "#F3D42F"; // Yellow - Medium
+      if (volatilityPercent < highThreshold) return "#EA580C"; // Orange - High
 
-        return "#EA3943"; // Red - Extreme
-      } else {
-        // Daily thresholds (annualized / sqrt(365))
-        if (volatilityPercent < 0.5) return "#16C784"; // Green - Low
-        if (volatilityPercent < 1.5) return "#F3D42F"; // Yellow - Medium
-        if (volatilityPercent < 3.0) return "#EA580C"; // Orange - High
-
-        return "#EA3943"; // Red - Extreme
-      }
+      return "#EA3943"; // Red - Extreme
     };
 
     const getLabel = () => {
-      if (volatilityMode === "annualized") {
-        if (volatilityPercent < 10) return "Low";
-        if (volatilityPercent < 30) return "Medium";
-        if (volatilityPercent < 60) return "High";
+      if (volatilityPercent < lowThreshold) return "Low";
+      if (volatilityPercent < mediumThreshold) return "Medium";
+      if (volatilityPercent < highThreshold) return "High";
 
-        return "Extreme";
-      } else {
-        if (volatilityPercent < 0.5) return "Low";
-        if (volatilityPercent < 1.5) return "Medium";
-        if (volatilityPercent < 3.0) return "High";
-
-        return "Extreme";
-      }
+      return "Extreme";
     };
 
     // Helper function to create arc path
@@ -333,26 +323,20 @@ function MetricsCardsComponent({
       return `M ${x1} ${y1} A ${radius} ${radius} 0 ${largeArc} 1 ${x2} ${y2}`;
     };
 
-    // Divide 180° arc into 4 zones with gaps
-    // Gap size approx 8 degrees (4 degrees on each side of boundary) to account for rounded caps
+    // Divide 180° arc into 4 zones with gaps (4° gap on each side of boundary)
+    const toAngle = (pct: number) => -180 + (pct / maxValue) * 180;
+    const gap = 4;
 
-    let greenArc, lightOrangeArc, darkOrangeArc, redArc;
-
-    if (volatilityMode === "annualized") {
-      // Annualized thresholds: 0-10%, 10-30%, 30-60%, 60-80%
-      // Mapped to gauge: 0-12.5%, 12.5-37.5%, 37.5-75%, 75-100%
-      greenArc = createArc(-180, -161); // 0-10% zone (0-12.5% of gauge)
-      lightOrangeArc = createArc(-153, -116); // 10-30% zone (12.5-37.5% of gauge)
-      darkOrangeArc = createArc(-108, -49); // 30-60% zone (37.5-75% of gauge)
-      redArc = createArc(-41, 0); // 60-80% zone (75-100% of gauge)
-    } else {
-      // Daily thresholds: 0-0.5%, 0.5-1.5%, 1.5-3.0%, 3.0-5.0%
-      // Mapped to gauge: 0-10%, 10-30%, 30-60%, 60-100%
-      greenArc = createArc(-180, -166); // 0-0.5% daily (0-10% of gauge)
-      lightOrangeArc = createArc(-158, -130); // 0.5-1.5% daily (10-30% of gauge)
-      darkOrangeArc = createArc(-122, -76); // 1.5-3.0% daily (30-60% of gauge)
-      redArc = createArc(-68, 0); // 3.0-5.0% daily (60-100% of gauge)
-    }
+    const greenArc = createArc(-180, toAngle(lowThreshold) - gap);
+    const lightOrangeArc = createArc(
+      toAngle(lowThreshold) + gap,
+      toAngle(mediumThreshold) - gap,
+    );
+    const darkOrangeArc = createArc(
+      toAngle(mediumThreshold) + gap,
+      toAngle(highThreshold) - gap,
+    );
+    const redArc = createArc(toAngle(highThreshold) + gap, 0);
 
     return (
       <Card className="hover:scale-[1.02] transition-transform">

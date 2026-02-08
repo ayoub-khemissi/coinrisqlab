@@ -339,7 +339,7 @@ export default function VolatilityMethodologyPage() {
                         </Chip>
                       </td>
                       <td className="py-3 px-4 font-semibold">&lt; 10%</td>
-                      <td className="py-3 px-4 font-semibold">&lt; 0.5%</td>
+                      <td className="py-3 px-4 font-semibold">&lt; 0.52%</td>
                       <td className="py-3 px-4">
                         <div className="flex items-center gap-2">
                           <div className="w-4 h-4 rounded-full bg-success" />
@@ -357,7 +357,7 @@ export default function VolatilityMethodologyPage() {
                         </Chip>
                       </td>
                       <td className="py-3 px-4 font-semibold">10% - 30%</td>
-                      <td className="py-3 px-4 font-semibold">0.5% - 1.5%</td>
+                      <td className="py-3 px-4 font-semibold">0.52% - 1.57%</td>
                       <td className="py-3 px-4">
                         <div className="flex items-center gap-2">
                           <div className="w-4 h-4 rounded-full bg-warning" />
@@ -380,7 +380,7 @@ export default function VolatilityMethodologyPage() {
                         </Chip>
                       </td>
                       <td className="py-3 px-4 font-semibold">30% - 60%</td>
-                      <td className="py-3 px-4 font-semibold">1.5% - 3.0%</td>
+                      <td className="py-3 px-4 font-semibold">1.57% - 3.14%</td>
                       <td className="py-3 px-4">
                         <div className="flex items-center gap-2">
                           <div className="w-4 h-4 rounded-full bg-orange-500" />
@@ -398,7 +398,7 @@ export default function VolatilityMethodologyPage() {
                         </Chip>
                       </td>
                       <td className="py-3 px-4 font-semibold">≥ 60%</td>
-                      <td className="py-3 px-4 font-semibold">≥ 3.0%</td>
+                      <td className="py-3 px-4 font-semibold">≥ 3.14%</td>
                       <td className="py-3 px-4">
                         <div className="flex items-center gap-2">
                           <div className="w-4 h-4 rounded-full bg-danger" />
