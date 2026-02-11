@@ -5,25 +5,30 @@ import path from 'path';
 
 /**
  * Export daily close index levels (last index_level of each day)
+ * Usage: node commands/exportIndexClose.js <days>
+ * Example: node commands/exportIndexClose.js 90
  * Outputs to CSV file
  */
-async function exportIndexClose() {
+async function exportIndexClose(days) {
   const startTime = Date.now();
 
   try {
-    log.info('Fetching daily close index levels...');
+    log.info(`Fetching daily close index levels (last ${days} days)...`);
 
     const [results] = await Database.execute(`
-      SELECT
-        DATE(snapshot_date) as date,
-        SUBSTRING_INDEX(GROUP_CONCAT(index_level ORDER BY snapshot_date DESC), ',', 1) + 0 as close_level,
-        ic.index_name
-      FROM index_history ih
-      INNER JOIN index_config ic ON ih.index_config_id = ic.id
-      WHERE ic.index_name = 'RisqLab 80'
-        AND DATE(snapshot_date) < CURDATE()
-      GROUP BY DATE(snapshot_date), ic.index_name
-      ORDER BY date ASC
+      SELECT * FROM (
+        SELECT
+          DATE(snapshot_date) as date,
+          SUBSTRING_INDEX(GROUP_CONCAT(index_level ORDER BY snapshot_date DESC), ',', 1) + 0 as close_level,
+          ic.index_name
+        FROM index_history ih
+        INNER JOIN index_config ic ON ih.index_config_id = ic.id
+        WHERE ic.index_name = 'RisqLab 80'
+          AND DATE(snapshot_date) < CURDATE()
+        GROUP BY DATE(snapshot_date), ic.index_name
+        ORDER BY date DESC
+        LIMIT ${days}
+      ) sub ORDER BY date ASC
     `);
 
     log.info(`Found ${results.length} daily close levels`);
@@ -70,7 +75,15 @@ async function exportIndexClose() {
   }
 }
 
-exportIndexClose()
+const days = parseInt(process.argv[2], 10);
+
+if (isNaN(days) || days < 1) {
+  console.error('Error: first argument must be a positive number of days');
+  console.error('Usage: node commands/exportIndexClose.js <days>');
+  process.exit(1);
+}
+
+exportIndexClose(days)
   .then(() => {
     process.exit(0);
   })
