@@ -98,43 +98,52 @@ async function calculateVaRForCrypto(cryptoId, symbol) {
     return { inserted: 0, skipped: 0 };
   }
 
-  // Get the latest date we have log returns for
-  const latestDate = logReturns[logReturns.length - 1].date;
+  let inserted = 0;
+  let skipped = 0;
 
-  // Calculate stats using last 365 days max
-  const recentReturns = logReturns.slice(-MAX_WINDOW_DAYS);
-  const allReturns = recentReturns.map(r => parseFloat(r.log_return));
-  const windowDays = allReturns.length;
+  // Calculate VaR for each date with enough data (backfill)
+  for (let i = MINIMUM_DATA_POINTS - 1; i < logReturns.length; i++) {
+    const currentDate = logReturns[i].date;
 
-  // Check if we already have stats for this date with same window size
-  const [existing] = await Database.execute(
-    'SELECT id FROM crypto_var WHERE crypto_id = ? AND date = ? AND window_days = ?',
-    [cryptoId, latestDate, windowDays]
-  );
+    // Window: up to MAX_WINDOW_DAYS returns ending at current date
+    const windowStart = Math.max(0, i - MAX_WINDOW_DAYS + 1);
+    const windowReturns = logReturns.slice(windowStart, i + 1).map(r => parseFloat(r.log_return));
+    const windowDays = windowReturns.length;
 
-  if (existing.length > 0) {
-    log.debug(`${symbol}: VaR stats already exist for ${latestDate} (${windowDays} days), skipping`);
-    return { inserted: 0, skipped: 1 };
+    // Check if already exists
+    const [existing] = await Database.execute(
+      'SELECT id FROM crypto_var WHERE crypto_id = ? AND date = ? AND window_days = ?',
+      [cryptoId, currentDate, windowDays]
+    );
+
+    if (existing.length > 0) {
+      skipped++;
+      continue;
+    }
+
+    const meanReturn = mean(windowReturns);
+    const stdDev = standardDeviation(windowReturns, meanReturn);
+    const var95 = calculateVaR(windowReturns, 95);
+    const var99 = calculateVaR(windowReturns, 99);
+    const cvar95 = calculateCVaR(windowReturns, 95);
+    const cvar99 = calculateCVaR(windowReturns, 99);
+    const minReturn = Math.min(...windowReturns);
+    const maxReturn = Math.max(...windowReturns);
+
+    await Database.execute(`
+      INSERT INTO crypto_var
+      (crypto_id, date, window_days, var_95, var_99, cvar_95, cvar_99, mean_return, std_dev, min_return, max_return, num_observations)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `, [cryptoId, currentDate, windowDays, var95, var99, cvar95, cvar99, meanReturn, stdDev, minReturn, maxReturn, windowDays]);
+
+    inserted++;
   }
 
-  const meanReturn = mean(allReturns);
-  const stdDev = standardDeviation(allReturns, meanReturn);
-  const var95 = calculateVaR(allReturns, 95);
-  const var99 = calculateVaR(allReturns, 99);
-  const cvar95 = calculateCVaR(allReturns, 95);
-  const cvar99 = calculateCVaR(allReturns, 99);
-  const minReturn = Math.min(...allReturns);
-  const maxReturn = Math.max(...allReturns);
+  if (inserted > 0) {
+    log.debug(`${symbol}: Calculated ${inserted} VaR points, skipped ${skipped}`);
+  }
 
-  await Database.execute(`
-    INSERT INTO crypto_var
-    (crypto_id, date, window_days, var_95, var_99, cvar_95, cvar_99, mean_return, std_dev, min_return, max_return, num_observations)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `, [cryptoId, latestDate, windowDays, var95, var99, cvar95, cvar99, meanReturn, stdDev, minReturn, maxReturn, windowDays]);
-
-  log.debug(`${symbol}: Calculated VaR stats for ${latestDate} using ${windowDays} data points`);
-
-  return { inserted: 1, skipped: 0 };
+  return { inserted, skipped };
 }
 
 calculateVaRStats()
