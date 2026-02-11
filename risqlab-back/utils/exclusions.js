@@ -1,99 +1,61 @@
-import Database from '../lib/database.js';
-
 /**
- * Fallback list of cryptocurrency symbols to exclude from the RisqLab 80 Index
- * Used when metadata is not available in the database
+ * Parse categories JSON string into a lowercase array
+ * @param {string|Array|null} categories - JSON string or array from DB
+ * @returns {string[]} Lowercase category names
  */
-
-// Stablecoins - Cryptocurrencies pegged to fiat currencies
-export const STABLECOINS = [
-  'USDT',  // Tether
-  'USDC',  // USD Coin
-  'DAI',   // Dai
-  'BUSD',  // Binance USD
-  'TUSD',  // TrueUSD
-  'USDP',  // Pax Dollar
-  'USDD',  // USDD
-  'GUSD',  // Gemini Dollar
-  'PYUSD', // PayPal USD
-  'FDUSD', // First Digital USD
-  'USDE',  // Ethena USDe
-  'FRAX',  // Frax
-  'LUSD',  // Liquity USD
-  'SUSD',  // sUSD
-  'CUSD',  // Celo Dollar
-  'USDJ',  // USDJ
-  'RSR',   // Reserve Rights (related to RSV stablecoin)
-  'USDN',  // Neutrino USD
-  'FEI',   // Fei USD
-  'TRIBE', // Tribe (related to FEI)
-];
-
-// Asset-backed wrapper tokens - Tokens representing ownership of other cryptocurrencies
-export const WRAPPER_TOKENS = [
-  'WBTC',  // Wrapped Bitcoin
-  'STETH', // Staked Ether (Lido)
-  'WETH',  // Wrapped Ether
-  'WBNB',  // Wrapped BNB
-  'RETH',  // Rocket Pool ETH
-  'CBETH', // Coinbase Wrapped Staked ETH
-  'WSTETH',// Wrapped stETH
-  'BETH',  // Binance Staked ETH
-  'SFRXETH', // Staked Frax Ether
-  'FRXETH',  // Frax Ether
-  'RENBTC',  // renBTC
-  'HBTC',    // Huobi BTC
-  'TBTC',    // tBTC
-  'WMATIC',  // Wrapped MATIC
-  'WAVAX',   // Wrapped AVAX
-  'WSOL',    // Wrapped SOL
-  'WFTM',    // Wrapped FTM
-  'WETH2',   // Wrapped ETH 2.0
-  'ANKRETH', // Ankr Staked ETH
-  'SWETH',   // Swell Staked ETH
-];
-
-// Combined exclusion list for fallback
-export const EXCLUDED_SYMBOLS = [...STABLECOINS, ...WRAPPER_TOKENS];
+function parseCategories(categories) {
+  if (!categories) return [];
+  try {
+    const parsed = typeof categories === 'string' ? JSON.parse(categories) : categories;
+    return Array.isArray(parsed) ? parsed.map(c => c.toLowerCase()) : [];
+  } catch {
+    return [];
+  }
+}
 
 /**
- * Check if a cryptocurrency should be excluded from the index based on metadata
- * Falls back to static list if metadata is not available
+ * Check if a cryptocurrency is a stablecoin based on its categories
+ */
+export function isStablecoin(categories) {
+  return parseCategories(categories).some(c => c.includes('stablecoin'));
+}
+
+/**
+ * Check if a cryptocurrency is a wrapped token based on its categories
+ */
+export function isWrapped(categories) {
+  return parseCategories(categories).some(c => c.includes('wrapped'));
+}
+
+/**
+ * Check if a cryptocurrency is a staked token based on its categories
+ */
+export function isStaked(categories) {
+  return parseCategories(categories).some(c => c.includes('staking') || c.includes('staked'));
+}
+
+/**
+ * Check if a cryptocurrency should be excluded from the index based on categories
  *
- * @param {Object} crypto - Cryptocurrency object with metadata
- * @param {string} crypto.symbol - Cryptocurrency symbol
- * @param {boolean} [crypto.is_stablecoin] - From metadata table
- * @param {boolean} [crypto.is_wrapped] - From metadata table
- * @param {boolean} [crypto.is_liquid_staking] - From metadata table
+ * @param {Object} crypto - Cryptocurrency object with categories
+ * @param {string|Array|null} [crypto.categories] - Categories JSON from DB
  * @returns {boolean} True if the symbol should be excluded
  */
 export function isExcluded(crypto) {
-  // If metadata is available, use it (primary method)
-  if (typeof crypto.is_stablecoin === 'number' ||
-      typeof crypto.is_wrapped === 'number' ||
-      typeof crypto.is_liquid_staking === 'number') {
-    return Boolean(crypto.is_stablecoin || crypto.is_wrapped || crypto.is_liquid_staking);
-  }
-
-  // Fallback to static list if metadata is not available
-  return EXCLUDED_SYMBOLS.includes(crypto.symbol?.toUpperCase());
+  return isStablecoin(crypto.categories) || isWrapped(crypto.categories) || isStaked(crypto.categories);
 }
 
 /**
  * Get exclusion reason for a cryptocurrency
- * @param {Object} crypto - Cryptocurrency object with metadata
+ * @param {Object} crypto - Cryptocurrency object with categories
  * @returns {string|null} Exclusion reason or null if not excluded
  */
 export function getExclusionReason(crypto) {
   const reasons = [];
 
-  if (crypto.is_stablecoin) reasons.push('Stablecoin');
-  if (crypto.is_wrapped) reasons.push('Wrapped Token');
-  if (crypto.is_liquid_staking) reasons.push('Liquid Staking');
-
-  if (reasons.length === 0 && EXCLUDED_SYMBOLS.includes(crypto.symbol?.toUpperCase())) {
-    reasons.push('Static List');
-  }
+  if (isStablecoin(crypto.categories)) reasons.push('Stablecoin');
+  if (isWrapped(crypto.categories)) reasons.push('Wrapped Token');
+  if (isStaked(crypto.categories)) reasons.push('Staked');
 
   return reasons.length > 0 ? reasons.join(', ') : null;
 }

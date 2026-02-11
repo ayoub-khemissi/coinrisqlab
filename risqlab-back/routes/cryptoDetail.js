@@ -65,7 +65,6 @@ api.get('/cryptocurrency/:symbol', async (req, res) => {
     // 2. Fetch metadata
     const [metadataRows] = await Database.execute(`
       SELECT
-        category,
         description,
         logo_url,
         website_url,
@@ -76,7 +75,7 @@ api.get('/cryptocurrency/:symbol', async (req, res) => {
         github_url,
         platform,
         date_launched,
-        tags,
+        categories,
         updated_at
       FROM cryptocurrency_metadata
       WHERE crypto_id = ?
@@ -85,13 +84,13 @@ api.get('/cryptocurrency/:symbol', async (req, res) => {
 
     const metadata = metadataRows.length > 0 ? metadataRows[0] : {};
 
-    // Parse tags if it exists
-    let tags = [];
-    if (metadata.tags) {
+    // Parse categories if it exists
+    let categories = [];
+    if (metadata.categories) {
       try {
-        tags = JSON.parse(metadata.tags);
+        categories = JSON.parse(metadata.categories);
       } catch (e) {
-        tags = [];
+        categories = [];
       }
     }
 
@@ -117,8 +116,7 @@ api.get('/cryptocurrency/:symbol', async (req, res) => {
           image_url: crypto.image_url || null,
           logo_url: metadata.logo_url || null,
           description: metadata.description || null,
-          category: metadata.category || null,
-          tags: tags,
+          categories: categories,
           metadata_updated_at: metadata.updated_at || null,
         },
         links: {

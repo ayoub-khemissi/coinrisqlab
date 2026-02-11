@@ -7,8 +7,7 @@ export interface CryptoBasicInfo {
   image_url: string | null;
   logo_url: string | null;
   description: string | null;
-  category: string | null;
-  tags: string[];
+  categories: string[];
   metadata_updated_at: string | null;
 }
 

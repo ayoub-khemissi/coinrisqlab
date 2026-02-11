@@ -2,7 +2,7 @@
 
 ## Overview
 
-The RisqLab 80 is a market-capitalization weighted cryptocurrency index that tracks the performance of the top 80 cryptocurrencies, excluding stablecoins, wrapped tokens, and liquid staking derivatives.
+The RisqLab 80 is a market-capitalization weighted cryptocurrency index that tracks the performance of the top 80 cryptocurrencies, excluding stablecoins, wrapped tokens, and staked tokens.
 
 ## Base Parameters
 
@@ -47,9 +47,7 @@ SELECT
   md.price_usd,
   md.circulating_supply,
   md.timestamp,
-  cm.is_stablecoin,
-  cm.is_wrapped,
-  cm.is_liquid_staking
+  cm.categories
 FROM market_data md
 WHERE (price_usd × circulating_supply) > 0
 ORDER BY (price_usd × circulating_supply) DESC
@@ -67,9 +65,9 @@ Cryptocurrencies are filtered through the `isExcluded()` function which excludes
 
 | Exclusion Type | Metadata Flag | Examples |
 |----------------|---------------|----------|
-| **Stablecoins** | `is_stablecoin = 1` | USDT, USDC, DAI |
-| **Wrapped Tokens** | `is_wrapped = 1` | WBTC, WETH |
-| **Liquid Staking** | `is_liquid_staking = 1` | stETH, rETH |
+| **Stablecoins** | categories includes "stablecoin" | USDT, USDC, DAI |
+| **Wrapped Tokens** | categories includes "wrapped" | WBTC, WETH |
+| **Staked** | categories includes "staking" or "staked" | stETH, rETH |
 
 #### Step 2c: Final Selection
 
@@ -181,7 +179,7 @@ Similar to traditional indices like the S&P 500, where larger companies (cryptoc
 ### Exclusions Rationale
 - **Stablecoins:** Pegged to fiat currencies, don't reflect crypto market dynamics
 - **Wrapped Tokens:** Derivative representations of existing assets
-- **Liquid Staking:** Derivative tokens that would create double-counting
+- **Staked:** Derivative tokens that would create double-counting
 
 ---
 

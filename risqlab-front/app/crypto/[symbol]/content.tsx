@@ -54,6 +54,39 @@ const VALID_PANELS: RiskPanel[] = [
   "sml",
 ];
 
+const CATEGORIES_VISIBLE = 5;
+
+function CategoriesList({ categories }: { categories: string[] }) {
+  const [expanded, setExpanded] = useState(false);
+  const hasMore = categories.length > CATEGORIES_VISIBLE;
+  const visible = expanded
+    ? categories
+    : categories.slice(0, CATEGORIES_VISIBLE);
+
+  return (
+    <div className="mt-4">
+      <p className="text-sm text-default-500 mb-2">Categories:</p>
+      <div className="flex flex-wrap gap-2 items-center">
+        {visible.map((cat, index) => (
+          <Chip key={index} size="sm" variant="flat">
+            {cat}
+          </Chip>
+        ))}
+        {hasMore && (
+          <button
+            className="text-xs text-primary cursor-pointer hover:underline"
+            onClick={() => setExpanded(!expanded)}
+          >
+            {expanded
+              ? "Show less"
+              : `+${categories.length - CATEGORIES_VISIBLE} more`}
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export default function CryptoDetailContent() {
   const params = useParams();
   const router = useRouter();
@@ -272,8 +305,10 @@ export default function CryptoDetailContent() {
               </Chip>
             )}
           </div>
-          {basic.category && (
-            <p className="text-default-500 mt-2">Category: {basic.category}</p>
+          {basic.categories.length > 0 && (
+            <p className="text-default-500 mt-2">
+              Category: {basic.categories[0]}
+            </p>
           )}
         </div>
       </div>
@@ -507,17 +542,8 @@ export default function CryptoDetailContent() {
                 </div>
               )}
             </div>
-            {basic.tags.length > 0 && (
-              <div className="mt-4">
-                <p className="text-sm text-default-500 mb-2">Tags:</p>
-                <div className="flex flex-wrap gap-2">
-                  {basic.tags.map((tag, index) => (
-                    <Chip key={index} size="sm" variant="flat">
-                      {tag}
-                    </Chip>
-                  ))}
-                </div>
-              </div>
+            {basic.categories.length > 0 && (
+              <CategoriesList categories={basic.categories} />
             )}
           </CardBody>
         </Card>

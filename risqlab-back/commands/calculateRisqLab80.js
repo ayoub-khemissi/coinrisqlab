@@ -1,6 +1,6 @@
 import Database from '../lib/database.js';
 import log from '../lib/log.js';
-import { isExcluded } from '../utils/exclusions.js';
+import { isExcluded, getExclusionReason } from '../utils/exclusions.js';
 
 const INDEX_NAME = 'RisqLab 80';
 const BASE_LEVEL = 100;
@@ -223,9 +223,7 @@ async function getMarketDataForTimestamp(timestamp) {
       md.percent_change_24h,
       md.percent_change_7d,
       md.timestamp,
-      COALESCE(cm.is_stablecoin, 0) as is_stablecoin,
-      COALESCE(cm.is_wrapped, 0) as is_wrapped,
-      COALESCE(cm.is_liquid_staking, 0) as is_liquid_staking
+      cm.categories
     FROM market_data md
     INNER JOIN cryptocurrencies c ON md.crypto_id = c.id
     LEFT JOIN cryptocurrency_metadata cm ON c.id = cm.crypto_id
@@ -256,9 +254,7 @@ async function getOldestMarketData() {
       md.percent_change_24h,
       md.percent_change_7d,
       md.timestamp,
-      COALESCE(cm.is_stablecoin, 0) as is_stablecoin,
-      COALESCE(cm.is_wrapped, 0) as is_wrapped,
-      COALESCE(cm.is_liquid_staking, 0) as is_liquid_staking
+      cm.categories
     FROM market_data md
     INNER JOIN cryptocurrencies c ON md.crypto_id = c.id
     LEFT JOIN cryptocurrency_metadata cm ON c.id = cm.crypto_id
@@ -284,18 +280,15 @@ function selectConstituents(marketData, verbose = false) {
 
   if (verbose) {
     const excludedCount = marketData.length - filtered.length;
-    log.info(`Filtered out ${excludedCount} excluded symbols (stablecoins, wrapped, liquid staking)`);
+    log.info(`Filtered out ${excludedCount} excluded symbols (stablecoins, wrapped, staked)`);
 
     // Log some examples of excluded cryptos for debugging
     const excluded = marketData.filter(crypto => isExcluded(crypto)).slice(0, 10);
     if (excluded.length > 0) {
       log.debug('Examples of excluded cryptos:');
       excluded.forEach(crypto => {
-        const reasons = [];
-        if (crypto.is_stablecoin) reasons.push('stablecoin');
-        if (crypto.is_wrapped) reasons.push('wrapped');
-        if (crypto.is_liquid_staking) reasons.push('liquid-staking');
-        log.debug(`  - ${crypto.symbol}: ${reasons.join(', ')}`);
+        const reason = getExclusionReason(crypto) || 'unknown';
+        log.debug(`  - ${crypto.symbol}: ${reason}`);
       });
     }
   }

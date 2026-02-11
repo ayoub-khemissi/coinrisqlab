@@ -2,6 +2,7 @@ import config from '../utils/config.js';
 import Constants from '../utils/constants.js';
 import Database from '../lib/database.js';
 import log from '../lib/log.js';
+import { isStablecoin, isWrapped, isStaked } from '../utils/exclusions.js';
 
 const API_DELAY_MS = 100; // Rate limiting: ~10 req/sec
 
@@ -52,23 +53,26 @@ async function fetchCryptoMetadata() {
     log.info(`Metadata fetch completed: ${totalSuccess} successful, ${totalErrors} errors out of ${cryptos.length} total`);
 
     // Log summary of exclusions
-    const [summary] = await Database.execute(`
-      SELECT
-        SUM(is_stablecoin) as stablecoins,
-        SUM(is_wrapped) as wrapped,
-        SUM(is_liquid_staking) as liquid_staking,
-        SUM(is_stablecoin OR is_wrapped OR is_liquid_staking) as total_excluded
-      FROM cryptocurrency_metadata
+    const [allMetadata] = await Database.execute(`
+      SELECT categories FROM cryptocurrency_metadata WHERE categories IS NOT NULL
     `);
 
-    if (summary.length > 0) {
-      const stats = summary[0];
-      log.info('=== Exclusion Summary ===');
-      log.info(`Stablecoins: ${stats.stablecoins}`);
-      log.info(`Wrapped tokens: ${stats.wrapped}`);
-      log.info(`Liquid staking: ${stats.liquid_staking}`);
-      log.info(`Total excluded: ${stats.total_excluded}`);
+    let stablecoins = 0, wrapped = 0, staked = 0, totalExcluded = 0;
+    for (const row of allMetadata) {
+      const s = isStablecoin(row.categories);
+      const w = isWrapped(row.categories);
+      const l = isStaked(row.categories);
+      if (s) stablecoins++;
+      if (w) wrapped++;
+      if (l) staked++;
+      if (s || w || l) totalExcluded++;
     }
+
+    log.info('=== Exclusion Summary ===');
+    log.info(`Stablecoins: ${stablecoins}`);
+    log.info(`Wrapped tokens: ${wrapped}`);
+    log.info(`Staked tokens: ${staked}`);
+    log.info(`Total excluded: ${totalExcluded}`);
 
   } catch (error) {
     log.error(`Error fetching crypto metadata: ${error.message}`);
@@ -99,7 +103,6 @@ async function processMetadataForCrypto(crypto) {
 
   // Extract fields from CoinGecko response
   const categories = data.categories || [];
-  const category = categories[0] || null;
   const description = data.description?.en || null;
   const logoUrl = data.image?.large || null;
   const websiteUrl = data.links?.homepage?.[0] || null;
@@ -118,13 +121,12 @@ async function processMetadataForCrypto(crypto) {
   // Store metadata in database
   await Database.execute(
     `INSERT INTO cryptocurrency_metadata
-    (crypto_id, cmc_id, tags, category, description, logo_url, website_url,
+    (crypto_id, cmc_id, categories, description, logo_url, website_url,
      whitepaper_url, twitter_url, reddit_url, telegram_url, github_url,
      platform, date_launched)
-    VALUES (?, NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    VALUES (?, NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ON DUPLICATE KEY UPDATE
-    tags = VALUES(tags),
-    category = VALUES(category),
+    categories = VALUES(categories),
     description = VALUES(description),
     logo_url = VALUES(logo_url),
     website_url = VALUES(website_url),
@@ -139,7 +141,6 @@ async function processMetadataForCrypto(crypto) {
     [
       crypto.id,
       JSON.stringify(categories),
-      category,
       description,
       logoUrl,
       websiteUrl,
@@ -153,18 +154,7 @@ async function processMetadataForCrypto(crypto) {
     ]
   );
 
-  // Log if it's a stablecoin, wrapped, or liquid staking
-  const isStablecoin = categories.includes('Stablecoins');
-  const isWrapped = categories.includes('Wrapped Tokens');
-  const isLiquidStaking = categories.includes('Liquid Staking Tokens') || categories.includes('Liquid Staking Derivatives');
-
-  if (isStablecoin || isWrapped || isLiquidStaking) {
-    const types = [];
-    if (isStablecoin) types.push('STABLECOIN');
-    if (isWrapped) types.push('WRAPPED');
-    if (isLiquidStaking) types.push('LIQUID_STAKING');
-    log.debug(`${crypto.symbol}: ${types.join(', ')}`);
-  }
+  log.debug(`${crypto.symbol} metadata fetched`);
 }
 
 // Run the command

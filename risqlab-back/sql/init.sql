@@ -103,8 +103,7 @@ CREATE TABLE IF NOT EXISTS `cryptocurrency_metadata` (
     `id` INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     `crypto_id` INT UNSIGNED NOT NULL,
     `cmc_id` INT UNSIGNED NULL,
-    `tags` JSON NULL,
-    `category` VARCHAR(100) NULL,
+    `categories` JSON NULL,
     `description` TEXT NULL,
     `logo_url` VARCHAR(500) NULL,
     `website_url` VARCHAR(500) NULL,
@@ -117,20 +116,9 @@ CREATE TABLE IF NOT EXISTS `cryptocurrency_metadata` (
     `github_url` VARCHAR(500) NULL,
     `max_supply` DECIMAL(30, 8) NULL,
     `total_supply` DECIMAL(30, 8) NULL,
-    `is_stablecoin` BOOLEAN GENERATED ALWAYS AS (JSON_CONTAINS(tags, '"Stablecoins"')) STORED,
-    `is_wrapped` BOOLEAN GENERATED ALWAYS AS (
-        JSON_CONTAINS(tags, '"Wrapped Tokens"')
-    ) STORED,
-    `is_liquid_staking` BOOLEAN GENERATED ALWAYS AS (
-        JSON_CONTAINS(tags, '"Liquid Staking Tokens"') OR
-        JSON_CONTAINS(tags, '"Liquid Staking Derivatives"')
-    ) STORED,
     `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY `fk_metadata_crypto_idx` (`crypto_id`) REFERENCES `cryptocurrencies`(`id`) ON DELETE CASCADE,
-    UNIQUE KEY `idx_crypto_id` (`crypto_id`),
-    KEY `idx_stablecoin` (`is_stablecoin`),
-    KEY `idx_wrapped` (`is_wrapped`),
-    KEY `idx_liquid_staking` (`is_liquid_staking`)
+    UNIQUE KEY `idx_crypto_id` (`crypto_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- market_data: highest-write table (~144K inserts/day with 5-min cron)

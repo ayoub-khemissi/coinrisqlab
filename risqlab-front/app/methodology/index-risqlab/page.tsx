@@ -166,7 +166,7 @@ export default function IndexMethodologyPage() {
                 top 80 cryptocurrencies. This index provides a comprehensive
                 view of the cryptocurrency market by focusing on the most
                 significant assets while excluding stablecoins, wrapped tokens,
-                and liquid staking derivatives.
+                and staked tokens.
               </p>
               <p className="text-default-600">
                 Similar to traditional financial indices like the S&amp;P 500,
@@ -244,9 +244,7 @@ export default function IndexMethodologyPage() {
                 </div>
 
                 <div className="border-l-4 border-success pl-4">
-                  <h3 className="font-bold text-lg">
-                    Liquid Staking Derivative
-                  </h3>
+                  <h3 className="font-bold text-lg">Staked Token</h3>
                   <p className="text-default-600">
                     Tokens representing staked assets (like stETH for staked
                     Ethereum) that are excluded to prevent double-counting.
@@ -402,7 +400,7 @@ export default function IndexMethodologyPage() {
                         <tr>
                           <td className="py-2 px-3">
                             <Chip color="secondary" size="sm" variant="flat">
-                              Liquid Staking
+                              Staked
                             </Chip>
                           </td>
                           <td className="py-2 px-3 text-sm text-default-600">
