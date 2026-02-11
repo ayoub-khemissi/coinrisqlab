@@ -7,11 +7,10 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const DAYS = 10;
-
 /**
- * Export the last 10 days of risk metrics for specified cryptos by coingecko_id
- * Usage: node commands/exportRiskMetrics.js bitcoin rain ethereum
+ * Export the last N days of risk metrics for specified cryptos by coingecko_id
+ * Usage: node commands/exportRiskMetrics.js <days> <coingecko_id1> <coingecko_id2> ...
+ * Example: node commands/exportRiskMetrics.js 10 bitcoin rain ethereum
  *
  * Tables exported (one sheet/section per table):
  *   crypto_beta, crypto_distribution_stats, crypto_log_returns,
@@ -53,15 +52,15 @@ const METRIC_TABLES = [
   },
 ];
 
-async function exportRiskMetrics(coingeckoIds) {
+async function exportRiskMetrics(days, coingeckoIds) {
   const startTime = Date.now();
 
   try {
-    if (!coingeckoIds || coingeckoIds.length === 0) {
-      throw new Error('Usage: node commands/exportRiskMetrics.js <coingecko_id1> <coingecko_id2> ...');
+    if (!days || !coingeckoIds || coingeckoIds.length === 0) {
+      throw new Error('Usage: node commands/exportRiskMetrics.js <days> <coingecko_id1> <coingecko_id2> ...');
     }
 
-    log.info(`Starting risk metrics export for: ${coingeckoIds.join(', ')}`);
+    log.info(`Starting risk metrics export for: ${coingeckoIds.join(', ')} (${days} days)`);
 
     // 1. Look up cryptos by coingecko_id
     const placeholders = coingeckoIds.map(() => '?').join(',');
@@ -119,7 +118,7 @@ async function exportRiskMetrics(coingeckoIds) {
          FROM ${metric.table}
          WHERE crypto_id IN (${cryptoIdPlaceholders})
          ORDER BY date DESC
-         LIMIT ${DAYS}`,
+         LIMIT ${days}`,
         [...cryptoIds]
       );
 
@@ -203,10 +202,18 @@ async function exportRiskMetrics(coingeckoIds) {
   }
 }
 
-// Parse command-line arguments
-const coingeckoIds = process.argv.slice(2);
+// Parse command-line arguments: first arg = days, rest = coingecko_ids
+const args = process.argv.slice(2);
+const days = parseInt(args[0], 10);
+const coingeckoIds = args.slice(1);
 
-exportRiskMetrics(coingeckoIds)
+if (isNaN(days) || days < 1) {
+  console.error('Error: first argument must be a positive number of days');
+  console.error('Usage: node commands/exportRiskMetrics.js <days> <coingecko_id1> <coingecko_id2> ...');
+  process.exit(1);
+}
+
+exportRiskMetrics(days, coingeckoIds)
   .then((files) => {
     log.info('Export command completed successfully');
     files.forEach(f => log.info(`  ${f}`));
