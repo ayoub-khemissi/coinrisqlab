@@ -82,6 +82,7 @@ api.get('/volatility/portfolio/constituents', async (req, res) => {
     const [calculatedConstituents] = await Database.execute(`
       SELECT
         pvc.crypto_id,
+        c.coingecko_id,
         c.symbol,
         c.name,
         c.image_url,
@@ -100,6 +101,7 @@ api.get('/volatility/portfolio/constituents', async (req, res) => {
     const [allIndexConstituents] = await Database.execute(`
       SELECT
         ic.crypto_id,
+        c.coingecko_id,
         c.symbol,
         c.name,
         c.image_url
@@ -140,6 +142,7 @@ api.get('/volatility/portfolio/constituents', async (req, res) => {
       for (const constituent of excludedConstituents) {
         mergedConstituents.push({
           crypto_id: constituent.crypto_id,
+          coingecko_id: constituent.coingecko_id,
           symbol: constituent.symbol,
           name: constituent.name,
           image_url: constituent.image_url,
@@ -178,21 +181,21 @@ api.get('/volatility/portfolio/constituents', async (req, res) => {
  *  - symbol: crypto symbol (required)
  *  - period: '7d', '30d', '90d', 'all' (default: '90d')
  */
-api.get('/volatility/crypto/:symbol', async (req, res) => {
+api.get('/volatility/crypto/:id', async (req, res) => {
   try {
-    const { symbol } = req.params;
+    const { id: coingeckoId } = req.params;
     const { period = '90d' } = req.query;
 
     // Get crypto ID
     const [crypto] = await Database.execute(
-      'SELECT id, symbol, name FROM cryptocurrencies WHERE symbol = ?',
-      [symbol.toUpperCase()]
+      'SELECT id, symbol, name FROM cryptocurrencies WHERE coingecko_id = ?',
+      [coingeckoId]
     );
 
     if (crypto.length === 0) {
       return res.status(404).json({
         data: null,
-        msg: `Cryptocurrency ${symbol} not found`
+        msg: `Cryptocurrency ${coingeckoId} not found`
       });
     }
 
@@ -229,7 +232,7 @@ api.get('/volatility/crypto/:symbol', async (req, res) => {
       }
     });
 
-    log.debug(`Fetched volatility data for ${symbol}`);
+    log.debug(`Fetched volatility data for ${coingeckoId}`);
   } catch (error) {
     log.error(`Error fetching crypto volatility: ${error.message}`);
     res.status(500).json({

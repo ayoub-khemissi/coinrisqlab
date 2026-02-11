@@ -4,6 +4,7 @@ import { siteConfig } from "@/config/site";
 import { API_BASE_URL } from "@/config/constants";
 
 type Cryptocurrency = {
+  coingecko_id: string;
   symbol: string;
   last_updated: string;
 };
@@ -33,7 +34,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     const result: CryptocurrencyResponse = await response.json();
 
     const cryptoRoutes = result.data.map((crypto) => ({
-      url: `${siteConfig.siteUrl}/crypto/${crypto.symbol.toLowerCase()}`,
+      url: `${siteConfig.siteUrl}/crypto/${crypto.coingecko_id}`,
       lastModified: new Date().toISOString(),
       changeFrequency: "hourly" as const,
       priority: 0.6,

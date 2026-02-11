@@ -451,7 +451,7 @@ export default function PortfolioRiskPage() {
                   }}
                 >
                   {(constituentsData || []).map((c) => (
-                    <SelectItem key={c.symbol} textValue={c.symbol}>
+                    <SelectItem key={c.coingecko_id} textValue={c.symbol}>
                       <div className="flex items-center gap-2">
                         <span className="font-medium">{c.symbol}</span>
                         <span className="text-tiny text-default-400 truncate max-w-[100px]">

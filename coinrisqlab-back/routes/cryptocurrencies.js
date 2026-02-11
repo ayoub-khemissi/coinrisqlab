@@ -50,6 +50,7 @@ api.get('/cryptocurrencies', async (req, res) => {
     const [rows] = await Database.execute(`
       SELECT
         c.id,
+        c.coingecko_id,
         c.symbol,
         c.name,
         c.image_url,

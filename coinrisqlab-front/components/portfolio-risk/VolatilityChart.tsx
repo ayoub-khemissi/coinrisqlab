@@ -16,7 +16,7 @@ import {
 } from "@/types/volatility";
 
 interface ComparisonData {
-  symbol: string;
+  coingeckoId: string;
   data: CryptoVolatilityResponse["data"];
   color: string;
 }
@@ -68,7 +68,7 @@ export function VolatilityChart({
       );
 
       if (compItem) {
-        dataPoint[comp.symbol] =
+        dataPoint[comp.data.crypto.symbol] =
           mode === "annualized"
             ? compItem.annualized_volatility * 100
             : compItem.daily_volatility * 100;
@@ -189,10 +189,10 @@ export function VolatilityChart({
 
                     {/* Comparison Cryptos */}
                     {comparisonData.map((comp) => {
-                      if (data[comp.symbol] !== undefined) {
+                      if (data[comp.data.crypto.symbol] !== undefined) {
                         return (
                           <div
-                            key={comp.symbol}
+                            key={comp.data.crypto.symbol}
                             className="flex items-center justify-between gap-4 mb-1"
                           >
                             <div className="flex items-center gap-2">
@@ -201,14 +201,14 @@ export function VolatilityChart({
                                 style={{ backgroundColor: comp.color }}
                               />
                               <span className="text-sm text-default-500">
-                                {comp.symbol}
+                                {comp.data.crypto.symbol}
                               </span>
                             </div>
                             <span
                               className="text-sm font-bold"
                               style={{ color: comp.color }}
                             >
-                              {data[comp.symbol].toFixed(2)}%
+                              {data[comp.data.crypto.symbol].toFixed(2)}%
                             </span>
                           </div>
                         );
@@ -238,11 +238,11 @@ export function VolatilityChart({
 
           {comparisonData.map((comp) => (
             <Line
-              key={comp.symbol}
+              key={comp.data.crypto.symbol}
               activeDot={{ r: 6 }}
-              dataKey={comp.symbol}
+              dataKey={comp.data.crypto.symbol}
               dot={false}
-              name={comp.symbol}
+              name={comp.data.crypto.symbol}
               stroke={comp.color}
               strokeWidth={2}
               type="linear"

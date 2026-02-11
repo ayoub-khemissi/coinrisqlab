@@ -91,7 +91,7 @@ export default function CryptoDetailContent() {
   const params = useParams();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const symbol = params.symbol as string;
+  const id = params.id as string;
 
   const [data, setData] = useState<CryptoDetailResponse["data"] | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -111,17 +111,17 @@ export default function CryptoDetailContent() {
 
   // Risk metrics for sidebar
   const { data: riskSummary, isLoading: isRiskSummaryLoading } = useRiskSummary(
-    symbol,
+    id,
     period,
   );
-  const { data: priceData } = usePriceHistory(symbol, period);
+  const { data: priceData } = usePriceHistory(id, period);
 
   // Fetch specific periods for sidebar consistency (stable vs recent estimates)
-  const { data: var365Data } = useVaR(symbol, "365d");
-  const { data: beta365Data } = useBeta(symbol, "365d");
-  const { data: dist90Data } = useDistribution(symbol, "90d");
-  const { data: sml90Data } = useSML(symbol, "90d");
-  const { data: stressTestData } = useStressTest(symbol);
+  const { data: var365Data } = useVaR(id, "365d");
+  const { data: beta365Data } = useBeta(id, "365d");
+  const { data: dist90Data } = useDistribution(id, "90d");
+  const { data: sml90Data } = useSML(id, "90d");
+  const { data: stressTestData } = useStressTest(id);
 
   // Update URL when panel changes
   const handlePanelChange = useCallback(
@@ -170,19 +170,19 @@ export default function CryptoDetailContent() {
     if (savedReturnPath) {
       setReturnPath(savedReturnPath);
     }
-  }, [symbol]);
+  }, [id]);
 
   const fetchCryptoDetail = async () => {
     setIsLoading(true);
     setError(null);
     try {
       const response = await fetch(
-        `${API_BASE_URL}/cryptocurrency/${symbol.toUpperCase()}`,
+        `${API_BASE_URL}/cryptocurrency/${id}`,
       );
 
       if (!response.ok) {
         if (response.status === 404) {
-          setError(`Cryptocurrency ${symbol.toUpperCase()} not found`);
+          setError(`Cryptocurrency ${id} not found`);
         } else {
           throw new Error("Failed to fetch cryptocurrency details");
         }
@@ -233,7 +233,7 @@ export default function CryptoDetailContent() {
         return (
           <PricePanel
             period={period}
-            symbol={symbol}
+            symbol={id}
             onPeriodChange={setPeriod}
           />
         );
@@ -241,22 +241,22 @@ export default function CryptoDetailContent() {
         return (
           <VolatilityPanel
             period={period}
-            symbol={symbol}
+            symbol={id}
             onPeriodChange={setPeriod}
           />
         );
       case "stress-test":
-        return <StressTestPanel symbol={symbol} />;
+        return <StressTestPanel symbol={id} />;
       case "var":
-        return <VaRPanel symbol={symbol} />;
+        return <VaRPanel symbol={id} />;
       case "beta":
-        return <BetaPanel symbol={symbol} />;
+        return <BetaPanel symbol={id} />;
       case "skew":
-        return <SkewPanel symbol={symbol} />;
+        return <SkewPanel symbol={id} />;
       case "kurtosis":
-        return <KurtosisPanel symbol={symbol} />;
+        return <KurtosisPanel symbol={id} />;
       case "sml":
-        return <SMLPanel symbol={symbol} />;
+        return <SMLPanel symbol={id} />;
       default:
         return null;
     }
@@ -406,7 +406,7 @@ export default function CryptoDetailContent() {
               stressTestData?.scenarios.find((s) => s.id === "covid-19")
                 ?.expectedImpact
             }
-            symbol={symbol}
+            symbol={id}
             var99Override={var365Data?.var99}
             onPanelChange={handlePanelChange}
           />

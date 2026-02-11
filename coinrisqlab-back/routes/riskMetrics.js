@@ -17,12 +17,12 @@ import { mean, standardDeviation } from '../utils/statistics.js';
 import { getDateFilter, getMaxDataPoints } from '../utils/queryHelpers.js';
 
 /**
- * Helper: Get crypto by symbol
+ * Helper: Get crypto by coingecko_id
  */
-async function getCryptoBySymbol(symbol) {
+async function getCryptoById(coingeckoId) {
   const [crypto] = await Database.execute(
-    'SELECT id, symbol, name FROM cryptocurrencies WHERE UPPER(symbol) = ?',
-    [symbol.toUpperCase()]
+    'SELECT id, symbol, name FROM cryptocurrencies WHERE coingecko_id = ?',
+    [coingeckoId]
   );
   return crypto[0] || null;
 }
@@ -73,19 +73,19 @@ async function getIndexLogReturns(dateFilter) {
 // ============================================================================
 
 /**
- * GET /risk/crypto/:symbol/price-history
+ * GET /risk/crypto/:id/price-history
  * Returns historical prices and percent changes
  */
-api.get('/risk/crypto/:symbol/price-history', async (req, res) => {
+api.get('/risk/crypto/:id/price-history', async (req, res) => {
   try {
-    const { symbol } = req.params;
+    const { id: coingeckoId } = req.params;
     const { period = '90d' } = req.query;
 
-    const crypto = await getCryptoBySymbol(symbol);
+    const crypto = await getCryptoById(coingeckoId);
     if (!crypto) {
       return res.status(404).json({
         data: null,
-        msg: `Cryptocurrency ${symbol} not found`
+        msg: `Cryptocurrency ${coingeckoId} not found`
       });
     }
 
@@ -148,7 +148,7 @@ api.get('/risk/crypto/:symbol/price-history', async (req, res) => {
       }
     });
 
-    log.debug(`Fetched price history for ${symbol}`);
+    log.debug(`Fetched price history for ${coingeckoId}`);
   } catch (error) {
     log.error(`Error fetching price history: ${error.message}`);
     res.status(500).json({
@@ -163,20 +163,20 @@ api.get('/risk/crypto/:symbol/price-history', async (req, res) => {
 // ============================================================================
 
 /**
- * GET /risk/crypto/:symbol/beta
+ * GET /risk/crypto/:id/beta
  * Returns beta, alpha, R² against CoinRisqLab 80 Index
  * Uses historized data when available, falls back to on-the-fly calculation
  */
-api.get('/risk/crypto/:symbol/beta', async (req, res) => {
+api.get('/risk/crypto/:id/beta', async (req, res) => {
   try {
-    const { symbol } = req.params;
+    const { id: coingeckoId } = req.params;
     const { period = '365d' } = req.query;
 
-    const crypto = await getCryptoBySymbol(symbol);
+    const crypto = await getCryptoById(coingeckoId);
     if (!crypto) {
       return res.status(404).json({
         data: null,
-        msg: `Cryptocurrency ${symbol} not found`
+        msg: `Cryptocurrency ${coingeckoId} not found`
       });
     }
 
@@ -197,7 +197,7 @@ api.get('/risk/crypto/:symbol/beta', async (req, res) => {
         correlation = parseFloat(historizedStats.correlation);
         dataPoints = historizedStats.num_observations;
         fromHistorized = true;
-        log.debug(`Using historized beta stats for ${symbol} (date: ${historizedStats.date}, window: ${historizedStats.window_days} days)`);
+        log.debug(`Using historized beta stats for ${coingeckoId} (date: ${historizedStats.date}, window: ${historizedStats.window_days} days)`);
       }
     }
 
@@ -264,7 +264,7 @@ api.get('/risk/crypto/:symbol/beta', async (req, res) => {
       rSquared = result.rSquared;
       correlation = result.correlation;
       dataPoints = alignedData.length;
-      log.debug(`Calculated beta on-the-fly for ${symbol}`);
+      log.debug(`Calculated beta on-the-fly for ${coingeckoId}`);
     }
 
     // Prepare scatter data for visualization
@@ -302,7 +302,7 @@ api.get('/risk/crypto/:symbol/beta', async (req, res) => {
       }
     });
 
-    log.debug(`Beta for ${symbol}: ${beta}, historized=${fromHistorized}`);
+    log.debug(`Beta for ${coingeckoId}: ${beta}, historized=${fromHistorized}`);
   } catch (error) {
     log.error(`Error calculating beta: ${error.message}`);
     res.status(500).json({
@@ -317,20 +317,20 @@ api.get('/risk/crypto/:symbol/beta', async (req, res) => {
 // ============================================================================
 
 /**
- * GET /risk/crypto/:symbol/var
+ * GET /risk/crypto/:id/var
  * Returns VaR at 95% and 99% confidence levels with histogram data
  * Uses historized data when available, falls back to on-the-fly calculation
  */
-api.get('/risk/crypto/:symbol/var', async (req, res) => {
+api.get('/risk/crypto/:id/var', async (req, res) => {
   try {
-    const { symbol } = req.params;
+    const { id: coingeckoId } = req.params;
     const { period = '365d' } = req.query;
 
-    const crypto = await getCryptoBySymbol(symbol);
+    const crypto = await getCryptoById(coingeckoId);
     if (!crypto) {
       return res.status(404).json({
         data: null,
-        msg: `Cryptocurrency ${symbol} not found`
+        msg: `Cryptocurrency ${coingeckoId} not found`
       });
     }
 
@@ -355,7 +355,7 @@ api.get('/risk/crypto/:symbol/var', async (req, res) => {
         maxReturn = parseFloat(historizedStats.max_return);
         dataPoints = historizedStats.num_observations;
         fromHistorized = true;
-        log.debug(`Using historized VaR stats for ${symbol} (date: ${historizedStats.date}, window: ${historizedStats.window_days} days)`);
+        log.debug(`Using historized VaR stats for ${coingeckoId} (date: ${historizedStats.date}, window: ${historizedStats.window_days} days)`);
       }
     }
 
@@ -392,7 +392,7 @@ api.get('/risk/crypto/:symbol/var', async (req, res) => {
       minReturn = Math.min(...logReturns);
       maxReturn = Math.max(...logReturns);
       dataPoints = logReturns.length;
-      log.debug(`Calculated VaR on-the-fly for ${symbol}`);
+      log.debug(`Calculated VaR on-the-fly for ${coingeckoId}`);
     }
 
     // Generate histogram for visualization (always from current returns)
@@ -434,7 +434,7 @@ api.get('/risk/crypto/:symbol/var', async (req, res) => {
       }
     });
 
-    log.debug(`Calculated VaR for ${symbol}: 95%=${(var95 * 100).toFixed(2)}%, 99%=${(var99 * 100).toFixed(2)}%`);
+    log.debug(`Calculated VaR for ${coingeckoId}: 95%=${(var95 * 100).toFixed(2)}%, 99%=${(var99 * 100).toFixed(2)}%`);
   } catch (error) {
     log.error(`Error calculating VaR: ${error.message}`);
     res.status(500).json({
@@ -449,19 +449,19 @@ api.get('/risk/crypto/:symbol/var', async (req, res) => {
 // ============================================================================
 
 /**
- * GET /risk/crypto/:symbol/stress-test
+ * GET /risk/crypto/:id/stress-test
  * Returns stress test scenarios based on beta with price history for charting
  */
-api.get('/risk/crypto/:symbol/stress-test', async (req, res) => {
+api.get('/risk/crypto/:id/stress-test', async (req, res) => {
   try {
-    const { symbol } = req.params;
+    const { id: coingeckoId } = req.params;
     const { period = '30d' } = req.query;
 
-    const crypto = await getCryptoBySymbol(symbol);
+    const crypto = await getCryptoById(coingeckoId);
     if (!crypto) {
       return res.status(404).json({
         data: null,
-        msg: `Cryptocurrency ${symbol} not found`
+        msg: `Cryptocurrency ${coingeckoId} not found`
       });
     }
 
@@ -477,7 +477,7 @@ api.get('/risk/crypto/:symbol/stress-test', async (req, res) => {
     if (priceData.length === 0) {
       return res.status(404).json({
         data: null,
-        msg: `No price data found for ${symbol}`
+        msg: `No price data found for ${coingeckoId}`
       });
     }
 
@@ -547,7 +547,7 @@ api.get('/risk/crypto/:symbol/stress-test', async (req, res) => {
       }
     });
 
-    log.debug(`Calculated stress test for ${symbol}`);
+    log.debug(`Calculated stress test for ${coingeckoId}`);
   } catch (error) {
     log.error(`Error calculating stress test: ${error.message}`);
     res.status(500).json({
@@ -673,20 +673,20 @@ async function getHistorizedSMLStats(cryptoId, windowDays = 90) {
 }
 
 /**
- * GET /risk/crypto/:symbol/distribution
+ * GET /risk/crypto/:id/distribution
  * Returns skewness, kurtosis, and distribution data
  * Uses historized data when available, falls back to on-the-fly calculation
  */
-api.get('/risk/crypto/:symbol/distribution', async (req, res) => {
+api.get('/risk/crypto/:id/distribution', async (req, res) => {
   try {
-    const { symbol } = req.params;
+    const { id: coingeckoId } = req.params;
     const { period = '90d' } = req.query;
 
-    const crypto = await getCryptoBySymbol(symbol);
+    const crypto = await getCryptoById(coingeckoId);
     if (!crypto) {
       return res.status(404).json({
         data: null,
-        msg: `Cryptocurrency ${symbol} not found`
+        msg: `Cryptocurrency ${coingeckoId} not found`
       });
     }
 
@@ -707,7 +707,7 @@ api.get('/risk/crypto/:symbol/distribution', async (req, res) => {
         sigma = parseFloat(historizedStats.std_dev);
         dataPoints = historizedStats.num_observations;
         fromHistorized = true;
-        log.debug(`Using historized distribution stats for ${symbol} (date: ${historizedStats.date})`);
+        log.debug(`Using historized distribution stats for ${coingeckoId} (date: ${historizedStats.date})`);
       }
     }
 
@@ -739,7 +739,7 @@ api.get('/risk/crypto/:symbol/distribution', async (req, res) => {
       mu = mean(logReturns);
       sigma = standardDeviation(logReturns);
       dataPoints = logReturns.length;
-      log.debug(`Calculated distribution on-the-fly for ${symbol}`);
+      log.debug(`Calculated distribution on-the-fly for ${coingeckoId}`);
     }
 
     // Generate histogram from current log returns (for visualization)
@@ -794,7 +794,7 @@ api.get('/risk/crypto/:symbol/distribution', async (req, res) => {
       }
     });
 
-    log.debug(`Distribution for ${symbol}: skew=${skewness}, kurt=${kurtosis}, historized=${fromHistorized}`);
+    log.debug(`Distribution for ${coingeckoId}: skew=${skewness}, kurt=${kurtosis}, historized=${fromHistorized}`);
   } catch (error) {
     log.error(`Error calculating distribution: ${error.message}`);
     res.status(500).json({
@@ -809,20 +809,20 @@ api.get('/risk/crypto/:symbol/distribution', async (req, res) => {
 // ============================================================================
 
 /**
- * GET /risk/crypto/:symbol/sml
+ * GET /risk/crypto/:id/sml
  * Returns SML positioning data
  * Uses historized data when available, falls back to on-the-fly calculation
  */
-api.get('/risk/crypto/:symbol/sml', async (req, res) => {
+api.get('/risk/crypto/:id/sml', async (req, res) => {
   try {
-    const { symbol } = req.params;
+    const { id: coingeckoId } = req.params;
     const { period = '90d' } = req.query;
 
-    const crypto = await getCryptoBySymbol(symbol);
+    const crypto = await getCryptoById(coingeckoId);
     if (!crypto) {
       return res.status(404).json({
         data: null,
-        msg: `Cryptocurrency ${symbol} not found`
+        msg: `Cryptocurrency ${coingeckoId} not found`
       });
     }
 
@@ -863,7 +863,7 @@ api.get('/risk/crypto/:symbol/sml', async (req, res) => {
         };
         dataPoints = historizedStats.num_observations;
         fromHistorized = true;
-        log.debug(`Using historized SML stats for ${symbol} (date: ${historizedStats.date})`);
+        log.debug(`Using historized SML stats for ${coingeckoId} (date: ${historizedStats.date})`);
       }
     }
 
@@ -921,7 +921,7 @@ api.get('/risk/crypto/:symbol/sml', async (req, res) => {
       smlData = calculateSML(beta, cryptoAnnualReturn, marketAnnualReturn, 0);
       marketReturn = Number((marketAnnualReturn * 100).toFixed(2));
       dataPoints = alignedCrypto.length;
-      log.debug(`Calculated SML on-the-fly for ${symbol}`);
+      log.debug(`Calculated SML on-the-fly for ${coingeckoId}`);
     }
 
     res.json({
@@ -935,7 +935,7 @@ api.get('/risk/crypto/:symbol/sml', async (req, res) => {
       }
     });
 
-    log.debug(`SML for ${symbol}: beta=${smlData.cryptoBeta}, alpha=${smlData.alpha}%, historized=${fromHistorized}`);
+    log.debug(`SML for ${coingeckoId}: beta=${smlData.cryptoBeta}, alpha=${smlData.alpha}%, historized=${fromHistorized}`);
   } catch (error) {
     log.error(`Error calculating SML: ${error.message}`);
     res.status(500).json({
@@ -950,19 +950,19 @@ api.get('/risk/crypto/:symbol/sml', async (req, res) => {
 // ============================================================================
 
 /**
- * GET /risk/crypto/:symbol/summary
+ * GET /risk/crypto/:id/summary
  * Returns a summary of all risk metrics for quick loading
  */
-api.get('/risk/crypto/:symbol/summary', async (req, res) => {
+api.get('/risk/crypto/:id/summary', async (req, res) => {
   try {
-    const { symbol } = req.params;
+    const { id: coingeckoId } = req.params;
     const { period = '90d' } = req.query;
 
-    const crypto = await getCryptoBySymbol(symbol);
+    const crypto = await getCryptoById(coingeckoId);
     if (!crypto) {
       return res.status(404).json({
         data: null,
-        msg: `Cryptocurrency ${symbol} not found`
+        msg: `Cryptocurrency ${coingeckoId} not found`
       });
     }
 
@@ -1196,7 +1196,7 @@ api.get('/risk/crypto/:symbol/summary', async (req, res) => {
       }
     });
 
-    log.debug(`Fetched risk summary for ${symbol}`);
+    log.debug(`Fetched risk summary for ${coingeckoId}`);
   } catch (error) {
     log.error(`Error fetching risk summary: ${error.message}`);
     res.status(500).json({

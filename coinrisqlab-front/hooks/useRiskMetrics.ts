@@ -22,13 +22,13 @@ import {
 /**
  * Hook to fetch price history data
  */
-export function usePriceHistory(symbol: string, period: RiskPeriod = "90d") {
+export function usePriceHistory(coingeckoId: string, period: RiskPeriod = "90d") {
   const [data, setData] = useState<PriceHistoryData | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
 
   useEffect(() => {
-    if (!symbol) {
+    if (!coingeckoId) {
       setData(null);
 
       return;
@@ -40,11 +40,11 @@ export function usePriceHistory(symbol: string, period: RiskPeriod = "90d") {
 
       try {
         const response = await fetch(
-          `${API_BASE_URL}/risk/crypto/${symbol}/price-history?period=${period}`,
+          `${API_BASE_URL}/risk/crypto/${coingeckoId}/price-history?period=${period}`,
         );
 
         if (!response.ok) {
-          throw new Error(`Failed to fetch price history for ${symbol}`);
+          throw new Error(`Failed to fetch price history for ${coingeckoId}`);
         }
 
         const result: PriceHistoryResponse = await response.json();
@@ -60,7 +60,7 @@ export function usePriceHistory(symbol: string, period: RiskPeriod = "90d") {
     };
 
     fetchData();
-  }, [symbol, period]);
+  }, [coingeckoId, period]);
 
   return { data, isLoading, error };
 }
@@ -68,13 +68,13 @@ export function usePriceHistory(symbol: string, period: RiskPeriod = "90d") {
 /**
  * Hook to fetch beta data
  */
-export function useBeta(symbol: string, period: RiskPeriod = "365d") {
+export function useBeta(coingeckoId: string, period: RiskPeriod = "365d") {
   const [data, setData] = useState<BetaData | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
 
   useEffect(() => {
-    if (!symbol) {
+    if (!coingeckoId) {
       setData(null);
 
       return;
@@ -86,11 +86,11 @@ export function useBeta(symbol: string, period: RiskPeriod = "365d") {
 
       try {
         const response = await fetch(
-          `${API_BASE_URL}/risk/crypto/${symbol}/beta?period=${period}`,
+          `${API_BASE_URL}/risk/crypto/${coingeckoId}/beta?period=${period}`,
         );
 
         if (!response.ok) {
-          throw new Error(`Failed to fetch beta for ${symbol}`);
+          throw new Error(`Failed to fetch beta for ${coingeckoId}`);
         }
 
         const result: BetaResponse = await response.json();
@@ -106,7 +106,7 @@ export function useBeta(symbol: string, period: RiskPeriod = "365d") {
     };
 
     fetchData();
-  }, [symbol, period]);
+  }, [coingeckoId, period]);
 
   return { data, isLoading, error };
 }
@@ -114,13 +114,13 @@ export function useBeta(symbol: string, period: RiskPeriod = "365d") {
 /**
  * Hook to fetch VaR data
  */
-export function useVaR(symbol: string, period: RiskPeriod = "365d") {
+export function useVaR(coingeckoId: string, period: RiskPeriod = "365d") {
   const [data, setData] = useState<VaRData | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
 
   useEffect(() => {
-    if (!symbol) {
+    if (!coingeckoId) {
       setData(null);
 
       return;
@@ -132,11 +132,11 @@ export function useVaR(symbol: string, period: RiskPeriod = "365d") {
 
       try {
         const response = await fetch(
-          `${API_BASE_URL}/risk/crypto/${symbol}/var?period=${period}`,
+          `${API_BASE_URL}/risk/crypto/${coingeckoId}/var?period=${period}`,
         );
 
         if (!response.ok) {
-          throw new Error(`Failed to fetch VaR for ${symbol}`);
+          throw new Error(`Failed to fetch VaR for ${coingeckoId}`);
         }
 
         const result: VaRResponse = await response.json();
@@ -152,7 +152,7 @@ export function useVaR(symbol: string, period: RiskPeriod = "365d") {
     };
 
     fetchData();
-  }, [symbol, period]);
+  }, [coingeckoId, period]);
 
   return { data, isLoading, error };
 }
@@ -160,13 +160,13 @@ export function useVaR(symbol: string, period: RiskPeriod = "365d") {
 /**
  * Hook to fetch stress test data
  */
-export function useStressTest(symbol: string) {
+export function useStressTest(coingeckoId: string) {
   const [data, setData] = useState<StressTestData | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
 
   const refetch = useCallback(async () => {
-    if (!symbol) {
+    if (!coingeckoId) {
       setData(null);
 
       return;
@@ -177,11 +177,11 @@ export function useStressTest(symbol: string) {
 
     try {
       const response = await fetch(
-        `${API_BASE_URL}/risk/crypto/${symbol}/stress-test`,
+        `${API_BASE_URL}/risk/crypto/${coingeckoId}/stress-test`,
       );
 
       if (!response.ok) {
-        throw new Error(`Failed to fetch stress test for ${symbol}`);
+        throw new Error(`Failed to fetch stress test for ${coingeckoId}`);
       }
 
       const result: StressTestResponse = await response.json();
@@ -194,7 +194,7 @@ export function useStressTest(symbol: string) {
     } finally {
       setIsLoading(false);
     }
-  }, [symbol]);
+  }, [coingeckoId]);
 
   useEffect(() => {
     refetch();
@@ -206,13 +206,13 @@ export function useStressTest(symbol: string) {
 /**
  * Hook to fetch distribution (skewness/kurtosis) data
  */
-export function useDistribution(symbol: string, period: RiskPeriod = "90d") {
+export function useDistribution(coingeckoId: string, period: RiskPeriod = "90d") {
   const [data, setData] = useState<DistributionData | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
 
   useEffect(() => {
-    if (!symbol) {
+    if (!coingeckoId) {
       setData(null);
 
       return;
@@ -224,11 +224,11 @@ export function useDistribution(symbol: string, period: RiskPeriod = "90d") {
 
       try {
         const response = await fetch(
-          `${API_BASE_URL}/risk/crypto/${symbol}/distribution?period=${period}`,
+          `${API_BASE_URL}/risk/crypto/${coingeckoId}/distribution?period=${period}`,
         );
 
         if (!response.ok) {
-          throw new Error(`Failed to fetch distribution for ${symbol}`);
+          throw new Error(`Failed to fetch distribution for ${coingeckoId}`);
         }
 
         const result: DistributionResponse = await response.json();
@@ -244,7 +244,7 @@ export function useDistribution(symbol: string, period: RiskPeriod = "90d") {
     };
 
     fetchData();
-  }, [symbol, period]);
+  }, [coingeckoId, period]);
 
   return { data, isLoading, error };
 }
@@ -252,13 +252,13 @@ export function useDistribution(symbol: string, period: RiskPeriod = "90d") {
 /**
  * Hook to fetch SML data
  */
-export function useSML(symbol: string, period: RiskPeriod = "90d") {
+export function useSML(coingeckoId: string, period: RiskPeriod = "90d") {
   const [data, setData] = useState<SMLData | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
 
   useEffect(() => {
-    if (!symbol) {
+    if (!coingeckoId) {
       setData(null);
 
       return;
@@ -270,11 +270,11 @@ export function useSML(symbol: string, period: RiskPeriod = "90d") {
 
       try {
         const response = await fetch(
-          `${API_BASE_URL}/risk/crypto/${symbol}/sml?period=${period}`,
+          `${API_BASE_URL}/risk/crypto/${coingeckoId}/sml?period=${period}`,
         );
 
         if (!response.ok) {
-          throw new Error(`Failed to fetch SML for ${symbol}`);
+          throw new Error(`Failed to fetch SML for ${coingeckoId}`);
         }
 
         const result: SMLResponse = await response.json();
@@ -290,7 +290,7 @@ export function useSML(symbol: string, period: RiskPeriod = "90d") {
     };
 
     fetchData();
-  }, [symbol, period]);
+  }, [coingeckoId, period]);
 
   return { data, isLoading, error };
 }
@@ -298,13 +298,13 @@ export function useSML(symbol: string, period: RiskPeriod = "90d") {
 /**
  * Hook to fetch risk summary (all metrics combined)
  */
-export function useRiskSummary(symbol: string, period: RiskPeriod = "90d") {
+export function useRiskSummary(coingeckoId: string, period: RiskPeriod = "90d") {
   const [data, setData] = useState<RiskSummaryData | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
 
   useEffect(() => {
-    if (!symbol) {
+    if (!coingeckoId) {
       setData(null);
 
       return;
@@ -316,11 +316,11 @@ export function useRiskSummary(symbol: string, period: RiskPeriod = "90d") {
 
       try {
         const response = await fetch(
-          `${API_BASE_URL}/risk/crypto/${symbol}/summary?period=${period}`,
+          `${API_BASE_URL}/risk/crypto/${coingeckoId}/summary?period=${period}`,
         );
 
         if (!response.ok) {
-          throw new Error(`Failed to fetch risk summary for ${symbol}`);
+          throw new Error(`Failed to fetch risk summary for ${coingeckoId}`);
         }
 
         const result: RiskSummaryResponse = await response.json();
@@ -336,7 +336,7 @@ export function useRiskSummary(symbol: string, period: RiskPeriod = "90d") {
     };
 
     fetchData();
-  }, [symbol, period]);
+  }, [coingeckoId, period]);
 
   return { data, isLoading, error };
 }

@@ -99,6 +99,7 @@ api.get('/index-details', async (req, res) => {
     const [constituents] = await Database.execute(`
       SELECT
         ic.rank_position,
+        c.coingecko_id,
         c.symbol,
         c.name,
         c.image_url,

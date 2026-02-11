@@ -22,18 +22,18 @@ export function CorrelationCard({ constituents }: CorrelationCardProps) {
 
   const [isTooltipOpen, setIsTooltipOpen] = useState(false);
 
-  const [symbol1, setSymbol1] = useState<string>("");
-  const [symbol2, setSymbol2] = useState<string>("");
+  const [id1, setId1] = useState<string>("");
+  const [id2, setId2] = useState<string>("");
 
   // Initialize with top 2 constituents when available
   useEffect(() => {
-    if (topConstituents.length >= 2 && !symbol1 && !symbol2) {
-      setSymbol1(topConstituents[0].symbol);
-      setSymbol2(topConstituents[1].symbol);
+    if (topConstituents.length >= 2 && !id1 && !id2) {
+      setId1(topConstituents[0].coingecko_id);
+      setId2(topConstituents[1].coingecko_id);
     }
-  }, [topConstituents, symbol1, symbol2]);
+  }, [topConstituents, id1, id2]);
 
-  const { data, isLoading, error } = useCorrelation(symbol1, symbol2, "90d");
+  const { data, isLoading, error } = useCorrelation(id1, id2, "90d");
 
   const correlation = data?.correlation ?? 0;
 
@@ -100,15 +100,15 @@ export function CorrelationCard({ constituents }: CorrelationCardProps) {
           <Select
             aria-label="Select first asset"
             className="max-w-xs"
-            defaultSelectedKeys={symbol1 ? [symbol1] : []}
-            disabledKeys={symbol2 ? [symbol2] : []}
+            defaultSelectedKeys={id1 ? [id1] : []}
+            disabledKeys={id2 ? [id2] : []}
             placeholder="Select asset"
-            selectedKeys={symbol1 ? [symbol1] : []}
+            selectedKeys={id1 ? [id1] : []}
             size="sm"
-            onChange={(e) => setSymbol1(e.target.value)}
+            onChange={(e) => setId1(e.target.value)}
           >
             {constituents.map((c) => (
-              <SelectItem key={c.symbol} textValue={c.symbol}>
+              <SelectItem key={c.coingecko_id} textValue={c.symbol}>
                 <div className="flex items-center gap-2">
                   <span className="font-medium">{c.symbol}</span>
                   <span className="text-tiny text-default-400 truncate max-w-[80px]">
@@ -124,15 +124,15 @@ export function CorrelationCard({ constituents }: CorrelationCardProps) {
           <Select
             aria-label="Select second asset"
             className="max-w-xs"
-            defaultSelectedKeys={symbol2 ? [symbol2] : []}
-            disabledKeys={symbol1 ? [symbol1] : []}
+            defaultSelectedKeys={id2 ? [id2] : []}
+            disabledKeys={id1 ? [id1] : []}
             placeholder="Select asset"
-            selectedKeys={symbol2 ? [symbol2] : []}
+            selectedKeys={id2 ? [id2] : []}
             size="sm"
-            onChange={(e) => setSymbol2(e.target.value)}
+            onChange={(e) => setId2(e.target.value)}
           >
             {constituents.map((c) => (
-              <SelectItem key={c.symbol} textValue={c.symbol}>
+              <SelectItem key={c.coingecko_id} textValue={c.symbol}>
                 <div className="flex items-center gap-2">
                   <span className="font-medium">{c.symbol}</span>
                   <span className="text-tiny text-default-400 truncate max-w-[80px]">

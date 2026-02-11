@@ -6,20 +6,20 @@ import { API_BASE_URL } from "@/config/constants";
 import { CryptoDetailResponse } from "@/types/crypto-detail";
 
 type Props = {
-  params: Promise<{ symbol: string }>;
+  params: Promise<{ id: string }>;
 };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const { symbol } = await params;
+  const { id } = await params;
 
   try {
     const response = await fetch(
-      `${API_BASE_URL}/cryptocurrency/${symbol.toUpperCase()}`,
+      `${API_BASE_URL}/cryptocurrency/${id}`,
     );
 
     if (!response.ok) {
       return {
-        title: `${symbol.toUpperCase()} | CoinRisqLab`,
+        title: `${id} | CoinRisqLab`,
       };
     }
 
@@ -31,7 +31,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     };
   } catch {
     return {
-      title: `${symbol.toUpperCase()} | CoinRisqLab`,
+      title: `${id} | CoinRisqLab`,
     };
   }
 }

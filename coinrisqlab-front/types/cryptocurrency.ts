@@ -1,5 +1,6 @@
 export interface Cryptocurrency {
   id: number;
+  coingecko_id: string;
   symbol: string;
   name: string;
   image_url: string | null;

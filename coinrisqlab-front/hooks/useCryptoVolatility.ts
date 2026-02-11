@@ -4,7 +4,7 @@ import { API_BASE_URL } from "@/config/constants";
 import { CryptoVolatilityResponse, VolatilityPeriod } from "@/types/volatility";
 
 interface ComparisonData {
-  symbol: string;
+  coingeckoId: string;
   data: CryptoVolatilityResponse["data"];
   color: string;
 }
@@ -18,21 +18,21 @@ const COLORS = [
 ];
 
 export function useCryptoVolatility(
-  symbols: string[],
+  coingeckoIds: string[],
   period: VolatilityPeriod = "90d",
 ) {
   const [data, setData] = useState<ComparisonData[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
 
-  // Create a stable string key from symbols array
-  const symbolsKey = symbols.join(",");
+  // Create a stable string key from coingeckoIds array
+  const idsKey = coingeckoIds.join(",");
 
   useEffect(() => {
-    // Parse the key back to array to avoid using the original symbols reference
-    const symbolsList = symbolsKey ? symbolsKey.split(",") : [];
+    // Parse the key back to array to avoid using the original reference
+    const idsList = idsKey ? idsKey.split(",") : [];
 
-    if (symbolsList.length === 0) {
+    if (idsList.length === 0) {
       setData([]);
 
       return;
@@ -43,19 +43,19 @@ export function useCryptoVolatility(
       setError(null);
 
       try {
-        const promises = symbolsList.map(async (symbol, index) => {
+        const promises = idsList.map(async (coingeckoId, index) => {
           const response = await fetch(
-            `${API_BASE_URL}/volatility/crypto/${symbol}?period=${period}`,
+            `${API_BASE_URL}/volatility/crypto/${coingeckoId}?period=${period}`,
           );
 
           if (!response.ok) {
-            throw new Error(`Failed to fetch volatility for ${symbol}`);
+            throw new Error(`Failed to fetch volatility for ${coingeckoId}`);
           }
 
           const result: CryptoVolatilityResponse = await response.json();
 
           return {
-            symbol,
+            coingeckoId,
             data: result.data,
             color: COLORS[index % COLORS.length],
           };
@@ -74,7 +74,7 @@ export function useCryptoVolatility(
     };
 
     fetchData();
-  }, [symbolsKey, period]);
+  }, [idsKey, period]);
 
   return { data, isLoading, error };
 }

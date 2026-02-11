@@ -35,27 +35,27 @@ function calculateCorrelation(x, y) {
  */
 api.get('/volatility/correlation', async (req, res) => {
     try {
-        const { symbol1, symbol2, period = '90d' } = req.query;
+        const { id1, id2, period = '90d' } = req.query;
 
-        if (!symbol1 || !symbol2) {
+        if (!id1 || !id2) {
             return res.status(400).json({
                 data: null,
-                msg: 'Both symbol1 and symbol2 are required'
+                msg: 'Both id1 and id2 are required'
             });
         }
 
-        // Get crypto IDs (case-insensitive matching)
+        // Get crypto IDs by coingecko_id
         const [cryptos] = await Database.execute(
-            'SELECT id, symbol, name FROM cryptocurrencies WHERE UPPER(symbol) IN (?, ?)',
-            [symbol1.toUpperCase(), symbol2.toUpperCase()]
+            'SELECT id, coingecko_id, symbol, name FROM cryptocurrencies WHERE coingecko_id IN (?, ?)',
+            [id1, id2]
         );
 
         if (cryptos.length !== 2) {
             // Check which one is missing
-            const foundSymbols = cryptos.map(c => c.symbol.toUpperCase());
+            const foundIds = cryptos.map(c => c.coingecko_id);
             const missing = [];
-            if (!foundSymbols.includes(symbol1.toUpperCase())) missing.push(symbol1);
-            if (!foundSymbols.includes(symbol2.toUpperCase())) missing.push(symbol2);
+            if (!foundIds.includes(id1)) missing.push(id1);
+            if (!foundIds.includes(id2)) missing.push(id2);
 
             return res.status(404).json({
                 data: null,
@@ -63,8 +63,8 @@ api.get('/volatility/correlation', async (req, res) => {
             });
         }
 
-        const crypto1 = cryptos.find(c => c.symbol.toUpperCase() === symbol1.toUpperCase());
-        const crypto2 = cryptos.find(c => c.symbol.toUpperCase() === symbol2.toUpperCase());
+        const crypto1 = cryptos.find(c => c.coingecko_id === id1);
+        const crypto2 = cryptos.find(c => c.coingecko_id === id2);
 
         let dateFilter = '';
         switch (period) {
@@ -128,7 +128,7 @@ api.get('/volatility/correlation', async (req, res) => {
             }
         });
 
-        log.debug(`Calculated correlation between ${symbol1} and ${symbol2}: ${correlation.toFixed(4)}`);
+        log.debug(`Calculated correlation between ${id1} and ${id2}: ${correlation.toFixed(4)}`);
     } catch (error) {
         log.error(`Error calculating correlation: ${error.message}`);
         res.status(500).json({

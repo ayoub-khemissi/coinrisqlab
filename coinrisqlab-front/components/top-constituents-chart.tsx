@@ -44,9 +44,9 @@ function TopConstituentsChartComponent({
     return () => window.removeEventListener("resize", checkMobile);
   }, []);
 
-  const handleClick = (symbol: string) => {
-    if (symbol !== "Others") {
-      router.push(`/crypto/${symbol}`);
+  const handleClick = (coingeckoId: string) => {
+    if (coingeckoId !== "Others") {
+      router.push(`/crypto/${coingeckoId}`);
     }
   };
 
@@ -68,6 +68,7 @@ function TopConstituentsChartComponent({
 
     const data = aboveThreshold.map((constituent) => ({
       name: constituent.symbol,
+      coingecko_id: constituent.coingecko_id,
       value: parseFloat(constituent.weight_in_index),
       displayValue: `${parseFloat(constituent.weight_in_index).toFixed(2)}%`,
     }));
@@ -81,6 +82,7 @@ function TopConstituentsChartComponent({
 
       data.push({
         name: "Others",
+        coingecko_id: "Others",
         value: othersWeight,
         displayValue: `${othersWeight.toFixed(2)}%`,
       });
@@ -169,14 +171,14 @@ function TopConstituentsChartComponent({
               labelLine={false}
               outerRadius={outerRadius}
               stroke="none"
-              onClick={(data) => handleClick(data.name)}
+              onClick={(data) => handleClick(data.coingecko_id)}
             >
               {chartData.map((entry, index) => (
                 <Cell
                   key={`cell-${index}`}
                   fill={COLORS[index % COLORS.length]}
                   style={{
-                    cursor: entry.name !== "Others" ? "pointer" : "default",
+                    cursor: entry.coingecko_id !== "Others" ? "pointer" : "default",
                   }}
                 />
               ))}
@@ -214,10 +216,10 @@ function TopConstituentsChartComponent({
         <ul className="flex flex-col gap-3">
           {chartData.map((entry, index) => (
             <li key={`legend-${index}`}>
-              {entry.name !== "Others" ? (
+              {entry.coingecko_id !== "Others" ? (
                 <button
                   className="flex items-center justify-between gap-4 w-full cursor-pointer hover:bg-default-100 rounded-lg p-2 transition-colors text-left"
-                  onClick={() => handleClick(entry.name)}
+                  onClick={() => handleClick(entry.coingecko_id)}
                 >
                   <div className="flex items-center gap-2">
                     <span

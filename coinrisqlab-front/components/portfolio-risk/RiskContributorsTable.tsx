@@ -220,7 +220,7 @@ export function RiskContributorsTable({
                   "CRYPTO_RETURN_PATH",
                   "/portfolio-risk#risk-contributors",
                 );
-                router.push(`/crypto/${item.symbol}?panel=volatility`);
+                router.push(`/crypto/${item.coingecko_id}?panel=volatility`);
               }}
             >
               <TableCell>

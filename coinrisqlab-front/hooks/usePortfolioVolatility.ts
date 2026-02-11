@@ -12,14 +12,14 @@ import {
 
 /**
  * Hook to fetch correlation between two cryptocurrencies
- * @param symbol1 - First crypto symbol
- * @param symbol2 - Second crypto symbol
+ * @param id1 - First crypto coingecko_id
+ * @param id2 - Second crypto coingecko_id
  * @param period - Time period for historical data
  * @returns Correlation data, loading state, and error
  */
 export function useCorrelation(
-  symbol1: string,
-  symbol2: string,
+  id1: string,
+  id2: string,
   period: VolatilityPeriod = "90d",
 ) {
   const [data, setData] = useState<CorrelationResponse["data"] | null>(null);
@@ -27,7 +27,7 @@ export function useCorrelation(
   const [error, setError] = useState<Error | null>(null);
 
   useEffect(() => {
-    if (!symbol1 || !symbol2) return;
+    if (!id1 || !id2) return;
 
     const fetchData = async () => {
       setIsLoading(true);
@@ -35,7 +35,7 @@ export function useCorrelation(
 
       try {
         const response = await fetch(
-          `${API_BASE_URL}/volatility/correlation?symbol1=${symbol1}&symbol2=${symbol2}&period=${period}`,
+          `${API_BASE_URL}/volatility/correlation?id1=${id1}&id2=${id2}&period=${period}`,
         );
 
         if (!response.ok) {
@@ -55,7 +55,7 @@ export function useCorrelation(
     };
 
     fetchData();
-  }, [symbol1, symbol2, period]);
+  }, [id1, id2, period]);
 
   return { data, isLoading, error };
 }
@@ -188,6 +188,7 @@ export function calculateDiversificationBenefit(
 export function calculateRiskContributions(
   constituents: Array<{
     crypto_id: number;
+    coingecko_id: string;
     symbol: string;
     name: string;
     image_url: string | null;

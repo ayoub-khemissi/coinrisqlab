@@ -238,7 +238,7 @@ function CryptoTableComponent({
             className="cursor-pointer hover:bg-default-100 transition-colors"
             onClick={() => {
               sStorage.set("CRYPTO_RETURN_PATH", "/#crypto-table");
-              router.push(`/crypto/${item.symbol}`);
+              router.push(`/crypto/${item.coingecko_id}`);
             }}
           >
             {(columnKey) => (

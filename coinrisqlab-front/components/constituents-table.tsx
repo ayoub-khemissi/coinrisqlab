@@ -263,7 +263,7 @@ function ConstituentsTableComponent({ constituents }: ConstituentsTableProps) {
                 "CRYPTO_RETURN_PATH",
                 "/index-coinrisqlab#constituents-table",
               );
-              router.push(`/crypto/${item.symbol}`);
+              router.push(`/crypto/${item.coingecko_id}`);
             }}
           >
             {(columnKey) => (

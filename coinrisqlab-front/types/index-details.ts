@@ -1,5 +1,6 @@
 export interface IndexConstituent {
   rank_position: number;
+  coingecko_id: string;
   symbol: string;
   name: string;
   image_url: string | null;

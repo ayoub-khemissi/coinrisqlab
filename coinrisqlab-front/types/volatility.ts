@@ -22,6 +22,7 @@ export interface PortfolioVolatility {
  */
 export interface PortfolioVolatilityConstituent {
   crypto_id: number;
+  coingecko_id: string;
   symbol: string;
   name: string;
   image_url: string | null;

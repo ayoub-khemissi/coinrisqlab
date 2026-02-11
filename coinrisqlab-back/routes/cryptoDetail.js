@@ -3,17 +3,18 @@ import Database from '../lib/database.js';
 import log from '../lib/log.js';
 
 /**
- * GET /cryptocurrency/:symbol
+ * GET /cryptocurrency/:id
  * Fetches comprehensive details for a specific cryptocurrency
  */
-api.get('/cryptocurrency/:symbol', async (req, res) => {
+api.get('/cryptocurrency/:id', async (req, res) => {
   try {
-    const symbol = req.params.symbol.toUpperCase();
+    const coingeckoId = req.params.id;
 
     // 1. Fetch basic crypto info with latest market data
     const [cryptoRows] = await Database.execute(`
       SELECT
         c.id,
+        c.coingecko_id,
         c.symbol,
         c.name,
         c.image_url,
@@ -49,14 +50,14 @@ api.get('/cryptocurrency/:symbol', async (req, res) => {
         WHERE md2.timestamp = (SELECT MAX(timestamp) FROM market_data)
           AND (md2.price_usd * md2.circulating_supply) > 0
       ) ranked ON c.id = ranked.crypto_id
-      WHERE c.symbol = ?
+      WHERE c.coingecko_id = ?
       LIMIT 1
-    `, [symbol]);
+    `, [coingeckoId]);
 
     if (cryptoRows.length === 0) {
       return res.status(404).json({
         data: null,
-        msg: `Cryptocurrency ${symbol} not found`,
+        msg: `Cryptocurrency ${coingeckoId} not found`,
       });
     }
 
@@ -155,7 +156,7 @@ api.get('/cryptocurrency/:symbol', async (req, res) => {
     };
 
     res.json(response);
-    log.debug(`Fetched details for cryptocurrency: ${symbol}`);
+    log.debug(`Fetched details for cryptocurrency: ${coingeckoId}`);
 
   } catch (error) {
     log.error(`Error fetching cryptocurrency detail: ${error.message}`);
