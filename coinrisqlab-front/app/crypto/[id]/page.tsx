@@ -13,9 +13,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { id } = await params;
 
   try {
-    const response = await fetch(
-      `${API_BASE_URL}/cryptocurrency/${id}`,
-    );
+    const response = await fetch(`${API_BASE_URL}/cryptocurrency/${id}`);
 
     if (!response.ok) {
       return {

@@ -178,7 +178,8 @@ function TopConstituentsChartComponent({
                   key={`cell-${index}`}
                   fill={COLORS[index % COLORS.length]}
                   style={{
-                    cursor: entry.coingecko_id !== "Others" ? "pointer" : "default",
+                    cursor:
+                      entry.coingecko_id !== "Others" ? "pointer" : "default",
                   }}
                 />
               ))}

@@ -22,7 +22,10 @@ import {
 /**
  * Hook to fetch price history data
  */
-export function usePriceHistory(coingeckoId: string, period: RiskPeriod = "90d") {
+export function usePriceHistory(
+  coingeckoId: string,
+  period: RiskPeriod = "90d",
+) {
   const [data, setData] = useState<PriceHistoryData | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
@@ -206,7 +209,10 @@ export function useStressTest(coingeckoId: string) {
 /**
  * Hook to fetch distribution (skewness/kurtosis) data
  */
-export function useDistribution(coingeckoId: string, period: RiskPeriod = "90d") {
+export function useDistribution(
+  coingeckoId: string,
+  period: RiskPeriod = "90d",
+) {
   const [data, setData] = useState<DistributionData | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
@@ -298,7 +304,10 @@ export function useSML(coingeckoId: string, period: RiskPeriod = "90d") {
 /**
  * Hook to fetch risk summary (all metrics combined)
  */
-export function useRiskSummary(coingeckoId: string, period: RiskPeriod = "90d") {
+export function useRiskSummary(
+  coingeckoId: string,
+  period: RiskPeriod = "90d",
+) {
   const [data, setData] = useState<RiskSummaryData | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
