@@ -301,11 +301,13 @@ export default function CryptoDetailContent() {
               </Chip>
             )}
           </div>
-          {basic.categories.length > 0 && (
-            <CategoriesList categories={basic.categories} />
-          )}
         </div>
       </div>
+
+      {/* Categories */}
+      {basic.categories.length > 0 && (
+        <CategoriesList categories={basic.categories} />
+      )}
 
       {/* Links */}
       {(links.website ||
