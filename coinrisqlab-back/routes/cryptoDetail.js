@@ -88,10 +88,14 @@ api.get('/cryptocurrency/:id', async (req, res) => {
     // Parse categories if it exists
     let categories = [];
     if (metadata.categories) {
-      try {
-        categories = JSON.parse(metadata.categories);
-      } catch (e) {
-        categories = [];
+      if (Array.isArray(metadata.categories)) {
+        categories = metadata.categories;
+      } else {
+        try {
+          categories = JSON.parse(metadata.categories);
+        } catch (e) {
+          categories = [];
+        }
       }
     }
 
