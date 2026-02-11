@@ -52,30 +52,23 @@ async function exportCryptoPrices(priceDays, coingeckoIds) {
     const minDate = allDates[allDates.length - 1].price_date;
     const maxDate = allDates[0].price_date;
 
-    // 2. Look up cryptos by coingecko_id
+    // 2. Look up cryptos by coingecko_id (include all, even those with incomplete data)
     const placeholders = coingeckoIds.map(() => '?').join(',');
     const [cryptos] = await Database.execute(`
       SELECT c.id as crypto_id, c.symbol, c.name, c.coingecko_id
       FROM cryptocurrencies c
       WHERE c.coingecko_id IN (${placeholders})
-        AND (
-          SELECT COUNT(DISTINCT DATE(o.timestamp))
-          FROM ohlc o
-          WHERE o.crypto_id = c.id
-            AND DATE(o.timestamp) >= ?
-            AND DATE(o.timestamp) <= ?
-        ) = ?
-    `, [...coingeckoIds, minDate, maxDate, expectedDateCount]);
+    `, coingeckoIds);
 
     if (cryptos.length === 0) {
-      throw new Error('No cryptos found with complete price data for the given coingecko_ids');
+      throw new Error('No cryptos found for the given coingecko_ids');
     }
 
-    // Warn about missing cryptos
+    // Warn about unknown coingecko_ids
     const foundIds = new Set(cryptos.map(c => c.coingecko_id));
-    const missing = coingeckoIds.filter(id => !foundIds.has(id));
-    if (missing.length > 0) {
-      log.warn(`Missing or incomplete data for: ${missing.join(', ')}`);
+    const unknown = coingeckoIds.filter(id => !foundIds.has(id));
+    if (unknown.length > 0) {
+      log.warn(`Unknown coingecko_ids (not in DB): ${unknown.join(', ')}`);
     }
 
     // Preserve the order from command-line arguments
