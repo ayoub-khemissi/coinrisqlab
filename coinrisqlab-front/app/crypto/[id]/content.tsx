@@ -54,14 +54,18 @@ const VALID_PANELS: RiskPanel[] = [
   "sml",
 ];
 
-const CATEGORIES_VISIBLE = 5;
+const CATEGORIES_VISIBLE_DEFAULT = 3;
 
-function CategoriesList({ categories }: { categories: string[] }) {
+function CategoriesList({
+  categories,
+  maxVisible = CATEGORIES_VISIBLE_DEFAULT,
+}: {
+  categories: string[];
+  maxVisible?: number;
+}) {
   const [expanded, setExpanded] = useState(false);
-  const hasMore = categories.length > CATEGORIES_VISIBLE;
-  const visible = expanded
-    ? categories
-    : categories.slice(0, CATEGORIES_VISIBLE);
+  const hasMore = categories.length > maxVisible;
+  const visible = expanded ? categories : categories.slice(0, maxVisible);
 
   return (
     <div className="mt-4">
@@ -77,9 +81,7 @@ function CategoriesList({ categories }: { categories: string[] }) {
             className="text-xs text-primary cursor-pointer hover:underline"
             onClick={() => setExpanded(!expanded)}
           >
-            {expanded
-              ? "Show less"
-              : `+${categories.length - CATEGORIES_VISIBLE} more`}
+            {expanded ? "Show less" : `+${categories.length - maxVisible} more`}
           </button>
         )}
       </div>
@@ -176,9 +178,7 @@ export default function CryptoDetailContent() {
     setIsLoading(true);
     setError(null);
     try {
-      const response = await fetch(
-        `${API_BASE_URL}/cryptocurrency/${id}`,
-      );
+      const response = await fetch(`${API_BASE_URL}/cryptocurrency/${id}`);
 
       if (!response.ok) {
         if (response.status === 404) {
@@ -231,11 +231,7 @@ export default function CryptoDetailContent() {
     switch (activePanel) {
       case "price":
         return (
-          <PricePanel
-            period={period}
-            symbol={id}
-            onPeriodChange={setPeriod}
-          />
+          <PricePanel period={period} symbol={id} onPeriodChange={setPeriod} />
         );
       case "volatility":
         return (
@@ -306,9 +302,7 @@ export default function CryptoDetailContent() {
             )}
           </div>
           {basic.categories.length > 0 && (
-            <p className="text-default-500 mt-2">
-              Category: {basic.categories[0]}
-            </p>
+            <CategoriesList categories={basic.categories} />
           )}
         </div>
       </div>
@@ -542,9 +536,6 @@ export default function CryptoDetailContent() {
                 </div>
               )}
             </div>
-            {basic.categories.length > 0 && (
-              <CategoriesList categories={basic.categories} />
-            )}
           </CardBody>
         </Card>
       )}
