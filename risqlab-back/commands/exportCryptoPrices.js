@@ -7,45 +7,45 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const PRICE_DAYS = 91; // 91 prices to calculate 90 returns
-
 /**
  * Export historical prices for specified cryptos by coingecko_id
- * Usage: node commands/exportCryptoPrices.js bitcoin rain ethereum
- * - Each argument is a coingecko_id from the cryptocurrencies table
- * - Only selects cryptos with complete price data for the last 91 days (D-1 to D-91)
+ * Usage: node commands/exportCryptoPrices.js <days> <coingecko_id1> <coingecko_id2> ...
+ * Example: node commands/exportCryptoPrices.js 91 bitcoin rain ethereum
+ * - First argument is the number of days to extract
+ * - Remaining arguments are coingecko_ids from the cryptocurrencies table
+ * - Only selects cryptos with complete price data for the requested period
  * - Retrieves closing prices from ohlc table
  * Output: CSV file with columns:
  *   Symbol, Name, then for each date: Date_Price
  */
-async function exportCryptoPrices(coingeckoIds) {
+async function exportCryptoPrices(priceDays, coingeckoIds) {
   const startTime = Date.now();
 
   try {
-    if (!coingeckoIds || coingeckoIds.length === 0) {
-      throw new Error('Usage: node commands/exportCryptoPrices.js <coingecko_id1> <coingecko_id2> ...');
+    if (!priceDays || !coingeckoIds || coingeckoIds.length === 0) {
+      throw new Error('Usage: node commands/exportCryptoPrices.js <days> <coingecko_id1> <coingecko_id2> ...');
     }
 
-    log.info(`Starting crypto prices export for: ${coingeckoIds.join(', ')}`);
+    log.info(`Starting crypto prices export for: ${coingeckoIds.join(', ')} (${priceDays} days)`);
 
-    // 1. Get the 91 most recent dates available in ohlc (D-1 to D-91)
+    // 1. Get the N most recent dates available in ohlc (D-1 to D-N)
     const [allDates] = await Database.execute(`
       SELECT DISTINCT DATE(timestamp) as price_date
       FROM ohlc
       WHERE DATE(timestamp) < CURDATE()
       ORDER BY price_date DESC
-      LIMIT ${PRICE_DAYS}
+      LIMIT ${priceDays}
     `);
 
     const expectedDateCount = allDates.length;
-    log.info(`Found ${expectedDateCount} distinct dates in ohlc (last ${PRICE_DAYS} days up to D-1)`);
+    log.info(`Found ${expectedDateCount} distinct dates in ohlc (last ${priceDays} days up to D-1)`);
 
     if (expectedDateCount === 0) {
       throw new Error('No price data found in ohlc');
     }
 
-    if (expectedDateCount < PRICE_DAYS) {
-      log.warn(`Only ${expectedDateCount} days available, expected ${PRICE_DAYS}`);
+    if (expectedDateCount < priceDays) {
+      log.warn(`Only ${expectedDateCount} days available, expected ${priceDays}`);
     }
 
     // Get the date range for filtering
@@ -171,10 +171,18 @@ async function exportCryptoPrices(coingeckoIds) {
   }
 }
 
-// Parse command-line arguments (skip node and script path)
-const coingeckoIds = process.argv.slice(2);
+// Parse command-line arguments: first arg = days, rest = coingecko_ids
+const args = process.argv.slice(2);
+const priceDays = parseInt(args[0], 10);
+const coingeckoIds = args.slice(1);
 
-exportCryptoPrices(coingeckoIds)
+if (isNaN(priceDays) || priceDays < 1) {
+  console.error('Error: first argument must be a positive number of days');
+  console.error('Usage: node commands/exportCryptoPrices.js <days> <coingecko_id1> <coingecko_id2> ...');
+  process.exit(1);
+}
+
+exportCryptoPrices(priceDays, coingeckoIds)
   .then((filepath) => {
     log.info('Export command completed successfully');
     log.info(`File saved at: ${filepath}`);
