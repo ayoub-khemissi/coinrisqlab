@@ -220,8 +220,8 @@ export default function IndexMethodologyPage() {
                 <div className="border-l-4 border-danger pl-4">
                   <h3 className="font-bold text-lg">Constituent</h3>
                   <p className="text-default-600">
-                    A cryptocurrency included in the index. The CoinRisqLab 80 Index
-                    has up to 80 constituents selected based on market
+                    A cryptocurrency included in the index. The CoinRisqLab 80
+                    Index has up to 80 constituents selected based on market
                     capitalization and exclusion criteria.
                   </p>
                 </div>

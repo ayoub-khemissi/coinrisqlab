@@ -144,7 +144,7 @@ export default function Home() {
       const result: MetricsResponse = await response.json();
 
       setMetricsData(result.data);
-    } catch { }
+    } catch {}
   };
 
   const fetchVolatility = async () => {
@@ -158,7 +158,7 @@ export default function Home() {
       const result: PortfolioVolatilityResponse = await response.json();
 
       setVolatilityData(result.data);
-    } catch { }
+    } catch {}
   };
 
   const symbols = useMemo(() => data.map((crypto) => crypto.symbol), [data]);

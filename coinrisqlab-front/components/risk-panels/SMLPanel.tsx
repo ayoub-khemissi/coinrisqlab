@@ -30,37 +30,37 @@ export function SMLPanel({ symbol }: SMLPanelProps) {
   // Crypto point for scatter
   const cryptoPoint = data
     ? [
-      {
-        beta: data.cryptoBeta,
-        return: data.cryptoActualReturn,
-        name: symbol.toUpperCase(),
-        type: "actual",
-      },
-    ]
+        {
+          beta: data.cryptoBeta,
+          return: data.cryptoActualReturn,
+          name: symbol.toUpperCase(),
+          type: "actual",
+        },
+      ]
     : [];
 
   // Expected point on SML
   const expectedPoint = data
     ? [
-      {
-        beta: data.cryptoBeta,
-        return: data.cryptoExpectedReturn,
-        name: "Expected",
-        type: "expected",
-      },
-    ]
+        {
+          beta: data.cryptoBeta,
+          return: data.cryptoExpectedReturn,
+          name: "Expected",
+          type: "expected",
+        },
+      ]
     : [];
 
   // Market point (beta = 1)
   const marketPoint = data
     ? [
-      {
-        beta: 1,
-        return: data.marketReturn,
-        name: "Market (CoinRisqLab 80)",
-        type: "market",
-      },
-    ]
+        {
+          beta: 1,
+          return: data.marketReturn,
+          name: "Market (CoinRisqLab 80)",
+          type: "market",
+        },
+      ]
     : [];
 
   return (

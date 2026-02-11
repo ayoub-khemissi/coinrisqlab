@@ -400,7 +400,7 @@ export function StressTestPanel({ symbol }: StressTestPanelProps) {
                                       style={{
                                         color:
                                           STRESS_SCENARIO_COLORS[
-                                          selectedScenario!
+                                            selectedScenario!
                                           ],
                                       }}
                                     >

@@ -174,7 +174,9 @@ export default function IndexPage() {
             <Card className="sticky top-6">
               <CardBody className="p-6">
                 <div className="flex flex-col gap-4">
-                  <h2 className="text-sm text-default-500 uppercase">CoinRisqLab 80 Index</h2>
+                  <h2 className="text-sm text-default-500 uppercase">
+                    CoinRisqLab 80 Index
+                  </h2>
                   <div className="flex items-baseline gap-2">
                     <span className="text-4xl font-bold">
                       {current?.index_level.toFixed(2)}
@@ -211,18 +213,18 @@ export default function IndexPage() {
                         <div className="flex items-center gap-2">
                           {historicalValues.yesterday &&
                             calculateChange(historicalValues.yesterday) !==
-                            null && (
+                              null && (
                               <Chip
                                 color={
                                   calculateChange(historicalValues.yesterday)! >
-                                    0
+                                  0
                                     ? "success"
                                     : "danger"
                                 }
                                 size="sm"
                                 startContent={
                                   calculateChange(historicalValues.yesterday)! >
-                                    0 ? (
+                                  0 ? (
                                     <TrendingUp size={12} />
                                   ) : (
                                     <TrendingDown size={12} />
@@ -249,18 +251,18 @@ export default function IndexPage() {
                         <div className="flex items-center gap-2">
                           {historicalValues.lastWeek &&
                             calculateChange(historicalValues.lastWeek) !==
-                            null && (
+                              null && (
                               <Chip
                                 color={
                                   calculateChange(historicalValues.lastWeek)! >
-                                    0
+                                  0
                                     ? "success"
                                     : "danger"
                                 }
                                 size="sm"
                                 startContent={
                                   calculateChange(historicalValues.lastWeek)! >
-                                    0 ? (
+                                  0 ? (
                                     <TrendingUp size={12} />
                                   ) : (
                                     <TrendingDown size={12} />
@@ -287,18 +289,18 @@ export default function IndexPage() {
                         <div className="flex items-center gap-2">
                           {historicalValues.lastMonth &&
                             calculateChange(historicalValues.lastMonth) !==
-                            null && (
+                              null && (
                               <Chip
                                 color={
                                   calculateChange(historicalValues.lastMonth)! >
-                                    0
+                                  0
                                     ? "success"
                                     : "danger"
                                 }
                                 size="sm"
                                 startContent={
                                   calculateChange(historicalValues.lastMonth)! >
-                                    0 ? (
+                                  0 ? (
                                     <TrendingUp size={12} />
                                   ) : (
                                     <TrendingDown size={12} />

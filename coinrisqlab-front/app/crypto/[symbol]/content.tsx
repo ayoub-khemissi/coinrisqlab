@@ -320,74 +320,74 @@ export default function CryptoDetailContent() {
         links.reddit ||
         links.telegram ||
         links.github) && (
-          <div className="flex flex-wrap gap-2">
-            {links.website && (
-              <Button
-                as="a"
-                href={links.website}
-                rel="noopener noreferrer"
-                size="sm"
-                startContent={<Globe size={16} />}
-                target="_blank"
-                variant="bordered"
-              >
-                Website
-              </Button>
-            )}
-            {links.whitepaper && (
-              <Button
-                as="a"
-                href={links.whitepaper}
-                rel="noopener noreferrer"
-                size="sm"
-                startContent={<FileText size={16} />}
-                target="_blank"
-                variant="bordered"
-              >
-                Whitepaper
-              </Button>
-            )}
-            {links.twitter && (
-              <Button
-                as="a"
-                href={links.twitter}
-                rel="noopener noreferrer"
-                size="sm"
-                startContent={<Twitter size={16} />}
-                target="_blank"
-                variant="bordered"
-              >
-                Twitter
-              </Button>
-            )}
-            {links.telegram && (
-              <Button
-                as="a"
-                href={links.telegram}
-                rel="noopener noreferrer"
-                size="sm"
-                startContent={<MessageCircle size={16} />}
-                target="_blank"
-                variant="bordered"
-              >
-                Telegram
-              </Button>
-            )}
-            {links.github && (
-              <Button
-                as="a"
-                href={links.github}
-                rel="noopener noreferrer"
-                size="sm"
-                startContent={<Github size={16} />}
-                target="_blank"
-                variant="bordered"
-              >
-                GitHub
-              </Button>
-            )}
-          </div>
-        )}
+        <div className="flex flex-wrap gap-2">
+          {links.website && (
+            <Button
+              as="a"
+              href={links.website}
+              rel="noopener noreferrer"
+              size="sm"
+              startContent={<Globe size={16} />}
+              target="_blank"
+              variant="bordered"
+            >
+              Website
+            </Button>
+          )}
+          {links.whitepaper && (
+            <Button
+              as="a"
+              href={links.whitepaper}
+              rel="noopener noreferrer"
+              size="sm"
+              startContent={<FileText size={16} />}
+              target="_blank"
+              variant="bordered"
+            >
+              Whitepaper
+            </Button>
+          )}
+          {links.twitter && (
+            <Button
+              as="a"
+              href={links.twitter}
+              rel="noopener noreferrer"
+              size="sm"
+              startContent={<Twitter size={16} />}
+              target="_blank"
+              variant="bordered"
+            >
+              Twitter
+            </Button>
+          )}
+          {links.telegram && (
+            <Button
+              as="a"
+              href={links.telegram}
+              rel="noopener noreferrer"
+              size="sm"
+              startContent={<MessageCircle size={16} />}
+              target="_blank"
+              variant="bordered"
+            >
+              Telegram
+            </Button>
+          )}
+          {links.github && (
+            <Button
+              as="a"
+              href={links.github}
+              rel="noopener noreferrer"
+              size="sm"
+              startContent={<Github size={16} />}
+              target="_blank"
+              variant="bordered"
+            >
+              GitHub
+            </Button>
+          )}
+        </div>
+      )}
 
       {/* Main Grid: Sidebar + Content */}
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6" id="main-grid">

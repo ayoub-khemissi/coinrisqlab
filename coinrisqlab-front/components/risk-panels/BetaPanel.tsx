@@ -32,9 +32,9 @@ export function BetaPanel({ symbol }: { symbol: string }) {
   // Generate regression line points
   const regressionLineData = data?.regressionLine
     ? [
-      { x: data.regressionLine.x1, y: data.regressionLine.y1 },
-      { x: data.regressionLine.x2, y: data.regressionLine.y2 },
-    ]
+        { x: data.regressionLine.x1, y: data.regressionLine.y1 },
+        { x: data.regressionLine.x2, y: data.regressionLine.y2 },
+      ]
     : [];
 
   return (

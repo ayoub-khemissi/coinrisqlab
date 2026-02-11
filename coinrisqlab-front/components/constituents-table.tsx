@@ -216,9 +216,9 @@ function ConstituentsTableComponent({ constituents }: ConstituentsTableProps) {
       sortDescriptor={
         sortColumn && sortOrder
           ? {
-            column: sortColumn,
-            direction: sortOrder === "asc" ? "ascending" : "descending",
-          }
+              column: sortColumn,
+              direction: sortOrder === "asc" ? "ascending" : "descending",
+            }
           : undefined
       }
       topContent={

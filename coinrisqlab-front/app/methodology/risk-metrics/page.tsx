@@ -182,8 +182,8 @@ export default function RiskMetricsMethodologyPage() {
                 </h2>
               </div>
               <p className="text-default-600 mb-4">
-                CoinRisqLab provides a comprehensive suite of risk metrics to help
-                investors understand and quantify the risk profile of
+                CoinRisqLab provides a comprehensive suite of risk metrics to
+                help investors understand and quantify the risk profile of
                 cryptocurrencies. These metrics are based on{" "}
                 <strong>Modern Portfolio Theory</strong> and industry-standard
                 risk management practices.
