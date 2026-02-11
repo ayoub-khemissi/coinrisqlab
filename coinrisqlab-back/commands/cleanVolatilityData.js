@@ -11,31 +11,36 @@ import log from '../lib/log.js';
  */
 async function cleanVolatilityData() {
   const startTime = Date.now();
+  const connection = await Database.getConnection();
 
   try {
     log.info('='.repeat(60));
     log.info('Cleaning Volatility Data');
     log.info('='.repeat(60));
 
-    // 1. Delete portfolio_volatility_constituents (has FK to portfolio_volatility)
-    log.info('\n[1/4] Deleting portfolio_volatility_constituents...');
-    const [pvcResult] = await Database.execute('DELETE FROM portfolio_volatility_constituents');
-    log.info(`Deleted ${pvcResult.affectedRows} rows from portfolio_volatility_constituents`);
+    await connection.execute('SET FOREIGN_KEY_CHECKS = 0');
 
-    // 2. Delete portfolio_volatility
-    log.info('\n[2/4] Deleting portfolio_volatility...');
-    const [pvResult] = await Database.execute('DELETE FROM portfolio_volatility');
-    log.info(`Deleted ${pvResult.affectedRows} rows from portfolio_volatility`);
+    // 1. Truncate portfolio_volatility_constituents
+    log.info('\n[1/4] Truncating portfolio_volatility_constituents...');
+    await connection.execute('TRUNCATE TABLE portfolio_volatility_constituents');
+    log.info('Truncated portfolio_volatility_constituents');
 
-    // 3. Delete crypto_volatility
-    log.info('\n[3/4] Deleting crypto_volatility...');
-    const [cvResult] = await Database.execute('DELETE FROM crypto_volatility');
-    log.info(`Deleted ${cvResult.affectedRows} rows from crypto_volatility`);
+    // 2. Truncate portfolio_volatility
+    log.info('\n[2/4] Truncating portfolio_volatility...');
+    await connection.execute('TRUNCATE TABLE portfolio_volatility');
+    log.info('Truncated portfolio_volatility');
 
-    // 4. Delete crypto_log_returns
-    log.info('\n[4/4] Deleting crypto_log_returns...');
-    const [clrResult] = await Database.execute('DELETE FROM crypto_log_returns');
-    log.info(`Deleted ${clrResult.affectedRows} rows from crypto_log_returns`);
+    // 3. Truncate crypto_volatility
+    log.info('\n[3/4] Truncating crypto_volatility...');
+    await connection.execute('TRUNCATE TABLE crypto_volatility');
+    log.info('Truncated crypto_volatility');
+
+    // 4. Truncate crypto_log_returns
+    log.info('\n[4/4] Truncating crypto_log_returns...');
+    await connection.execute('TRUNCATE TABLE crypto_log_returns');
+    log.info('Truncated crypto_log_returns');
+
+    await connection.execute('SET FOREIGN_KEY_CHECKS = 1');
 
     const duration = Date.now() - startTime;
     log.info('\n' + '='.repeat(60));
@@ -43,8 +48,11 @@ async function cleanVolatilityData() {
     log.info('='.repeat(60));
 
   } catch (error) {
+    await connection.execute('SET FOREIGN_KEY_CHECKS = 1').catch(() => {});
     log.error(`Failed to clean volatility data: ${error.message}`);
     throw error;
+  } finally {
+    connection.release();
   }
 }
 

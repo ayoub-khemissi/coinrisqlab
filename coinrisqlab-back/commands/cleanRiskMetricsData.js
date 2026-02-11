@@ -11,31 +11,36 @@ import log from '../lib/log.js';
  */
 async function cleanRiskMetricsData() {
   const startTime = Date.now();
+  const connection = await Database.getConnection();
 
   try {
     log.info('='.repeat(60));
     log.info('Cleaning Risk Metrics Data');
     log.info('='.repeat(60));
 
-    // 1. Delete crypto_sml (uses beta values conceptually)
-    log.info('\n[1/4] Deleting crypto_sml...');
-    const [smlResult] = await Database.execute('DELETE FROM crypto_sml');
-    log.info(`Deleted ${smlResult.affectedRows} rows from crypto_sml`);
+    await connection.execute('SET FOREIGN_KEY_CHECKS = 0');
 
-    // 2. Delete crypto_beta
-    log.info('\n[2/4] Deleting crypto_beta...');
-    const [betaResult] = await Database.execute('DELETE FROM crypto_beta');
-    log.info(`Deleted ${betaResult.affectedRows} rows from crypto_beta`);
+    // 1. Truncate crypto_sml
+    log.info('\n[1/4] Truncating crypto_sml...');
+    await connection.execute('TRUNCATE TABLE crypto_sml');
+    log.info('Truncated crypto_sml');
 
-    // 3. Delete crypto_var
-    log.info('\n[3/4] Deleting crypto_var...');
-    const [varResult] = await Database.execute('DELETE FROM crypto_var');
-    log.info(`Deleted ${varResult.affectedRows} rows from crypto_var`);
+    // 2. Truncate crypto_beta
+    log.info('\n[2/4] Truncating crypto_beta...');
+    await connection.execute('TRUNCATE TABLE crypto_beta');
+    log.info('Truncated crypto_beta');
 
-    // 4. Delete crypto_distribution_stats
-    log.info('\n[4/4] Deleting crypto_distribution_stats...');
-    const [distResult] = await Database.execute('DELETE FROM crypto_distribution_stats');
-    log.info(`Deleted ${distResult.affectedRows} rows from crypto_distribution_stats`);
+    // 3. Truncate crypto_var
+    log.info('\n[3/4] Truncating crypto_var...');
+    await connection.execute('TRUNCATE TABLE crypto_var');
+    log.info('Truncated crypto_var');
+
+    // 4. Truncate crypto_distribution_stats
+    log.info('\n[4/4] Truncating crypto_distribution_stats...');
+    await connection.execute('TRUNCATE TABLE crypto_distribution_stats');
+    log.info('Truncated crypto_distribution_stats');
+
+    await connection.execute('SET FOREIGN_KEY_CHECKS = 1');
 
     const duration = Date.now() - startTime;
     log.info('\n' + '='.repeat(60));
@@ -43,8 +48,11 @@ async function cleanRiskMetricsData() {
     log.info('='.repeat(60));
 
   } catch (error) {
+    await connection.execute('SET FOREIGN_KEY_CHECKS = 1').catch(() => {});
     log.error(`Failed to clean risk metrics data: ${error.message}`);
     throw error;
+  } finally {
+    connection.release();
   }
 }
 
