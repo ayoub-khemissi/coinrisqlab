@@ -5,6 +5,7 @@ import { isExcluded, getExclusionReason } from '../utils/exclusions.js';
 const INDEX_NAME = 'CoinRisqLab 80';
 const BASE_LEVEL = 100;
 const MAX_CONSTITUENTS = 80;
+const MIN_VOLUME_24H = 200_000;
 
 /**
  * Main function to calculate the CoinRisqLab 80 Index
@@ -276,11 +277,16 @@ async function getOldestMarketData() {
  */
 function selectConstituents(marketData, verbose = false) {
   // Filter out excluded symbols using metadata-aware function
-  const filtered = marketData.filter(crypto => !isExcluded(crypto));
+  const filtered = marketData.filter(crypto => {
+    if (isExcluded(crypto)) return false;
+    if (parseFloat(crypto.volume_24h_usd) < MIN_VOLUME_24H) return false;
+    return true;
+  });
 
   if (verbose) {
     const excludedCount = marketData.length - filtered.length;
-    log.info(`Filtered out ${excludedCount} excluded symbols (stablecoins, wrapped, staked)`);
+    const lowVolumeCount = marketData.filter(crypto => !isExcluded(crypto) && parseFloat(crypto.volume_24h_usd) < MIN_VOLUME_24H).length;
+    log.info(`Filtered out ${excludedCount} symbols (${excludedCount - lowVolumeCount} excluded, ${lowVolumeCount} low volume < $${MIN_VOLUME_24H.toLocaleString()})`);
 
     // Log some examples of excluded cryptos for debugging
     const excluded = marketData.filter(crypto => isExcluded(crypto)).slice(0, 10);
