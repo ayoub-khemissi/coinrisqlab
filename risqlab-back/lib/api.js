@@ -1,11 +1,9 @@
-import consoleStamp from 'console-stamp';
+import './console-stamp.js';
 import express from 'express';
 import { readFileSync } from 'fs';
 import Config from '../utils/config.js';
 import cookieParser from 'cookie-parser';
 import cors from 'cors';
-
-consoleStamp(console, { format: ':date(yyyy-mm-dd HH:MM:ss.l):label' });
 
 const { RISQLAB_FRONT_HOSTNAME, RISQLAB_FRONT_HTTPSECURE, RISQLAB_FRONT_PORT } = Config;
 const { version, description } = JSON.parse(readFileSync('package.json'));

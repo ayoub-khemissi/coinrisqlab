@@ -1,3 +1,4 @@
+import './console-stamp.js';
 import Config from '../utils/config.js';
 import Constants from '../utils/constants.js';
 import Database from './database.js';
