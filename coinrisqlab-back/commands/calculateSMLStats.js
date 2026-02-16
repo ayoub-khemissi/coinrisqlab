@@ -1,6 +1,7 @@
 import Database from '../lib/database.js';
 import log from '../lib/log.js';
 import { calculateBetaAlpha, calculateSML, calculateAnnualizedReturn } from '../utils/riskMetrics.js';
+import { logReturn } from '../utils/statistics.js';
 
 const DEFAULT_WINDOW_DAYS = 90;
 const MINIMUM_WINDOW_DAYS = 7;
@@ -18,29 +19,37 @@ async function calculateSMLStats() {
 
     await ensureTableExists();
 
-    // Get all index log returns first
-    const [indexReturns] = await Database.execute(`
+    // Get daily index levels
+    const [indexLevels] = await Database.execute(`
       SELECT
-        date,
-        LN(index_level / LAG(index_level) OVER (ORDER BY date)) as log_return
-      FROM (
-        SELECT
-          DATE(snapshot_date) as date,
-          SUBSTRING_INDEX(GROUP_CONCAT(index_level ORDER BY snapshot_date DESC), ',', 1) + 0 as index_level
-        FROM index_history ih
-        INNER JOIN index_config ic ON ih.index_config_id = ic.id
-        WHERE ic.index_name = 'CoinRisqLab 80'
-          AND DATE(snapshot_date) < CURDATE()
-        GROUP BY DATE(snapshot_date)
-      ) daily
+        DATE(snapshot_date) as date,
+        SUBSTRING_INDEX(GROUP_CONCAT(index_level ORDER BY snapshot_date DESC), ',', 1) + 0 as index_level
+      FROM index_history ih
+      INNER JOIN index_config ic ON ih.index_config_id = ic.id
+      WHERE ic.index_name = 'CoinRisqLab 80'
+        AND DATE(snapshot_date) < CURDATE()
+      GROUP BY DATE(snapshot_date)
       ORDER BY date ASC
     `);
 
+    // Calculate index log returns in JS (same methodology as calculateLogReturns)
     const indexReturnsByDate = new Map();
-    for (const r of indexReturns) {
-      if (r.log_return !== null) {
-        indexReturnsByDate.set(r.date.toISOString().split('T')[0], parseFloat(r.log_return));
+    for (let i = 1; i < indexLevels.length; i++) {
+      const currentDate = indexLevels[i].date;
+      const previousDate = indexLevels[i - 1].date;
+      const currentLevel = parseFloat(indexLevels[i].index_level);
+      const previousLevel = parseFloat(indexLevels[i - 1].index_level);
+
+      if (!areConsecutiveDays(previousDate, currentDate)) {
+        continue;
       }
+
+      if (currentLevel <= 0 || previousLevel <= 0) {
+        continue;
+      }
+
+      const ret = logReturn(currentLevel, previousLevel);
+      indexReturnsByDate.set(currentDate.toISOString().split('T')[0], ret);
     }
 
     log.info(`Loaded ${indexReturnsByDate.size} index return days`);
@@ -111,6 +120,19 @@ async function ensureTableExists() {
       log.debug(`Table check: ${error.message}`);
     }
   }
+}
+
+function areConsecutiveDays(date1, date2) {
+  const d1 = new Date(date1);
+  const d2 = new Date(date2);
+
+  d1.setUTCHours(0, 0, 0, 0);
+  d2.setUTCHours(0, 0, 0, 0);
+
+  const oneDayMs = 24 * 60 * 60 * 1000;
+  const diffDays = (d2.getTime() - d1.getTime()) / oneDayMs;
+
+  return diffDays === 1;
 }
 
 async function calculateSMLForCrypto(cryptoId, symbol, indexReturnsByDate) {
