@@ -22,7 +22,7 @@ async function calculateCoinRisqLab80() {
     log.info(`Using index config ID: ${indexConfig.id}, Divisor: ${indexConfig.divisor}`);
 
     // 2. Find all market data timestamps that don't have an index calculation
-    const missingTimestamps = await getMissingIndexTimestamps(indexConfig.id);
+    const missingTimestamps = await getMissingIndexTimestamps(indexConfig.id, indexConfig.base_date);
 
     if (missingTimestamps.length === 0) {
       log.info('All market data timestamps already have index calculations. Nothing to do.');
@@ -64,17 +64,18 @@ async function calculateCoinRisqLab80() {
 /**
  * Get all market data timestamps that don't have a corresponding index calculation
  */
-async function getMissingIndexTimestamps(indexConfigId) {
+async function getMissingIndexTimestamps(indexConfigId, baseDate) {
   const [rows] = await Database.execute(`
     SELECT DISTINCT md.timestamp
     FROM market_data md
-    WHERE md.timestamp NOT IN (
-      SELECT ih.timestamp
-      FROM index_history ih
-      WHERE ih.index_config_id = ?
-    )
+    WHERE md.timestamp >= ?
+      AND md.timestamp NOT IN (
+        SELECT ih.timestamp
+        FROM index_history ih
+        WHERE ih.index_config_id = ?
+      )
     ORDER BY md.timestamp ASC
-  `, [indexConfigId]);
+  `, [baseDate, indexConfigId]);
 
   return rows.map(row => row.timestamp);
 }
