@@ -270,6 +270,14 @@ export default function RiskMetricsMethodologyPage() {
                     <li>Find the return at the (100-α) percentile position</li>
                     <li>Report the absolute value as potential loss</li>
                   </ol>
+                  <p className="text-default-600 mt-4 text-sm">
+                    <strong>Note:</strong> The volatility (standard deviation)
+                    used in VaR calculations is computed over a{" "}
+                    <strong>365-day window</strong>, unlike the standalone
+                    volatility metric which uses a 90-day window and is then
+                    annualized. This longer window provides more stable risk
+                    estimates for downside risk measurement.
+                  </p>
                 </div>
 
                 <div className="bg-default-50 p-6 rounded-lg">
