@@ -25,7 +25,7 @@ Each call to a CoinGecko API endpoint costs 1 credit.
 
 ### Internal (no API credits)
 
-1. **`calculateCoinCoinRisqLab80.js`**: Internal calculations on local database for the CoinRisqLab80 index. No external API calls.
+1. **`calculateCoinRisqLab80.js`**: Internal calculations on local database for the CoinRisqLab80 index. No external API calls.
 
 2. **`updateVolatility.js`**: Orchestrates the full risk metrics pipeline:
    - Logarithmic returns calculation
@@ -104,7 +104,7 @@ The `fetchOHLC.js` script uses CoinGecko's `/coins/{id}/market_chart` endpoint t
 # === CoinGecko ===
 
 # Market data + CoinRisqLab80 index (every 5 min, 2 credits CoinGecko)
-*/5 * * * * cd /home/ubuntu/coinrisqlab/coinrisqlab/coinrisqlab-back && node commands/fetchCryptoMarketData.js && node commands/calculateCoinCoinRisqLab80.js
+*/5 * * * * cd /home/ubuntu/coinrisqlab/coinrisqlab/coinrisqlab-back && node commands/fetchCryptoMarketData.js && node commands/calculateCoinRisqLab80.js
 
 # Daily Backfill via /market_chart (01:00, ~500 credits CoinGecko)
 # Fills gaps in both ohlc and market_data tables
