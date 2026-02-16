@@ -72,10 +72,12 @@ export function calculateVaR(logReturns, confidenceLevel = 95) {
   // Sort returns ascending
   const sorted = [...logReturns].sort((a, b) => a - b);
   const percentile = 100 - confidenceLevel;
-  const index = Math.floor((percentile / 100) * sorted.length);
+  // Use floor then -1 to take the lower observation (like numpy method='lower')
+  // e.g. 365 × 0.05 = 18.25 → floor = 18 → index 17 = 18th observation
+  const index = Math.max(0, Math.floor((percentile / 100) * sorted.length) - 1);
 
   // Return as positive number (represents potential loss)
-  return -sorted[Math.max(0, index)];
+  return -sorted[index];
 }
 
 /**
@@ -93,10 +95,10 @@ export function calculateCVaR(logReturns, confidenceLevel = 95) {
 
   const sorted = [...logReturns].sort((a, b) => a - b);
   const percentile = 100 - confidenceLevel;
-  const cutoffIndex = Math.floor((percentile / 100) * sorted.length);
+  const cutoffIndex = Math.max(0, Math.floor((percentile / 100) * sorted.length) - 1);
 
-  // Average of returns in the tail
-  const tailReturns = sorted.slice(0, Math.max(1, cutoffIndex + 1));
+  // Average of returns in the tail (up to and including the cutoff observation)
+  const tailReturns = sorted.slice(0, cutoffIndex + 1);
   const avgTail = mean(tailReturns);
 
   return -avgTail;
