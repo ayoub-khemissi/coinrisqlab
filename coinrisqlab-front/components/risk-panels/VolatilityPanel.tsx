@@ -23,7 +23,7 @@ import { useCryptoVolatility } from "@/hooks/useCryptoVolatility";
 import { CryptoVolatility, VolatilityPeriod } from "@/types/volatility";
 
 interface VolatilityPanelProps {
-  symbol: string;
+  cryptoId: string;
   period: RiskPeriod;
   onPeriodChange: (period: RiskPeriod) => void;
 }
@@ -158,13 +158,13 @@ function calculateVolatilityChanges(
 }
 
 export function VolatilityPanel({
-  symbol,
+  cryptoId,
   period,
   onPeriodChange,
 }: VolatilityPanelProps) {
   const [mode, setMode] = useState<"annualized" | "daily">("annualized");
   const { data, isLoading, error } = useCryptoVolatility(
-    [symbol],
+    [cryptoId],
     PERIOD_MAP[period],
   );
 

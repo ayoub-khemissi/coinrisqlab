@@ -21,8 +21,14 @@ import { MethodologyLink } from "./MethodologyLink";
 import { useBeta } from "@/hooks/useRiskMetrics";
 import { getBetaInterpretation } from "@/types/risk-metrics";
 
-export function BetaPanel({ symbol }: { symbol: string }) {
-  const { data, isLoading, error } = useBeta(symbol, "365d");
+export function BetaPanel({
+  cryptoId,
+  symbol,
+}: {
+  cryptoId: string;
+  symbol: string;
+}) {
+  const { data, isLoading, error } = useBeta(cryptoId, "365d");
 
   const betaInterpretation =
     data && data.beta !== null && data.beta !== undefined

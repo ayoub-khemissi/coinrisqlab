@@ -28,6 +28,7 @@ import {
 } from "@/types/risk-metrics";
 
 interface StressTestPanelProps {
+  cryptoId: string;
   symbol: string;
 }
 
@@ -191,8 +192,8 @@ const LiveImpactDetails = memo(function LiveImpactDetails({
   );
 });
 
-export function StressTestPanel({ symbol }: StressTestPanelProps) {
-  const { data, isLoading, error } = useStressTest(symbol);
+export function StressTestPanel({ cryptoId, symbol }: StressTestPanelProps) {
+  const { data, isLoading, error } = useStressTest(cryptoId);
   const [selectedScenario, setSelectedScenario] =
     useState<StressScenarioId | null>("covid-19");
 

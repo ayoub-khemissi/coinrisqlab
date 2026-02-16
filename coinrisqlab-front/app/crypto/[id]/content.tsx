@@ -231,28 +231,33 @@ export default function CryptoDetailContent() {
     switch (activePanel) {
       case "price":
         return (
-          <PricePanel period={period} symbol={id} onPeriodChange={setPeriod} />
+          <PricePanel
+            cryptoId={id}
+            period={period}
+            symbol={basic.symbol}
+            onPeriodChange={setPeriod}
+          />
         );
       case "volatility":
         return (
           <VolatilityPanel
+            cryptoId={id}
             period={period}
-            symbol={id}
             onPeriodChange={setPeriod}
           />
         );
       case "stress-test":
-        return <StressTestPanel symbol={id} />;
+        return <StressTestPanel cryptoId={id} symbol={basic.symbol} />;
       case "var":
-        return <VaRPanel symbol={id} />;
+        return <VaRPanel cryptoId={id} />;
       case "beta":
-        return <BetaPanel symbol={id} />;
+        return <BetaPanel cryptoId={id} symbol={basic.symbol} />;
       case "skew":
-        return <SkewPanel symbol={id} />;
+        return <SkewPanel cryptoId={id} />;
       case "kurtosis":
-        return <KurtosisPanel symbol={id} />;
+        return <KurtosisPanel cryptoId={id} />;
       case "sml":
-        return <SMLPanel symbol={id} />;
+        return <SMLPanel cryptoId={id} symbol={basic.symbol} />;
       default:
         return null;
     }
@@ -402,7 +407,7 @@ export default function CryptoDetailContent() {
               stressTestData?.scenarios.find((s) => s.id === "covid-19")
                 ?.expectedImpact
             }
-            symbol={id}
+            symbol={basic.symbol}
             var99Override={var365Data?.var99}
             onPanelChange={handlePanelChange}
           />

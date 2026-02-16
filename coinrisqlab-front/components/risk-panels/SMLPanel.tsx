@@ -21,11 +21,12 @@ import { MethodologyLink } from "./MethodologyLink";
 import { useSML } from "@/hooks/useRiskMetrics";
 
 interface SMLPanelProps {
+  cryptoId: string;
   symbol: string;
 }
 
-export function SMLPanel({ symbol }: SMLPanelProps) {
-  const { data, isLoading, error } = useSML(symbol, "90d");
+export function SMLPanel({ cryptoId, symbol }: SMLPanelProps) {
+  const { data, isLoading, error } = useSML(cryptoId, "90d");
 
   // Crypto point for scatter
   const cryptoPoint = data

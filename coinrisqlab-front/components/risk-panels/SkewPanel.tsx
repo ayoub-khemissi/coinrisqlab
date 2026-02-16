@@ -30,10 +30,10 @@ function gaussianPDF(x: number, mean: number, stdDev: number): number {
   return coefficient * Math.exp(exponent);
 }
 
-export function SkewPanel({ symbol }: { symbol: string }) {
+export function SkewPanel({ cryptoId }: { cryptoId: string }) {
   // Hardcoded to 90d as per requirements
-  const { data, isLoading, error } = useDistribution(symbol, "90d");
-  const { data: volatilityData } = useCryptoVolatility([symbol], "90d");
+  const { data, isLoading, error } = useDistribution(cryptoId, "90d");
+  const { data: volatilityData } = useCryptoVolatility([cryptoId], "90d");
 
   const dailyVolatility = volatilityData[0]?.data?.latest
     ? Number(volatilityData[0].data.latest.daily_volatility) * 100

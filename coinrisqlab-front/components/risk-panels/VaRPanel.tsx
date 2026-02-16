@@ -23,7 +23,7 @@ import { useVaR } from "@/hooks/useRiskMetrics";
 import { useCryptoVolatility } from "@/hooks/useCryptoVolatility";
 
 interface VaRPanelProps {
-  symbol: string;
+  cryptoId: string;
 }
 
 // Gaussian PDF function
@@ -34,9 +34,9 @@ function gaussianPDF(x: number, mean: number, stdDev: number): number {
   return coefficient * Math.exp(exponent);
 }
 
-export function VaRPanel({ symbol }: VaRPanelProps) {
-  const { data, isLoading, error } = useVaR(symbol, "365d");
-  const { data: volatilityData } = useCryptoVolatility([symbol], "all");
+export function VaRPanel({ cryptoId }: VaRPanelProps) {
+  const { data, isLoading, error } = useVaR(cryptoId, "365d");
+  const { data: volatilityData } = useCryptoVolatility([cryptoId], "all");
   const [isTooltipOpen, setIsTooltipOpen] = useState(false);
 
   const dailyVolatility = volatilityData[0]?.data?.latest

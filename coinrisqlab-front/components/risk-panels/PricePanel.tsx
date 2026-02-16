@@ -25,6 +25,7 @@ import {
 } from "@/lib/formatters";
 
 interface PricePanelProps {
+  cryptoId: string;
   symbol: string;
   period: RiskPeriod;
   onPeriodChange: (period: RiskPeriod) => void;
@@ -87,11 +88,12 @@ function calculatePriceChanges(
 }
 
 export function PricePanel({
+  cryptoId,
   symbol,
   period,
   onPeriodChange,
 }: PricePanelProps) {
-  const { data, isLoading, error } = usePriceHistory(symbol, period);
+  const { data, isLoading, error } = usePriceHistory(cryptoId, period);
 
   const currentPrice = data?.current?.price ?? 0;
 
