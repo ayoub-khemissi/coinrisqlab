@@ -50,13 +50,17 @@ The application is split into two main parts:
 -   **Charting:** Recharts
 -   **Linting/Formatting:** ESLint, Prettier
 
+## Deployment Guides
+
+-   [Ubuntu 24.04 LTS — Full Installation Guide](coinrisqlab-back/doc/INSTALL-UBUNTU-24.04.MD) (includes Nginx, systemd, cron, SSL)
+
 ## Prerequisites
 
 -   Node.js (v20 or later recommended)
 -   NPM or a compatible package manager
 -   A running MySQL server
 
-## Installation and Setup
+## Installation and Setup (Quick Start)
 
 1.  **Clone the repository:**
     ```bash
