@@ -182,12 +182,11 @@ export default function VolatilityMethodologyPage() {
                 </h2>
               </div>
               <p className="text-default-600 mb-4">
-                The CoinRisqLab 80 Volatility system calculates risk metrics for
-                both individual cryptocurrencies and the CoinRisqLab 80 Index
-                portfolio. Our methodology uses{" "}
-                <strong>logarithmic returns</strong> and implements a{" "}
-                <strong>rolling window approach</strong> to measure historical
-                volatility.
+                The CoinRisqLab Volatility system calculates risk metrics for
+                both individual cryptocurrencies and the top 40 portfolio. Our
+                methodology uses <strong>logarithmic returns</strong> and
+                implements a <strong>rolling window approach</strong> to measure
+                historical volatility.
               </p>
               <p className="text-default-600 mb-4">
                 For portfolio-level calculations, we use proper{" "}
@@ -762,8 +761,8 @@ export default function VolatilityMethodologyPage() {
                 </h2>
               </div>
               <p className="text-default-600 mb-6">
-                The third stage calculates the volatility of the CoinRisqLab 80
-                Index portfolio using market-cap weights and the full covariance
+                The third stage calculates the volatility of the top 40
+                portfolio using market-cap weights and the full covariance
                 matrix to account for correlations between constituents.
               </p>
 

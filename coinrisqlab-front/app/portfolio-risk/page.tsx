@@ -231,7 +231,7 @@ export default function PortfolioRiskPage() {
           </Link>
         </div>
         <p className="text-lg text-default-600 mt-4">
-          Comprehensive risk analysis for the CoinRisqLab 80 Index
+          Comprehensive risk analysis for the top 40 portfolio
         </p>
       </div>
 
@@ -339,15 +339,15 @@ export default function PortfolioRiskPage() {
               <div className="flex justify-between">
                 <span className="text-sm text-default-500">Constituents</span>
                 <div className="flex items-center gap-2">
-                  {current.num_constituents < 80 && (
+                  {current.num_constituents < 40 && (
                     <Tooltip
                       content={
                         <div className="px-1 py-2 max-w-xs">
                           <div className="text-small font-bold">
-                            Fewer Than 80 Constituents
+                            Fewer Than 40 Constituents
                           </div>
                           <div className="text-tiny">
-                            The index has fewer than 80 constituents due to
+                            The portfolio has fewer than 40 constituents due to
                             insufficient historical data for some candidates.
                           </div>
                         </div>
