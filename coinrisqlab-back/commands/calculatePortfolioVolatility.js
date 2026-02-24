@@ -1,5 +1,6 @@
 import Database from '../lib/database.js';
 import log from '../lib/log.js';
+import { isExcluded } from '../utils/exclusions.js';
 import {
   buildCovarianceMatrix,
   portfolioVolatility,
@@ -10,10 +11,12 @@ import {
 
 const DEFAULT_WINDOW_DAYS = 90;
 const MINIMUM_WINDOW_DAYS = 7; // Minimum days for statistical validity
-const INDEX_NAME = 'CoinRisqLab 80';
+const MAX_CONSTITUENTS = 40;
+const CANDIDATE_POOL_SIZE = 80;
+const MIN_VOLUME_24H = 2_000_000;
 
 /**
- * Calculate and store portfolio volatility for the CoinRisqLab 80 Index
+ * Calculate and store portfolio volatility for the top 40 cryptos by market cap
  * Uses market cap weighted approach with full covariance matrix
  */
 async function calculatePortfolioVolatility() {
@@ -22,34 +25,33 @@ async function calculatePortfolioVolatility() {
   try {
     log.info('Starting portfolio volatility calculation...');
 
-    // Get active index configuration
-    const indexConfig = await getIndexConfig();
-    log.info(`Using index config ID: ${indexConfig.id}`);
+    // Get active index config ID (FK for portfolio_volatility)
+    const indexConfigId = await getIndexConfigId();
+    log.info(`Using index config ID: ${indexConfigId}`);
 
-    // Get dates where we have index history (one row per day, with latest timestamp)
-    // Exclude current day - we only calculate for D-1 and earlier
-    const [indexDates] = await Database.execute(`
-      SELECT snapshot_date as date, MAX(timestamp) as timestamp
-      FROM index_history
-      WHERE index_config_id = ?
-        AND snapshot_date < CURDATE()
-      GROUP BY snapshot_date
-      ORDER BY snapshot_date DESC
+    // Get dates from crypto_log_returns not yet in portfolio_volatility
+    const [dates] = await Database.execute(`
+      SELECT DISTINCT clr.date
+      FROM crypto_log_returns clr
+      WHERE clr.date < CURDATE()
+        AND clr.date NOT IN (
+          SELECT date FROM portfolio_volatility WHERE index_config_id = ?
+        )
+      ORDER BY date DESC
       LIMIT 100
-    `, [indexConfig.id]);
+    `, [indexConfigId]);
 
-    log.info(`Found ${indexDates.length} index calculation dates`);
+    log.info(`Found ${dates.length} dates to calculate`);
 
     let totalCalculated = 0;
     let totalSkipped = 0;
     let errors = 0;
 
-    for (const dateRow of indexDates) {
+    for (const dateRow of dates) {
       try {
         const result = await calculatePortfolioVolatilityForDate(
-          indexConfig.id,
-          dateRow.date,
-          dateRow.timestamp
+          indexConfigId,
+          dateRow.date
         );
 
         if (result.calculated) {
@@ -74,47 +76,121 @@ async function calculatePortfolioVolatility() {
 }
 
 /**
- * Get the active index configuration
+ * Get the active index configuration ID
  */
-async function getIndexConfig() {
+async function getIndexConfigId() {
   const [rows] = await Database.execute(
-    'SELECT * FROM index_config WHERE index_name = ? AND is_active = TRUE LIMIT 1',
-    [INDEX_NAME]
+    'SELECT id FROM index_config WHERE is_active = TRUE LIMIT 1'
   );
 
   if (rows.length === 0) {
     throw new Error('No active index configuration found');
   }
 
-  return rows[0];
+  return rows[0].id;
+}
+
+/**
+ * Get top cryptos by market cap for a specific date
+ * Filters out excluded categories and requires minimum volume
+ * @param {string} date - Date for which to get top cryptos
+ * @returns {Promise<Array>} Top candidates sorted by market cap desc
+ */
+async function getTopCryptosForDate(date) {
+  // Get candidates from market_data for this date, with metadata for exclusion filtering
+  const [candidates] = await Database.execute(`
+    SELECT
+      md.crypto_id,
+      c.symbol,
+      c.name,
+      cm.categories,
+      md.volume_24h_usd,
+      (md.price_usd * md.circulating_supply) as market_cap_usd
+    FROM market_data md
+    INNER JOIN cryptocurrencies c ON md.crypto_id = c.id
+    LEFT JOIN cryptocurrency_metadata cm ON c.id = cm.crypto_id
+    INNER JOIN (
+      SELECT crypto_id, MAX(timestamp) as max_ts
+      FROM market_data
+      WHERE price_date = ?
+        AND (price_usd * circulating_supply) > 0
+      GROUP BY crypto_id
+    ) latest ON md.crypto_id = latest.crypto_id AND md.timestamp = latest.max_ts
+    WHERE md.volume_24h_usd >= ?
+    ORDER BY (md.price_usd * md.circulating_supply) DESC
+  `, [date, MIN_VOLUME_24H]);
+
+  // Filter excluded cryptos (stablecoins, wrapped, staked)
+  const filtered = candidates.filter(c => !isExcluded(c));
+
+  // Return top CANDIDATE_POOL_SIZE
+  return filtered.slice(0, CANDIDATE_POOL_SIZE).map(c => ({
+    crypto_id: c.crypto_id,
+    symbol: c.symbol,
+    name: c.name,
+    marketCap: parseFloat(c.market_cap_usd)
+  }));
+}
+
+/**
+ * Select top MAX_CONSTITUENTS candidates that have sufficient log return data
+ * @param {Array} candidates - Candidates sorted by market cap desc
+ * @param {string} date - Target date
+ * @returns {Promise<Array>} Selected constituents with sufficient data
+ */
+async function selectConstituentsWithData(candidates, date) {
+  if (candidates.length === 0) return [];
+
+  const cryptoIds = candidates.map(c => c.crypto_id);
+
+  // Batch query: count available log return days for each candidate
+  const [dayCounts] = await Database.execute(`
+    SELECT crypto_id, COUNT(*) as num_days
+    FROM crypto_log_returns
+    WHERE crypto_id IN (${cryptoIds.join(',')})
+      AND date <= ?
+    GROUP BY crypto_id
+  `, [date]);
+
+  const dayCountMap = new Map(dayCounts.map(d => [d.crypto_id, d.num_days]));
+
+  const selected = [];
+  for (const candidate of candidates) {
+    if (selected.length >= MAX_CONSTITUENTS) break;
+
+    const availableDays = dayCountMap.get(candidate.crypto_id) || 0;
+    if (availableDays >= MINIMUM_WINDOW_DAYS) {
+      selected.push(candidate);
+    } else {
+      log.debug(`${candidate.symbol}: skipped (only ${availableDays} days of data)`);
+    }
+  }
+
+  return selected;
 }
 
 /**
  * Calculate portfolio volatility for a specific date
- * @param {number} indexConfigId - Index configuration ID
+ * @param {number} indexConfigId - Index configuration ID (FK)
  * @param {string} date - Date for calculation
- * @param {string} timestamp - Full timestamp from index history
  * @returns {Promise<{calculated: boolean}>}
  */
-async function calculatePortfolioVolatilityForDate(indexConfigId, date, timestamp) {
+async function calculatePortfolioVolatilityForDate(indexConfigId, date) {
   const calcStartTime = Date.now();
 
-  // We'll determine the actual window days after checking constituent data
-  // For now, just check if any calculation exists for this date
-  const [existing] = await Database.execute(
-    'SELECT id FROM portfolio_volatility WHERE index_config_id = ? AND date = ?',
-    [indexConfigId, date]
-  );
+  // Get top cryptos for this date
+  const candidates = await getTopCryptosForDate(date);
 
-  if (existing.length > 0) {
+  if (candidates.length === 0) {
+    log.debug(`No candidates found for ${date}`);
     return { calculated: false };
   }
 
-  // Get constituents for this date (uses ohlc + market_data)
-  const constituents = await getConstituentsForDate(indexConfigId, timestamp, date);
+  // Select constituents with sufficient data
+  const constituents = await selectConstituentsWithData(candidates, date);
 
   if (constituents.length === 0) {
-    log.debug(`No constituents found for ${date}`);
+    log.debug(`No constituents with sufficient data for ${date}`);
     return { calculated: false };
   }
 
@@ -216,84 +292,6 @@ async function calculatePortfolioVolatilityForDate(indexConfigId, date, timestam
   log.info(`${date}: Portfolio volatility = ${(annualizedVol * 100).toFixed(2)}% (${normalizedConstituents.length} constituents, ${effectiveWindowDays} days window)`);
 
   return { calculated: true };
-}
-
-/**
- * Get index constituents for a specific date
- * Uses ohlc for close price and market_data for circulating_supply
- */
-async function getConstituentsForDate(indexConfigId, timestamp, date) {
-  // Get the list of constituents from index_constituents
-  const [constituents] = await Database.execute(`
-    SELECT
-      ic.crypto_id,
-      c.symbol,
-      c.name
-    FROM index_constituents ic
-    INNER JOIN index_history ih ON ic.index_history_id = ih.id
-    INNER JOIN cryptocurrencies c ON ic.crypto_id = c.id
-    WHERE ih.index_config_id = ?
-      AND ih.timestamp = ?
-    ORDER BY ic.rank_position ASC
-  `, [indexConfigId, timestamp]);
-
-  if (constituents.length === 0) {
-    return [];
-  }
-
-  const cryptoIds = constituents.map(c => c.crypto_id);
-
-  // Get close price from ohlc and circulating_supply from market_data
-  // For market_data, use the most recent record on or before the date
-  const [ohlcData] = await Database.execute(`
-    SELECT
-      o.crypto_id,
-      o.close as price_usd,
-      md.circulating_supply,
-      (o.close * md.circulating_supply) as market_cap_usd
-    FROM (
-      SELECT crypto_id, close,
-             ROW_NUMBER() OVER (PARTITION BY crypto_id ORDER BY timestamp DESC) as rn
-      FROM ohlc
-      WHERE crypto_id IN (${cryptoIds.join(',')})
-        AND DATE(timestamp) = ?
-        AND close > 0
-    ) o
-    INNER JOIN (
-      SELECT crypto_id, circulating_supply,
-             ROW_NUMBER() OVER (PARTITION BY crypto_id ORDER BY timestamp DESC) as rn
-      FROM market_data
-      WHERE crypto_id IN (${cryptoIds.join(',')})
-        AND price_date <= ?
-        AND circulating_supply > 0
-    ) md ON o.crypto_id = md.crypto_id AND md.rn = 1
-    WHERE o.rn = 1
-  `, [date, date]);
-
-  // Build a map of crypto_id -> data
-  const dataMap = new Map();
-  for (const row of ohlcData) {
-    dataMap.set(row.crypto_id, row);
-  }
-
-  // Log any missing constituents for debugging
-  const missingConstituents = constituents.filter(c => !dataMap.has(c.crypto_id));
-  if (missingConstituents.length > 0) {
-    log.warn(`${date}: ${missingConstituents.length} constituents missing ohlc/market data: ${missingConstituents.map(c => c.symbol).join(', ')}`);
-  }
-
-  // Combine constituents with their data
-  return constituents
-    .filter(c => dataMap.has(c.crypto_id))
-    .map(c => {
-      const data = dataMap.get(c.crypto_id);
-      return {
-        crypto_id: c.crypto_id,
-        symbol: c.symbol,
-        name: c.name,
-        marketCap: parseFloat(data.market_cap_usd)
-      };
-    });
 }
 
 /**

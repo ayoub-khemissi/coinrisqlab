@@ -12,6 +12,8 @@ export interface Cryptocurrency {
   percent_change_7d: string | null;
   timestamp: string;
   rank: number;
+  ma_90d: string | null;
+  beta: string | null;
 }
 
 export interface CryptocurrencyResponse {

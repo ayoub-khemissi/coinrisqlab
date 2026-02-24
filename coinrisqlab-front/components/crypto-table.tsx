@@ -23,6 +23,7 @@ import { MarketCapCell } from "./MarketCapCell";
 import { Cryptocurrency } from "@/types/cryptocurrency";
 import {
   formatUSD,
+  formatCryptoPrice,
   formatCirculatingSupply,
   formatPercentage,
   getPercentageColor,
@@ -65,6 +66,8 @@ function CryptoTableComponent({
     { key: "market_cap_usd", label: "Market Cap", sortable: true },
     { key: "circulating_supply", label: "Circulating Supply", sortable: true },
     { key: "volume_24h_usd", label: "24h Volume", sortable: true },
+    { key: "ma_90d", label: "MA 90d", sortable: true },
+    { key: "beta", label: "Beta", sortable: true },
   ];
 
   const renderCell = (crypto: Cryptocurrency, columnKey: React.Key) => {
@@ -160,6 +163,22 @@ function CryptoTableComponent({
         return (
           <div className="font-mono">{formatUSD(crypto.volume_24h_usd)}</div>
         );
+
+      case "ma_90d":
+        return (
+          <div className="font-mono">
+            {crypto.ma_90d ? formatCryptoPrice(crypto.ma_90d) : "—"}
+          </div>
+        );
+
+      case "beta": {
+        const betaValue = crypto.beta ? parseFloat(crypto.beta) : null;
+        return (
+          <div className="font-mono">
+            {betaValue !== null ? betaValue.toFixed(2) : "—"}
+          </div>
+        );
+      }
 
       default:
         return null;

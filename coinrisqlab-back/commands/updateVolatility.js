@@ -10,6 +10,7 @@ import log from '../lib/log.js';
  * 5. Calculate VaR/CVaR statistics
  * 6. Calculate Beta/Alpha statistics
  * 7. Calculate SML statistics
+ * 8. Calculate moving averages
  */
 async function updateVolatility() {
   const startTime = Date.now();
@@ -20,32 +21,36 @@ async function updateVolatility() {
     log.info('='.repeat(60));
 
     // Step 1: Calculate logarithmic returns
-    log.info('\n[1/7] Calculating logarithmic returns...');
+    log.info('\n[1/8] Calculating logarithmic returns...');
     await runCommand('calculateLogReturns.js');
 
     // Step 2: Calculate individual crypto volatility
-    log.info('\n[2/7] Calculating individual cryptocurrency volatility...');
+    log.info('\n[2/8] Calculating individual cryptocurrency volatility...');
     await runCommand('calculateCryptoVolatility.js');
 
     // Step 3: Calculate portfolio volatility
-    log.info('\n[3/7] Calculating portfolio volatility...');
+    log.info('\n[3/8] Calculating portfolio volatility...');
     await runCommand('calculatePortfolioVolatility.js');
 
     // Step 4: Calculate distribution statistics (skewness & kurtosis)
-    log.info('\n[4/7] Calculating distribution statistics (skewness & kurtosis)...');
+    log.info('\n[4/8] Calculating distribution statistics (skewness & kurtosis)...');
     await runCommand('calculateDistributionStats.js');
 
     // Step 5: Calculate VaR/CVaR statistics
-    log.info('\n[5/7] Calculating VaR/CVaR statistics...');
+    log.info('\n[5/8] Calculating VaR/CVaR statistics...');
     await runCommand('calculateVaRStats.js');
 
     // Step 6: Calculate Beta/Alpha statistics
-    log.info('\n[6/7] Calculating Beta/Alpha statistics...');
+    log.info('\n[6/8] Calculating Beta/Alpha statistics...');
     await runCommand('calculateBetaStats.js');
 
     // Step 7: Calculate SML statistics
-    log.info('\n[7/7] Calculating SML statistics...');
+    log.info('\n[7/8] Calculating SML statistics...');
     await runCommand('calculateSMLStats.js');
+
+    // Step 8: Calculate moving averages
+    log.info('\n[8/8] Calculating moving averages...');
+    await runCommand('calculateMovingAverages.js');
 
     const totalDuration = Date.now() - startTime;
     log.info('\n' + '='.repeat(60));

@@ -367,6 +367,20 @@ CREATE TABLE IF NOT EXISTS `crypto_sml` (
     -- idx_alpha removed: value only displayed, never filtered/sorted on
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+DROP TABLE IF EXISTS `crypto_moving_averages`;
+CREATE TABLE IF NOT EXISTS `crypto_moving_averages` (
+    `id` BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    `crypto_id` INT UNSIGNED NOT NULL,
+    `date` DATE NOT NULL,
+    `window_days` INT UNSIGNED NOT NULL DEFAULT 90,
+    `moving_average` DECIMAL(30, 18) NOT NULL,
+    `num_observations` INT UNSIGNED NOT NULL,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (`crypto_id`) REFERENCES `cryptocurrencies`(`id`) ON DELETE CASCADE,
+    UNIQUE KEY `idx_crypto_date_window` (`crypto_id`, `date`, `window_days`),
+    KEY `idx_date` (`date`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 COMMIT;
 
 SET FOREIGN_KEY_CHECKS = 1;
