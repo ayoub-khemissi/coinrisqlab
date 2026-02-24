@@ -30,6 +30,7 @@ interface VolatilityPanelProps {
 
 const PERIODS: RiskPeriod[] = ["7d", "30d", "90d", "all"];
 const PERIOD_MAP: Record<RiskPeriod, VolatilityPeriod> = {
+  "24h": "24h",
   "7d": "7d",
   "30d": "30d",
   "90d": "90d",
