@@ -4,38 +4,28 @@ import Database from '../lib/database.js';
 import log from '../lib/log.js';
 
 const RECOVERY_WINDOW_DAYS = 730; // Max gap detection window (= API max on Basic plan: 2 years)
-const HOURLY_BACKFILL_DAYS = 90;  // CoinGecko returns hourly auto for days <= 90
-const HOURLY_ENTRY_THRESHOLD = 500; // If a crypto has fewer entries in 90 days, needs hourly backfill
 const API_DELAY_MS = 250;         // Rate limiting: 240 calls/min (Basic plan limit = 250/min)
 const DAYS_BUFFER = 2;            // Extra margin beyond the oldest gap
 
 /**
  * Main function: smart backfill via /market_chart.
- * Phase 1-2: Daily backfill into ohlc + market_data (days=730, daily granularity)
- * Phase 3-4: Hourly backfill into market_data only (days=90, hourly auto granularity)
+ * Detects gaps in ohlc and backfills daily data (days=730).
  */
 async function fetchDailyData() {
   const startTime = Date.now();
 
   try {
-    log.info('Starting data backfill (CoinGecko /market_chart)...');
+    log.info('Starting OHLC backfill (CoinGecko /market_chart)...');
 
     if (!config.COINGECKO_API_KEY) {
       throw new Error('COINGECKO_API_KEY is not configured');
     }
 
-    // ── Phase 1-2: Daily backfill (ohlc + market_data) ──
-    const dailyStats = await runDailyBackfill();
+    const stats = await runDailyBackfill();
 
-    // ── Phase 3-4: Hourly backfill (market_data only) ──
-    const hourlyStats = await runHourlyBackfill();
-
-    // ── Phase 5: Summary ──
     const duration = Date.now() - startTime;
     log.info(`Backfill completed in ${(duration / 1000).toFixed(2)}s`);
-    log.info(`Daily  -> API calls: ${dailyStats.apiCalls}, OHLC inserted: ${dailyStats.ohlcInserted}, market_data inserted: ${dailyStats.mdInserted}, errors: ${dailyStats.apiErrors}`);
-    log.info(`Hourly -> API calls: ${hourlyStats.apiCalls}, market_data inserted: ${hourlyStats.mdInserted}, errors: ${hourlyStats.apiErrors}`);
-    log.info(`Total API credits used: ${dailyStats.apiCalls + hourlyStats.apiCalls}`);
+    log.info(`API calls: ${stats.apiCalls}, OHLC inserted: ${stats.ohlcInserted}, errors: ${stats.apiErrors}`);
 
   } catch (error) {
     log.error(`Error in fetchDailyData: ${error.message}`);
@@ -48,10 +38,10 @@ async function fetchDailyData() {
 // ═══════════════════════════════════════════════════════════════
 
 /**
- * Run the daily backfill: detect gaps in ohlc/market_data, fetch days=730 (daily auto).
+ * Run the daily backfill: detect gaps in ohlc, fetch days=730 (daily auto).
  */
 async function runDailyBackfill() {
-  const stats = { apiCalls: 0, ohlcInserted: 0, mdInserted: 0, apiErrors: 0 };
+  const stats = { apiCalls: 0, ohlcInserted: 0, apiErrors: 0 };
 
   const cryptosWithGaps = await detectCryptosWithDailyGaps();
 
@@ -66,7 +56,6 @@ async function runDailyBackfill() {
     try {
       const result = await processDailyBackfill(crypto.id, crypto.symbol, crypto.coingecko_id);
       stats.ohlcInserted += result.ohlcInserted;
-      stats.mdInserted += result.mdInserted;
 
       if (result.apiCalled) {
         stats.apiCalls++;
@@ -86,24 +75,17 @@ async function runDailyBackfill() {
 }
 
 /**
- * Detect all cryptos where yesterday is missing from ohlc OR market_data.
+ * Detect all cryptos where yesterday is missing from ohlc.
  */
 async function detectCryptosWithDailyGaps() {
   const [rows] = await Database.execute(`
     SELECT c.id, c.symbol, c.coingecko_id
     FROM cryptocurrencies c
     WHERE c.coingecko_id IS NOT NULL
-      AND (
-        NOT EXISTS (
-          SELECT 1 FROM ohlc o
-          WHERE o.crypto_id = c.id
-            AND o.timestamp = CONCAT(DATE_SUB(CURDATE(), INTERVAL 1 DAY), ' 00:00:00')
-        )
-        OR NOT EXISTS (
-          SELECT 1 FROM market_data md
-          WHERE md.crypto_id = c.id
-            AND md.price_date = DATE_SUB(CURDATE(), INTERVAL 1 DAY)
-        )
+      AND NOT EXISTS (
+        SELECT 1 FROM ohlc o
+        WHERE o.crypto_id = c.id
+          AND o.timestamp = CONCAT(DATE_SUB(CURDATE(), INTERVAL 1 DAY), ' 00:00:00')
       )
     ORDER BY c.symbol
   `);
@@ -117,24 +99,24 @@ async function detectCryptosWithDailyGaps() {
 async function processDailyBackfill(cryptoId, symbol, coingeckoId) {
   const gaps = await detectDetailedDailyGaps(cryptoId);
 
-  if (gaps.ohlcMissing.size === 0 && gaps.mdMissing.size === 0) {
+  if (gaps.ohlcMissing.size === 0) {
     log.debug(`${symbol}: No gaps on detailed check, skipping`);
-    return { ohlcInserted: 0, mdInserted: 0, apiCalled: false, apiError: false };
+    return { ohlcInserted: 0, apiCalled: false, apiError: false };
   }
 
   const daysNeeded = gaps.daysNeeded;
-  log.debug(`${symbol}: ${gaps.ohlcMissing.size} ohlc gap(s), ${gaps.mdMissing.size} md gap(s), fetching days=${daysNeeded}`);
+  log.debug(`${symbol}: ${gaps.ohlcMissing.size} ohlc gap(s), fetching days=${daysNeeded}`);
 
   const { data, error: apiError } = await fetchMarketChart(coingeckoId, daysNeeded);
 
   if (apiError) {
     log.warn(`${symbol}: API error - ${apiError}`);
-    return { ohlcInserted: 0, mdInserted: 0, apiCalled: true, apiError: true };
+    return { ohlcInserted: 0, apiCalled: true, apiError: true };
   }
 
   if (!data || !data.prices || data.prices.length === 0) {
     log.warn(`${symbol}: No data returned from API`);
-    return { ohlcInserted: 0, mdInserted: 0, apiCalled: true, apiError: true };
+    return { ohlcInserted: 0, apiCalled: true, apiError: true };
   }
 
   // Aggregate to daily data
@@ -149,26 +131,15 @@ async function processDailyBackfill(cryptoId, symbol, coingeckoId) {
     }
   }
 
-  // Insert into market_data (only missing dates, daily timestamp)
-  let mdInserted = 0;
-  for (const [dateStr, dayData] of dailyData) {
-    if (gaps.mdMissing.has(dateStr) && dayData.price > 0 && dayData.marketCap > 0) {
-      const circulatingSupply = dayData.marketCap / dayData.price;
-      const timestamp = `${dateStr} 00:00:00`;
-      await insertMarketDataRecord(cryptoId, timestamp, dayData.price, circulatingSupply, dayData.volume);
-      mdInserted++;
-    }
+  if (ohlcInserted > 0) {
+    log.debug(`${symbol}: Inserted ${ohlcInserted} ohlc record(s)`);
   }
 
-  if (ohlcInserted > 0 || mdInserted > 0) {
-    log.debug(`${symbol}: Inserted ${ohlcInserted} ohlc + ${mdInserted} market_data record(s)`);
-  }
-
-  return { ohlcInserted, mdInserted, apiCalled: true, apiError: false };
+  return { ohlcInserted, apiCalled: true, apiError: false };
 }
 
 /**
- * Detect detailed daily gaps in ohlc and market_data.
+ * Detect detailed daily gaps in ohlc.
  */
 async function detectDetailedDailyGaps(cryptoId) {
   const now = new Date();
@@ -190,26 +161,12 @@ async function detectDetailedDailyGaps(cryptoId) {
 
   const ohlcSet = new Set(existingOhlc.map(r => r.d));
 
-  const [existingMd] = await Database.execute(`
-    SELECT DISTINCT DATE_FORMAT(price_date, '%Y-%m-%d') as d
-    FROM market_data
-    WHERE crypto_id = ?
-      AND price_date >= DATE_SUB(CURDATE(), INTERVAL ? DAY)
-  `, [cryptoId, RECOVERY_WINDOW_DAYS]);
-
-  const mdSet = new Set(existingMd.map(r => r.d));
-
   const ohlcMissing = new Set();
-  const mdMissing = new Set();
   let oldestGap = null;
 
   for (const dateStr of allDates) {
     if (!ohlcSet.has(dateStr)) {
       ohlcMissing.add(dateStr);
-      if (!oldestGap || dateStr < oldestGap) oldestGap = dateStr;
-    }
-    if (!mdSet.has(dateStr)) {
-      mdMissing.add(dateStr);
       if (!oldestGap || dateStr < oldestGap) oldestGap = dateStr;
     }
   }
@@ -222,116 +179,7 @@ async function detectDetailedDailyGaps(cryptoId) {
     daysNeeded = Math.min(diffDays + DAYS_BUFFER, RECOVERY_WINDOW_DAYS);
   }
 
-  return { ohlcMissing, mdMissing, daysNeeded };
-}
-
-// ═══════════════════════════════════════════════════════════════
-// HOURLY BACKFILL (Phase 3-4)
-// ═══════════════════════════════════════════════════════════════
-
-/**
- * Run the hourly backfill: fetch days=90 (hourly auto), insert into market_data only.
- * Skips cryptos that already have sufficient entries (from live cron or previous backfill).
- */
-async function runHourlyBackfill() {
-  const stats = { apiCalls: 0, mdInserted: 0, apiErrors: 0 };
-
-  const cryptos = await detectCryptosNeedingHourlyBackfill();
-
-  if (cryptos.length === 0) {
-    log.info('[Hourly] All cryptos have sufficient hourly data');
-    return stats;
-  }
-
-  log.info(`[Hourly] Found ${cryptos.length} crypto(s) needing hourly backfill`);
-
-  for (const crypto of cryptos) {
-    try {
-      const result = await processHourlyBackfill(crypto.id, crypto.symbol, crypto.coingecko_id);
-      stats.mdInserted += result.mdInserted;
-
-      if (result.apiCalled) {
-        stats.apiCalls++;
-        await delay(API_DELAY_MS);
-      }
-
-      if (result.apiError) {
-        stats.apiErrors++;
-      }
-    } catch (error) {
-      log.error(`[Hourly] Error processing ${crypto.symbol}: ${error.message}`);
-      stats.apiErrors++;
-    }
-  }
-
-  return stats;
-}
-
-/**
- * Detect cryptos that lack hourly data in market_data for the last 90 days.
- * If a crypto has fewer than HOURLY_ENTRY_THRESHOLD entries, it needs hourly backfill.
- */
-async function detectCryptosNeedingHourlyBackfill() {
-  const [rows] = await Database.execute(`
-    SELECT c.id, c.symbol, c.coingecko_id, COUNT(md.id) as entry_count
-    FROM cryptocurrencies c
-    LEFT JOIN market_data md
-      ON md.crypto_id = c.id
-      AND md.price_date >= DATE_SUB(CURDATE(), INTERVAL ? DAY)
-    WHERE c.coingecko_id IS NOT NULL
-    GROUP BY c.id, c.symbol, c.coingecko_id
-    HAVING entry_count < ?
-    ORDER BY c.symbol
-  `, [HOURLY_BACKFILL_DAYS, HOURLY_ENTRY_THRESHOLD]);
-
-  return rows;
-}
-
-/**
- * Process hourly backfill for a single crypto.
- * Fetches days=90 (auto hourly granularity), inserts each hourly point into market_data.
- * Does NOT touch the ohlc table (stays daily for log returns).
- */
-async function processHourlyBackfill(cryptoId, symbol, coingeckoId) {
-  const { data, error: apiError } = await fetchMarketChart(coingeckoId, HOURLY_BACKFILL_DAYS);
-
-  if (apiError) {
-    log.warn(`${symbol}: Hourly API error - ${apiError}`);
-    return { mdInserted: 0, apiCalled: true, apiError: true };
-  }
-
-  if (!data || !data.prices || data.prices.length === 0) {
-    log.warn(`${symbol}: No hourly data returned from API`);
-    return { mdInserted: 0, apiCalled: true, apiError: true };
-  }
-
-  const todayStr = formatDateString(new Date());
-  let mdInserted = 0;
-
-  for (let i = 0; i < data.prices.length; i++) {
-    const [ts, price] = data.prices[i];
-
-    // Skip today (incomplete)
-    const dateStr = formatDateString(new Date(ts));
-    if (dateStr === todayStr) continue;
-    if (!price || price <= 0) continue;
-
-    const marketCap = data.market_caps?.[i]?.[1] || 0;
-    const volume = data.total_volumes?.[i]?.[1] || 0;
-    if (marketCap <= 0) continue;
-
-    const circulatingSupply = marketCap / price;
-    const timestamp = formatHourlyTimestamp(new Date(ts));
-
-    await insertMarketDataRecord(cryptoId, timestamp, price, circulatingSupply, volume);
-    mdInserted++;
-  }
-
-  if (mdInserted > 0) {
-    log.debug(`${symbol}: Hourly backfill inserted ${mdInserted} market_data record(s)`);
-  }
-
-  return { mdInserted, apiCalled: true, apiError: false };
+  return { ohlcMissing, daysNeeded };
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -432,22 +280,6 @@ async function insertOhlcRecord(cryptoId, dateStr, price) {
 }
 
 /**
- * Insert a market_data record (daily or hourly).
- * ON DUPLICATE KEY: does NOT overwrite existing non-zero values
- * (live cron snapshots are more complete).
- */
-async function insertMarketDataRecord(cryptoId, timestamp, priceUsd, circulatingSupply, volume24h) {
-  await Database.execute(`
-    INSERT INTO market_data (crypto_id, price_usd, circulating_supply, volume_24h_usd, timestamp)
-    VALUES (?, ?, ?, ?, ?)
-    ON DUPLICATE KEY UPDATE
-    price_usd = IF(price_usd = 0, VALUES(price_usd), price_usd),
-    circulating_supply = IF(circulating_supply = 0, VALUES(circulating_supply), circulating_supply),
-    volume_24h_usd = IF(volume_24h_usd = 0, VALUES(volume_24h_usd), volume_24h_usd)
-  `, [cryptoId, priceUsd, circulatingSupply, volume24h, timestamp]);
-}
-
-/**
  * Format a Date as YYYY-MM-DD string (UTC).
  */
 function formatDateString(date) {
@@ -455,17 +287,6 @@ function formatDateString(date) {
   const month = String(date.getUTCMonth() + 1).padStart(2, '0');
   const day = String(date.getUTCDate()).padStart(2, '0');
   return `${year}-${month}-${day}`;
-}
-
-/**
- * Format a Date as YYYY-MM-DD HH:00:00 string (UTC, rounded to the hour).
- */
-function formatHourlyTimestamp(date) {
-  const year = date.getUTCFullYear();
-  const month = String(date.getUTCMonth() + 1).padStart(2, '0');
-  const day = String(date.getUTCDate()).padStart(2, '0');
-  const hours = String(date.getUTCHours()).padStart(2, '0');
-  return `${year}-${month}-${day} ${hours}:00:00`;
 }
 
 /**
