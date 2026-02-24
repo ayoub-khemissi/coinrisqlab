@@ -73,16 +73,6 @@ CREATE TABLE IF NOT EXISTS `index_config` (
     UNIQUE KEY `idx_index_name` (`index_name`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Initialize CoinRisqLab 80 Index with base configuration
--- The divisor will be calculated dynamically on first run based on actual market data
--- Base Level = 100, calculated as: Divisor = (Total Market Cap of top 80) / 100
-INSERT INTO `index_config` (`index_name`, `base_level`, `divisor`, `base_date`, `max_constituents`, `is_active`)
-VALUES ('CoinRisqLab 80', 100.00000000, 1.00000000, NOW(), 80, TRUE)
-ON DUPLICATE KEY UPDATE
-    base_level = VALUES(base_level),
-    max_constituents = VALUES(max_constituents),
-    is_active = VALUES(is_active);
-
 DROP TABLE IF EXISTS `cryptocurrencies`;
 CREATE TABLE IF NOT EXISTS `cryptocurrencies` (
     `id` INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
