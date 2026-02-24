@@ -38,7 +38,6 @@ async function calculatePortfolioVolatility() {
           SELECT date FROM portfolio_volatility WHERE index_config_id = ?
         )
       ORDER BY date DESC
-      LIMIT 100
     `, [indexConfigId]);
 
     log.info(`Found ${dates.length} dates to calculate`);
