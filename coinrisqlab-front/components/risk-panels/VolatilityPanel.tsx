@@ -163,16 +163,24 @@ export function VolatilityPanel({
   onPeriodChange,
 }: VolatilityPanelProps) {
   const [mode, setMode] = useState<"annualized" | "daily">("annualized");
+  // Fixed period fetch for stable current value & variations (upper card)
+  const { data: infoData } = useCryptoVolatility([cryptoId], "90d");
+  // Variable period fetch for chart
   const { data, isLoading, error } = useCryptoVolatility(
     [cryptoId],
     PERIOD_MAP[period],
   );
 
-  const volatilityData = data[0]?.data;
-  const currentVol = volatilityData?.latest;
-  const history = volatilityData?.history || [];
+  // Stable data for upper card (always from 90d)
+  const infoVolatilityData = infoData[0]?.data;
+  const currentVol = infoVolatilityData?.latest;
+  const infoHistory = infoVolatilityData?.history || [];
 
-  const chartData = history.map((h) => ({
+  // Chart data from period-dependent fetch
+  const chartVolatilityData = data[0]?.data;
+  const chartHistory = chartVolatilityData?.history || [];
+
+  const chartData = chartHistory.map((h) => ({
     date: new Date(h.date).toLocaleDateString("fr-FR", {
       month: "short",
       day: "numeric",
@@ -200,8 +208,8 @@ export function VolatilityPanel({
     mode === "annualized" ? RISK_ZONES_ANNUAL : RISK_ZONES_DAILY;
 
   const volatilityChanges = useMemo(
-    () => calculateVolatilityChanges(history, currentVol ?? null, mode),
-    [history, currentVol, mode],
+    () => calculateVolatilityChanges(infoHistory, currentVol ?? null, mode),
+    [infoHistory, currentVol, mode],
   );
 
   return (
@@ -316,7 +324,7 @@ export function VolatilityPanel({
             <div className="h-[300px] flex items-center justify-center">
               <p className="text-danger">Error loading data</p>
             </div>
-          ) : !volatilityData ? (
+          ) : !chartVolatilityData ? (
             <div className="h-[300px] flex items-center justify-center">
               <p className="text-default-500">Loading...</p>
             </div>
@@ -396,9 +404,9 @@ export function VolatilityPanel({
               </ResponsiveContainer>
             </div>
           )}
-          {volatilityData && (
+          {chartVolatilityData && (
             <p className="text-xs text-default-400 mt-2 text-right">
-              {history.length} data points
+              {chartHistory.length} data points
             </p>
           )}
         </CardBody>

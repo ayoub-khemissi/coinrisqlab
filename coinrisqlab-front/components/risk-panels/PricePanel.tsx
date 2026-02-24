@@ -33,7 +33,7 @@ interface PricePanelProps {
 
 const PERIODS: RiskPeriod[] = ["7d", "30d", "90d", "all"];
 
-// Helper to calculate changes from history (for 90d which might be missing from current.changes)
+// Helper to calculate changes from history (fallback for API values)
 function calculatePriceChanges(
   history: { date: string; price: number }[],
   currentPrice: number,
@@ -42,6 +42,9 @@ function calculatePriceChanges(
 
   const changes: Record<string, number | null> = {};
   const periods = {
+    "24h": 1,
+    "7d": 7,
+    "30d": 30,
     "90d": 90,
   };
 
@@ -93,9 +96,12 @@ export function PricePanel({
   period,
   onPeriodChange,
 }: PricePanelProps) {
+  // Fixed period fetch for stable current price & variations (upper card)
+  const { data: infoData } = usePriceHistory(cryptoId, "90d");
+  // Variable period fetch for chart
   const { data, isLoading, error } = usePriceHistory(cryptoId, period);
 
-  const currentPrice = data?.current?.price ?? 0;
+  const currentPrice = infoData?.current?.price ?? 0;
 
   const chartData =
     data?.prices.map((p, index) => ({
@@ -115,20 +121,26 @@ export function PricePanel({
       }),
     })) || [];
 
-  // Calculate extra changes (90d)
-  const history = data?.prices || [];
+  // Calculate changes from stable 90d history as fallback
+  const history = infoData?.prices || [];
   const computedChanges = calculatePriceChanges(history, currentPrice);
 
-  // Merge API changes with computed changes
-  const displayChanges: Record<string, number | null> = {
-    ...data?.current?.changes,
-    ...computedChanges,
-  };
+  // Merge: computed as fallback, API non-null values take priority
+  const displayChanges: Record<string, number | null> = {};
+
+  for (const [key, value] of Object.entries(computedChanges)) {
+    if (typeof value === "number") displayChanges[key] = value;
+  }
+  if (infoData?.current?.changes) {
+    for (const [key, value] of Object.entries(infoData.current.changes)) {
+      if (typeof value === "number") displayChanges[key] = value;
+    }
+  }
 
   return (
     <div className="flex flex-col gap-4">
       {/* Current Price Card */}
-      {(data?.current || currentPrice > 0) && (
+      {(infoData?.current || currentPrice > 0) && (
         <Card>
           <CardBody className="p-6">
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">

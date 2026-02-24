@@ -300,11 +300,7 @@ export function StressTestPanel({ cryptoId, symbol }: StressTestPanelProps) {
                 key={scenario.id}
                 isSelected={selectedScenario === scenario.id}
                 scenario={scenario}
-                onSelect={() =>
-                  setSelectedScenario(
-                    selectedScenario === scenario.id ? null : scenario.id,
-                  )
-                }
+                onSelect={() => setSelectedScenario(scenario.id)}
               />
             ))}
           </div>
