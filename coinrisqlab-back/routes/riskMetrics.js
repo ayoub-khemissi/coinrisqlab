@@ -93,25 +93,35 @@ api.get('/risk/crypto/:id/price-history', async (req, res) => {
     const maxPoints = getMaxDataPoints(period);
 
     // Get price history with intelligent downsampling
-    // Uses ROW_NUMBER to evenly sample data points for better chart visualization
-    // Uses timestamp for granular data (hourly) instead of price_date (daily)
+    // UNION ALL market_data (hourly, recent) + ohlc (daily, long history)
+    // ohlc fills dates absent from market_data via NOT EXISTS anti-join
     const [prices] = await Database.execute(`
       SELECT date, price FROM (
         SELECT
-          timestamp as date,
-          price_usd as price,
-          ROW_NUMBER() OVER (ORDER BY timestamp) as rn,
+          date, price,
+          ROW_NUMBER() OVER (ORDER BY date) as rn,
           COUNT(*) OVER () as total_count
-        FROM market_data
-        WHERE crypto_id = ?
-          ${dateFilter}
+        FROM (
+          SELECT timestamp as date, price_usd as price
+          FROM market_data
+          WHERE crypto_id = ? ${dateFilter}
+
+          UNION ALL
+
+          SELECT o.timestamp as date, o.close as price
+          FROM ohlc o
+          WHERE o.crypto_id = ? ${dateFilter.replace(/timestamp/g, 'o.timestamp')}
+            AND NOT EXISTS (
+              SELECT 1 FROM market_data md
+              WHERE md.crypto_id = o.crypto_id
+                AND md.price_date = DATE(o.timestamp)
+            )
+        ) combined
       ) sub
-      WHERE
-        rn = 1
-        OR rn = total_count
-        OR MOD(rn - 1, GREATEST(1, FLOOR(total_count / ?))) = 0
+      WHERE rn = 1 OR rn = total_count
+         OR MOD(rn - 1, GREATEST(1, FLOOR(total_count / ?))) = 0
       ORDER BY date ASC
-    `, [crypto.id, maxPoints]);
+    `, [crypto.id, crypto.id, maxPoints]);
 
     // Get latest market data with percent changes
     const [latest] = await Database.execute(`
