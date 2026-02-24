@@ -112,6 +112,17 @@ export default function RootLayout({
                 </Link>
               </div>
               <p className="text-default-500 text-xs">
+                Data provided by{" "}
+                <a
+                  className="text-default-600 hover:text-primary transition-colors"
+                  href="https://www.coingecko.com/"
+                  rel="noopener noreferrer"
+                  target="_blank"
+                >
+                  CoinGecko
+                </a>
+              </p>
+              <p className="text-default-500 text-xs">
                 © {new Date().getFullYear()} CoinRisqLab. All rights reserved.
               </p>
             </footer>
