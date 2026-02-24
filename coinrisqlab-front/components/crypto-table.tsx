@@ -173,6 +173,7 @@ function CryptoTableComponent({
 
       case "beta": {
         const betaValue = crypto.beta ? parseFloat(crypto.beta) : null;
+
         return (
           <div className="font-mono">
             {betaValue !== null ? betaValue.toFixed(2) : "—"}
