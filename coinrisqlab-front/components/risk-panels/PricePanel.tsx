@@ -31,7 +31,7 @@ interface PricePanelProps {
   onPeriodChange: (period: RiskPeriod) => void;
 }
 
-const PERIODS: RiskPeriod[] = ["7d", "30d", "90d", "all"];
+const PERIODS: RiskPeriod[] = ["24h", "7d", "30d", "90d", "all"];
 
 // Helper to calculate changes from history (fallback for API values)
 function calculatePriceChanges(

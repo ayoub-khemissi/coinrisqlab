@@ -20,7 +20,7 @@ export type RiskPanel =
 /**
  * Period for risk calculations
  */
-export type RiskPeriod = "7d" | "30d" | "90d" | "365d" | "all";
+export type RiskPeriod = "24h" | "7d" | "30d" | "90d" | "365d" | "all";
 
 /**
  * Basic crypto info returned with each endpoint
