@@ -15,17 +15,25 @@ async function fetchDailyData() {
   const startTime = Date.now();
 
   try {
-    log.info('Starting OHLC backfill (CoinGecko /market_chart)...');
-
     if (!config.COINGECKO_API_KEY) {
       throw new Error('COINGECKO_API_KEY is not configured');
     }
 
-    const stats = await runDailyBackfill();
+    const isMarketCapBackfill = process.argv.includes('--backfill-mcap');
 
-    const duration = Date.now() - startTime;
-    log.info(`Backfill completed in ${(duration / 1000).toFixed(2)}s`);
-    log.info(`API calls: ${stats.apiCalls}, OHLC inserted: ${stats.ohlcInserted}, errors: ${stats.apiErrors}`);
+    if (isMarketCapBackfill) {
+      log.info('Starting market cap backfill for all cryptos (days=730)...');
+      const stats = await runMarketCapBackfill();
+      const duration = Date.now() - startTime;
+      log.info(`Market cap backfill completed in ${(duration / 1000).toFixed(2)}s`);
+      log.info(`API calls: ${stats.apiCalls}, OHLC updated: ${stats.ohlcUpdated}, errors: ${stats.apiErrors}`);
+    } else {
+      log.info('Starting OHLC backfill (CoinGecko /market_chart)...');
+      const stats = await runDailyBackfill();
+      const duration = Date.now() - startTime;
+      log.info(`Backfill completed in ${(duration / 1000).toFixed(2)}s`);
+      log.info(`API calls: ${stats.apiCalls}, OHLC inserted: ${stats.ohlcInserted}, errors: ${stats.apiErrors}`);
+    }
 
   } catch (error) {
     log.error(`Error in fetchDailyData: ${error.message}`);
@@ -126,7 +134,7 @@ async function processDailyBackfill(cryptoId, symbol, coingeckoId) {
   let ohlcInserted = 0;
   for (const [dateStr, dayData] of dailyData) {
     if (gaps.ohlcMissing.has(dateStr) && dayData.price > 0) {
-      await insertOhlcRecord(cryptoId, dateStr, dayData.price);
+      await insertOhlcRecord(cryptoId, dateStr, dayData.price, dayData.marketCap || null, dayData.volume || null);
       ohlcInserted++;
     }
   }
@@ -180,6 +188,68 @@ async function detectDetailedDailyGaps(cryptoId) {
   }
 
   return { ohlcMissing, daysNeeded };
+}
+
+// ═══════════════════════════════════════════════════════════════
+// MARKET CAP BACKFILL (--backfill-mcap)
+// ═══════════════════════════════════════════════════════════════
+
+/**
+ * Backfill market_cap + volume for ALL cryptos (days=730).
+ * Updates existing ohlc records via ON DUPLICATE KEY UPDATE.
+ */
+async function runMarketCapBackfill() {
+  const stats = { apiCalls: 0, ohlcUpdated: 0, apiErrors: 0 };
+
+  const [cryptos] = await Database.execute(`
+    SELECT c.id, c.symbol, c.coingecko_id
+    FROM cryptocurrencies c
+    WHERE c.coingecko_id IS NOT NULL
+    ORDER BY c.symbol
+  `);
+
+  log.info(`[McapBackfill] Found ${cryptos.length} crypto(s) to backfill`);
+
+  for (const crypto of cryptos) {
+    try {
+      const { data, error: apiError } = await fetchMarketChart(crypto.coingecko_id, RECOVERY_WINDOW_DAYS);
+      stats.apiCalls++;
+
+      if (apiError) {
+        log.warn(`${crypto.symbol}: API error - ${apiError}`);
+        stats.apiErrors++;
+        await delay(API_DELAY_MS);
+        continue;
+      }
+
+      if (!data || !data.prices || data.prices.length === 0) {
+        log.warn(`${crypto.symbol}: No data returned from API`);
+        stats.apiErrors++;
+        await delay(API_DELAY_MS);
+        continue;
+      }
+
+      const dailyData = aggregateToDailyData(data);
+      let updated = 0;
+
+      for (const [dateStr, dayData] of dailyData) {
+        if (dayData.price > 0) {
+          await insertOhlcRecord(crypto.id, dateStr, dayData.price, dayData.marketCap || null, dayData.volume || null);
+          updated++;
+        }
+      }
+
+      stats.ohlcUpdated += updated;
+      log.info(`${crypto.symbol}: Updated ${updated} records with market_cap/volume`);
+
+      await delay(API_DELAY_MS);
+    } catch (error) {
+      log.error(`[McapBackfill] Error processing ${crypto.symbol}: ${error.message}`);
+      stats.apiErrors++;
+    }
+  }
+
+  return stats;
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -266,17 +336,19 @@ function aggregateToDailyData(data) {
 /**
  * Insert an OHLC record (daily only). open=high=low=close=price.
  */
-async function insertOhlcRecord(cryptoId, dateStr, price) {
+async function insertOhlcRecord(cryptoId, dateStr, price, marketCap = null, volume = null) {
   const timestamp = `${dateStr} 00:00:00`;
   await Database.execute(`
-    INSERT INTO ohlc (crypto_id, timestamp, open, high, low, close)
-    VALUES (?, ?, ?, ?, ?, ?)
+    INSERT INTO ohlc (crypto_id, timestamp, open, high, low, close, market_cap, volume)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     ON DUPLICATE KEY UPDATE
     open = VALUES(open),
     high = VALUES(high),
     low = VALUES(low),
-    close = VALUES(close)
-  `, [cryptoId, timestamp, price, price, price, price]);
+    close = VALUES(close),
+    market_cap = VALUES(market_cap),
+    volume = VALUES(volume)
+  `, [cryptoId, timestamp, price, price, price, price, marketCap, volume]);
 }
 
 /**

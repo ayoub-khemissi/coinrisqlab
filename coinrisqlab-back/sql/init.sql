@@ -283,6 +283,8 @@ CREATE TABLE IF NOT EXISTS `ohlc` (
     `high` DECIMAL(30, 18) NOT NULL DEFAULT 0 COMMENT 'Highest price',
     `low` DECIMAL(30, 18) NOT NULL DEFAULT 0 COMMENT 'Lowest price',
     `close` DECIMAL(30, 18) NOT NULL DEFAULT 0 COMMENT 'Closing price',
+    `market_cap` DECIMAL(40, 8) NULL COMMENT 'Market capitalization in USD',
+    `volume` DECIMAL(30, 8) NULL COMMENT 'Total volume in USD (daily)',
     `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY `fk_ohlc_crypto_idx` (`crypto_id`) REFERENCES `cryptocurrencies`(`id`) ON DELETE CASCADE,
     UNIQUE KEY `idx_crypto_timestamp` (`crypto_id`, `timestamp`),

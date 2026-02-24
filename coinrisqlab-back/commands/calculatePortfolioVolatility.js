@@ -97,27 +97,22 @@ async function getIndexConfigId() {
  * @returns {Promise<Array>} Top candidates sorted by market cap desc
  */
 async function getTopCryptosForDate(date) {
-  // Get candidates from market_data for this date, with metadata for exclusion filtering
+  // Get candidates from ohlc for this date (market_cap + volume persisted by fetchOHLC)
   const [candidates] = await Database.execute(`
     SELECT
-      md.crypto_id,
+      o.crypto_id,
       c.symbol,
       c.name,
       cm.categories,
-      md.volume_24h_usd,
-      (md.price_usd * md.circulating_supply) as market_cap_usd
-    FROM market_data md
-    INNER JOIN cryptocurrencies c ON md.crypto_id = c.id
+      o.volume,
+      o.market_cap
+    FROM ohlc o
+    INNER JOIN cryptocurrencies c ON o.crypto_id = c.id
     LEFT JOIN cryptocurrency_metadata cm ON c.id = cm.crypto_id
-    INNER JOIN (
-      SELECT crypto_id, MAX(timestamp) as max_ts
-      FROM market_data
-      WHERE price_date = ?
-        AND (price_usd * circulating_supply) > 0
-      GROUP BY crypto_id
-    ) latest ON md.crypto_id = latest.crypto_id AND md.timestamp = latest.max_ts
-    WHERE md.volume_24h_usd >= ?
-    ORDER BY (md.price_usd * md.circulating_supply) DESC
+    WHERE o.timestamp = CONCAT(?, ' 00:00:00')
+      AND o.market_cap > 0
+      AND o.volume >= ?
+    ORDER BY o.market_cap DESC
   `, [date, MIN_VOLUME_24H]);
 
   // Filter excluded cryptos (stablecoins, wrapped, staked)
@@ -128,7 +123,7 @@ async function getTopCryptosForDate(date) {
     crypto_id: c.crypto_id,
     symbol: c.symbol,
     name: c.name,
-    marketCap: parseFloat(c.market_cap_usd)
+    marketCap: parseFloat(c.market_cap)
   }));
 }
 
