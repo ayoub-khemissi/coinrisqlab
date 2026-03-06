@@ -99,11 +99,16 @@ api.get('/cryptocurrencies', async (req, res) => {
         INNER JOIN (
           SELECT crypto_id, MAX(date) as max_date
           FROM crypto_beta
-          WHERE window_days = 90
           GROUP BY crypto_id
         ) cb_latest ON cb2.crypto_id = cb_latest.crypto_id
           AND cb2.date = cb_latest.max_date
-          AND cb2.window_days = 90
+        INNER JOIN (
+          SELECT crypto_id, date, MAX(window_days) as max_window
+          FROM crypto_beta
+          GROUP BY crypto_id, date
+        ) cb_max ON cb2.crypto_id = cb_max.crypto_id
+          AND cb2.date = cb_max.date
+          AND cb2.window_days = cb_max.max_window
       ) cb ON c.id = cb.crypto_id
       WHERE md.timestamp = (SELECT MAX(timestamp) FROM market_data)
         AND (md.price_usd * md.circulating_supply) > 0
