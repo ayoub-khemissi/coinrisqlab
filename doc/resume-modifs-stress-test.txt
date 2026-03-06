@@ -1,0 +1,46 @@
+Mise à jour des Stress Tests
+=============================
+
+1. Nouveaux chocs (baisses cumulées)
+
+Les anciens chocs (pire rendement quotidien, type VaR) ont été remplacés par les baisses cumulées sur la fenêtre de chaque scénario, conformément au fichier Excel fourni :
+
+  Scénario             Ancien choc    Nouveau choc    Fenêtre
+  Covid-19             -50.42%        -60.90%         22 jours
+  Ban Mining China     -25.07%        -40.64%         11 jours
+  Crash UST            -4.73%         -25.59%         5 jours
+  Crash FTX            -2.64%         -13.26%         4 jours
+
+Les dates du scénario FTX ont également été corrigées (31/10/2022 -> 04/11/2022 au lieu de 05/11 -> 09/11).
+
+
+2. Nouvel affichage "Market falls XX% over X days"
+
+Quand l'utilisateur sélectionne un scénario, on affiche désormais un bandeau indiquant la baisse cumulée du marché et sa durée, par exemple : "Market falls 60.9% over 22 days".
+
+Juste en dessous, on continue d'afficher la perte ajustée du bêta (prix actuel -> prix stressé), comme avant.
+
+
+3. Graphique en jours
+
+Le graphique des stress tests utilisait des données à intervalles de 20 minutes (table market_data). Il utilise désormais les prix de clôture journaliers (table ohlc), ce qui est plus cohérent pour visualiser l'effet du bêta sur plusieurs jours.
+
+Le tooltip du graphique affiche maintenant uniquement la date (sans heure/minute).
+
+
+4. Bêta
+
+Le bêta reste calculé sur 365 jours, conformément à la méthodologie documentée. Aucun changement sur ce point.
+
+
+Checklist des demandes
+======================
+
+  Demande                                                        Statut
+  Nouveaux chocs depuis l'Excel (une sheet par scénario)         Fait
+  Passer du pire rendement (VaR) à la baisse cumulée             Fait
+  Afficher "Market falls XX% over X days"                        Fait
+  En dessous, afficher la baisse ajustée du bêta                 Fait (inchangé)
+  Graphique en jours au lieu d'intervalles de 20 minutes         Fait
+
+Point d'attention : le métier mentionne "bêta 90 jours" mais la méthodologie documentée utilise 365 jours pour le bêta. On a gardé 365j pour rester cohérent. Si c'est un vrai changement voulu, il faudra demander confirmation.

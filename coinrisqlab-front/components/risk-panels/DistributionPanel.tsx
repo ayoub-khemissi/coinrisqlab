@@ -159,17 +159,18 @@ export function DistributionPanel({
 
       {/* Chart Card */}
       <Card>
-        <CardHeader className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 pb-0">
-          <div>
+        <CardHeader className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 pb-0 overflow-hidden">
+          <div className="flex-shrink-0">
             <h3 className="text-lg font-semibold">Distribution vs Normal</h3>
             <p className="text-sm text-default-500">
               Histogram with normal distribution overlay
             </p>
           </div>
-          <div className="flex gap-1">
+          <div className="flex gap-1 overflow-x-auto flex-nowrap min-w-0 max-w-full">
             {PERIODS.map((p) => (
               <Button
                 key={p}
+                className="flex-shrink-0"
                 isDisabled={isLoading}
                 size="sm"
                 variant={period === p ? "solid" : "bordered"}

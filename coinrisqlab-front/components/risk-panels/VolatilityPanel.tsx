@@ -304,12 +304,15 @@ export function VolatilityPanel({
 
       {/* Chart Card */}
       <Card>
-        <CardHeader className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 pb-0">
-          <h3 className="text-lg font-semibold">Volatility History</h3>
-          <div className="flex gap-1">
+        <CardHeader className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 pb-0 overflow-hidden">
+          <h3 className="text-lg font-semibold flex-shrink-0">
+            Volatility History
+          </h3>
+          <div className="flex gap-1 overflow-x-auto flex-nowrap min-w-0 max-w-full">
             {PERIODS.map((p) => (
               <Button
                 key={p}
+                className="flex-shrink-0"
                 isDisabled={isLoading}
                 size="sm"
                 variant={period === p ? "solid" : "bordered"}

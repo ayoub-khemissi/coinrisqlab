@@ -397,12 +397,15 @@ export default function PortfolioRiskPage() {
       <Card>
         <CardBody className="p-6">
           <div className="flex flex-col gap-4 mb-4">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-              <h2 className="text-lg font-semibold">Volatility Over Time</h2>
-              <div className="flex gap-2">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 overflow-hidden">
+              <h2 className="text-lg font-semibold flex-shrink-0">
+                Volatility Over Time
+              </h2>
+              <div className="flex gap-2 overflow-x-auto flex-nowrap min-w-0 max-w-full">
                 {(["7d", "30d", "90d", "all"] as Period[]).map((period) => (
                   <Button
                     key={period}
+                    className="flex-shrink-0"
                     isDisabled={volatilityLoading}
                     size="sm"
                     variant={selectedPeriod === period ? "solid" : "bordered"}
