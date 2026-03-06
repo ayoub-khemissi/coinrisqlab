@@ -9,6 +9,7 @@ import { siteConfig } from "@/config/site";
 import { fontSans } from "@/config/fonts";
 import { Navbar } from "@/components/navbar";
 import JsonLd from "@/components/json-ld";
+import { CookieBanner } from "@/components/cookie-banner";
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteConfig.siteUrl),
@@ -128,6 +129,19 @@ export default function RootLayout({
                 >
                   News
                 </Link>
+                <span className="hidden md:inline text-default-300">|</span>
+                <Link
+                  className="hover:text-primary transition-colors"
+                  href="/legal-notice"
+                >
+                  Legal Notice
+                </Link>
+                <Link
+                  className="hover:text-primary transition-colors"
+                  href="/privacy-policy"
+                >
+                  Privacy Policy
+                </Link>
               </nav>
               <p className="text-default-500 text-xs">
                 Data provided by{" "}
@@ -146,6 +160,7 @@ export default function RootLayout({
             </footer>
           </div>
           <JsonLd />
+          <CookieBanner />
         </Providers>
       </body>
     </html>
