@@ -11,7 +11,8 @@ import {
   generateNormalCurve,
   calculateStressTest,
   calculateSML,
-  calculateAnnualizedReturn
+  calculateAnnualizedReturn,
+  calculateSharpeRatio
 } from '../utils/riskMetrics.js';
 import { mean, standardDeviation } from '../utils/statistics.js';
 import { getDateFilter } from '../utils/queryHelpers.js';
@@ -339,6 +340,16 @@ api.get('/risk/crypto/:id/beta', async (req, res) => {
       y2: alpha * 100 + beta * marketMax
     };
 
+    // Sharpe Ratio: try historized first, fallback to on-the-fly
+    let sharpeRatio = null;
+    const historizedSharpe = await getHistorizedSharpeStats(crypto.id);
+    if (historizedSharpe) {
+      sharpeRatio = parseFloat(historizedSharpe.sharpe_ratio);
+    } else {
+      const cryptoReturnArrayForSharpe = alignedData.map(d => d.cryptoReturn);
+      sharpeRatio = calculateSharpeRatio(cryptoReturnArrayForSharpe);
+    }
+
     res.json({
       data: {
         crypto: crypto,
@@ -346,6 +357,7 @@ api.get('/risk/crypto/:id/beta', async (req, res) => {
         alpha: Number((alpha * 100).toFixed(4)),
         rSquared,
         correlation,
+        sharpeRatio,
         scatterData,
         regressionLine,
         period,
@@ -666,6 +678,16 @@ async function getHistorizedVaRStats(cryptoId, windowDays = null) {
  * @param {number} cryptoId - The crypto ID
  * @param {number|null} windowDays - Window days to filter by, or null for latest entry regardless of window
  */
+async function getHistorizedSharpeStats(cryptoId) {
+  const [stats] = await Database.execute(`
+    SELECT sharpe_ratio, mean_return, std_return, num_observations, window_days, date
+    FROM crypto_sharpe
+    WHERE crypto_id = ?
+    ORDER BY date DESC LIMIT 1
+  `, [cryptoId]);
+  return stats[0] || null;
+}
+
 async function getHistorizedBetaStats(cryptoId, windowDays = null) {
   let query = `
     SELECT

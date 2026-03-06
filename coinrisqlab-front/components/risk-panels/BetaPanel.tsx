@@ -43,12 +43,34 @@ export function BetaPanel({
       ]
     : [];
 
+  const sharpeColor =
+    data?.sharpeRatio != null
+      ? data.sharpeRatio >= 2
+        ? "text-success"
+        : data.sharpeRatio >= 1
+          ? "text-success"
+          : data.sharpeRatio >= 0
+            ? "text-warning"
+            : "text-danger"
+      : "";
+
+  const sharpeLabel =
+    data?.sharpeRatio != null
+      ? data.sharpeRatio >= 2
+        ? "Excellent"
+        : data.sharpeRatio >= 1
+          ? "Good"
+          : data.sharpeRatio >= 0
+            ? "Low"
+            : "Negative"
+      : "";
+
   return (
     <div className="flex flex-col gap-4">
       {/* Beta Summary Card */}
       <Card>
         <CardBody className="p-6">
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div>
               <p className="text-sm text-default-500 mb-1">Beta</p>
               <p className="text-4xl font-bold">
@@ -63,6 +85,17 @@ export function BetaPanel({
                 >
                   {betaInterpretation.label}
                 </Chip>
+              )}
+            </div>
+            <div>
+              <p className="text-sm text-default-500 mb-1">Sharpe Ratio</p>
+              <p className={`text-3xl font-bold ${sharpeColor}`}>
+                {data?.sharpeRatio != null
+                  ? data.sharpeRatio.toFixed(2)
+                  : "N/A"}
+              </p>
+              {sharpeLabel && (
+                <p className="text-xs text-default-400">{sharpeLabel}</p>
               )}
             </div>
             <div>
@@ -358,23 +391,92 @@ export function BetaPanel({
         </CardBody>
       </Card>
 
+      {/* Sharpe Ratio Reference */}
+      <Card>
+        <CardHeader>
+          <h3 className="text-lg font-semibold">Sharpe Ratio Reference</h3>
+        </CardHeader>
+        <CardBody className="p-4">
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-default-200">
+                  <th className="text-left py-2 px-3">Sharpe Range</th>
+                  <th className="text-left py-2 px-3">Quality</th>
+                  <th className="text-left py-2 px-3">Meaning</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr className="border-b border-default-100">
+                  <td className="py-2 px-3">{"< 0"}</td>
+                  <td className="py-2 px-3">
+                    <Chip color="danger" size="sm" variant="flat">
+                      Negative
+                    </Chip>
+                  </td>
+                  <td className="py-2 px-3 text-default-500">
+                    Worse than risk-free rate
+                  </td>
+                </tr>
+                <tr className="border-b border-default-100">
+                  <td className="py-2 px-3">0 - 1</td>
+                  <td className="py-2 px-3">
+                    <Chip color="warning" size="sm" variant="flat">
+                      Low
+                    </Chip>
+                  </td>
+                  <td className="py-2 px-3 text-default-500">
+                    Low risk-adjusted return
+                  </td>
+                </tr>
+                <tr className="border-b border-default-100">
+                  <td className="py-2 px-3">1 - 2</td>
+                  <td className="py-2 px-3">
+                    <Chip color="success" size="sm" variant="flat">
+                      Good
+                    </Chip>
+                  </td>
+                  <td className="py-2 px-3 text-default-500">
+                    Good risk-adjusted return
+                  </td>
+                </tr>
+                <tr>
+                  <td className="py-2 px-3">{"> 2"}</td>
+                  <td className="py-2 px-3">
+                    <Chip color="success" size="sm" variant="flat">
+                      Excellent
+                    </Chip>
+                  </td>
+                  <td className="py-2 px-3 text-default-500">
+                    Excellent risk-adjusted return
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </CardBody>
+      </Card>
+
       {/* Explanation Card */}
       <Card>
         <CardBody className="p-4">
           <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
-            <p className="text-sm text-default-500 flex-1">
-              <strong>Beta</strong> measures the volatility of an asset relative
-              to the market. It is calculated using the covariance of returns
-              divided by the variance of market returns:{" "}
-              <code className="bg-default-100 px-1 rounded">
-                Beta = Cov(R_crypto, R_market) / Var(R_market)
-              </code>
-              . Alpha is the excess return not explained by beta:{" "}
-              <code className="bg-default-100 px-1 rounded">
-                Alpha = Mean(R_crypto) - Beta * Mean(R_market)
-              </code>
-              .
-            </p>
+            <div className="text-sm text-default-500 flex-1 space-y-2">
+              <p>
+                <strong>Beta</strong> measures the volatility of an asset
+                relative to the market:{" "}
+                <code className="bg-default-100 px-1 rounded">
+                  Beta = Cov(R_crypto, R_market) / Var(R_market)
+                </code>
+              </p>
+              <p>
+                <strong>Sharpe Ratio</strong> measures risk-adjusted return:{" "}
+                <code className="bg-default-100 px-1 rounded">
+                  S = (Rp - Rf) / σp
+                </code>{" "}
+                where Rf = 0% (risk-free rate), annualized via √365.
+              </p>
+            </div>
             <MethodologyLink section="beta" variant="full" />
           </div>
         </CardBody>

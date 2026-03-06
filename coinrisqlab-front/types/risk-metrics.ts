@@ -87,6 +87,7 @@ export interface BetaData {
   alpha: number | null;
   rSquared: number | null;
   correlation: number | null;
+  sharpeRatio: number | null;
   scatterData: ScatterPoint[];
   regressionLine?: RegressionLine;
   period: string;

@@ -378,6 +378,34 @@ export function calculateAnnualizedReturn(logReturns) {
 }
 
 /**
+ * Calculate Sharpe Ratio
+ * S = (Rp - Rf) / σp
+ * Using daily returns: annualized via √365
+ *
+ * @param {number[]} logReturns - Array of daily log returns
+ * @param {number} riskFreeRate - Annual risk-free rate (default: 0)
+ * @returns {number} Sharpe ratio (annualized)
+ */
+export function calculateSharpeRatio(logReturns, riskFreeRate = 0) {
+  if (!logReturns || logReturns.length < 2) {
+    return 0;
+  }
+
+  const meanReturn = mean(logReturns);
+  const stdReturn = standardDeviation(logReturns);
+
+  if (stdReturn === 0) {
+    return 0;
+  }
+
+  // Daily risk-free rate from annual
+  const dailyRf = riskFreeRate / 365;
+
+  // Sharpe = (mean daily return - daily Rf) / daily std * √365
+  return Number((((meanReturn - dailyRf) / stdReturn) * Math.sqrt(365)).toFixed(4));
+}
+
+/**
  * Percentile calculation helper
  *
  * @param {number[]} values - Sorted array of values
