@@ -364,18 +364,17 @@ export function calculateSML(cryptoBeta, cryptoActualReturn, marketReturn, riskF
 }
 
 /**
- * Calculate cumulative return from array of log returns
+ * Calculate mean daily return from array of log returns
  *
  * @param {number[]} logReturns - Array of daily log returns
- * @returns {number} Cumulative return (sum of log returns)
+ * @returns {number} Mean daily return
  */
 export function calculateAnnualizedReturn(logReturns) {
   if (!logReturns || logReturns.length === 0) {
     return 0;
   }
 
-  // Sum of log returns = total cumulative return over the period
-  return logReturns.reduce((sum, r) => sum + r, 0);
+  return logReturns.reduce((sum, r) => sum + r, 0) / logReturns.length;
 }
 
 /**

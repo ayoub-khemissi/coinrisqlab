@@ -1,14 +1,15 @@
 "use client";
 
+import { useState } from "react";
 import { Card, CardBody, CardHeader } from "@heroui/card";
 import { Chip } from "@heroui/chip";
 import {
   ComposedChart,
   Line,
   Scatter,
+  Cell,
   XAxis,
   YAxis,
-  Tooltip as RechartsTooltip,
   ResponsiveContainer,
   CartesianGrid,
   ReferenceLine,
@@ -25,44 +26,88 @@ interface SMLPanelProps {
   symbol: string;
 }
 
+interface ScatterPoint {
+  beta: number;
+  return: number;
+  name: string;
+  color: string;
+}
+
 export function SMLPanel({ cryptoId, symbol }: SMLPanelProps) {
   const { data, isLoading, error } = useSML(cryptoId, "90d");
+  const [tooltip, setTooltip] = useState<{
+    x: number;
+    y: number;
+    points: ScatterPoint[];
+  } | null>(null);
 
-  // Crypto point for scatter
-  const cryptoPoint = data
-    ? [
-        {
-          beta: data.cryptoBeta,
-          return: data.cryptoActualReturn,
-          name: symbol.toUpperCase(),
-          type: "actual",
-        },
-      ]
-    : [];
+  const cryptoColor = data?.isOvervalued ? "#ef4444" : "#22c55e";
 
-  // Expected point on SML
-  const expectedPoint = data
-    ? [
-        {
-          beta: data.cryptoBeta,
-          return: data.cryptoExpectedReturn,
-          name: "Expected",
-          type: "expected",
-        },
-      ]
-    : [];
-
-  // Market point (beta = 1)
-  const marketPoint = data
+  // All scatter points combined into one array for working tooltips
+  const scatterPoints = data
     ? [
         {
           beta: 1,
           return: data.marketReturn,
           name: "Market (CoinRisqLab 80)",
-          type: "market",
+          color: "#f97316",
+        },
+        {
+          beta: data.cryptoBeta,
+          return: data.cryptoExpectedReturn,
+          name: "Expected",
+          color: "#888888",
+        },
+        {
+          beta: data.cryptoBeta,
+          return: data.cryptoActualReturn,
+          name: symbol.toUpperCase(),
+          color: cryptoColor,
         },
       ]
     : [];
+
+  // Compute axis domains zoomed around the actual points (not full SML range)
+  const xDomain: [number, number] | undefined = data
+    ? (() => {
+        const betas = [data.cryptoBeta, 1]; // crypto beta + market beta
+        const minB = Math.min(...betas);
+        const maxB = Math.max(...betas);
+        const span = Math.max(maxB - minB, 0.3);
+        const pad = span * 0.8;
+
+        return [
+          Math.max(0, Math.floor((minB - pad) * 10) / 10),
+          Math.ceil((maxB + pad) * 10) / 10,
+        ];
+      })()
+    : undefined;
+
+  const yDomain: [number, number] | undefined = data
+    ? (() => {
+        const returns = [
+          data.cryptoActualReturn,
+          data.cryptoExpectedReturn,
+          data.marketReturn,
+        ];
+        const min = Math.min(...returns);
+        const max = Math.max(...returns);
+        const span = Math.max(max - min, 0.2);
+        const pad = span * 0.8;
+
+        return [
+          Math.floor((min - pad) * 100) / 100,
+          Math.ceil((max + pad) * 100) / 100,
+        ];
+      })()
+    : undefined;
+
+  // SML line points clipped to visible X range
+  const visibleSmlLine =
+    data?.smlLine?.filter(
+      (p: { beta: number }) =>
+        xDomain && p.beta >= xDomain[0] && p.beta <= xDomain[1],
+    ) || [];
 
   return (
     <div className="flex flex-col gap-4">
@@ -96,12 +141,10 @@ export function SMLPanel({ cryptoId, symbol }: SMLPanelProps) {
                   ? `${data.alpha >= 0 ? "+" : ""}${data.alpha.toFixed(2)}%`
                   : "N/A"}
               </p>
-              <p className="text-xs text-default-400">
-                Annualized excess return
-              </p>
+              <p className="text-xs text-default-400">Excess return</p>
             </div>
             <div>
-              <p className="text-sm text-default-500 mb-1">Actual Return</p>
+              <p className="text-sm text-default-500 mb-1">Mean Return</p>
               <p
                 className={`text-2xl font-bold ${data?.cryptoActualReturn && data.cryptoActualReturn >= 0 ? "text-success" : "text-danger"}`}
               >
@@ -109,10 +152,11 @@ export function SMLPanel({ cryptoId, symbol }: SMLPanelProps) {
                   ? `${data.cryptoActualReturn >= 0 ? "+" : ""}${data.cryptoActualReturn.toFixed(2)}%`
                   : "N/A"}
               </p>
-              <p className="text-xs text-default-400">Annualized</p>
             </div>
             <div>
-              <p className="text-sm text-default-500 mb-1">Expected Return</p>
+              <p className="text-sm text-default-500 mb-1">
+                Expected Market Mean Return
+              </p>
               <p className="text-2xl font-bold">
                 {data?.cryptoExpectedReturn !== undefined
                   ? `${data.cryptoExpectedReturn >= 0 ? "+" : ""}${data.cryptoExpectedReturn.toFixed(2)}%`
@@ -175,14 +219,18 @@ export function SMLPanel({ cryptoId, symbol }: SMLPanelProps) {
           ) : (
             <div
               className="transition-opacity"
-              style={{ opacity: isLoading ? 0.5 : 1 }}
+              style={{
+                opacity: isLoading ? 0.5 : 1,
+                position: "relative",
+              }}
             >
               <ResponsiveContainer height={350} width="100%">
                 <ComposedChart margin={{ bottom: 20 }}>
                   <CartesianGrid opacity={0.1} strokeDasharray="3 3" />
                   <XAxis
+                    allowDataOverflow
                     dataKey="beta"
-                    domain={[0, 2.5]}
+                    domain={xDomain}
                     fontSize={12}
                     label={{
                       value: "Beta (Systematic Risk)",
@@ -194,10 +242,11 @@ export function SMLPanel({ cryptoId, symbol }: SMLPanelProps) {
                     type="number"
                   />
                   <YAxis
-                    domain={["auto", "auto"]}
+                    allowDataOverflow
+                    domain={yDomain}
                     fontSize={12}
                     label={{
-                      value: "Expected Return (%)",
+                      value: "Expected Market Mean Return (%)",
                       angle: -90,
                       position: "insideLeft",
                       style: { textAnchor: "middle" },
@@ -208,110 +257,102 @@ export function SMLPanel({ cryptoId, symbol }: SMLPanelProps) {
                     tickLine={false}
                     width={80}
                   />
-                  <RechartsTooltip
-                    content={({ active, payload }) => {
-                      if (active && payload && payload.length > 0) {
-                        const d = payload[0].payload;
-
-                        return (
-                          <div className="bg-content1 border border-default-200 rounded-lg p-3 shadow-lg">
-                            <p className="font-semibold mb-1">
-                              {d.name || "SML Point"}
-                            </p>
-                            <p className="text-sm">
-                              Beta:{" "}
-                              {d.beta?.toFixed(2) ||
-                                payload[0].payload?.beta?.toFixed(2)}
-                            </p>
-                            <p className="text-sm">
-                              Return:{" "}
-                              {d.return?.toFixed(2) ||
-                                d.expectedReturn?.toFixed(2)}
-                              %
-                            </p>
-                          </div>
-                        );
-                      }
-
-                      return null;
-                    }}
-                  />
                   <ReferenceLine stroke="#888" strokeOpacity={0.3} x={1} />
                   <ReferenceLine stroke="#888" strokeOpacity={0.3} y={0} />
                   {/* SML Line */}
                   <Line
                     activeDot={false}
-                    data={data.smlLine}
+                    data={visibleSmlLine}
                     dataKey="expectedReturn"
                     dot={false}
-                    isAnimationActive={true}
+                    isAnimationActive={false}
                     name="SML"
                     stroke="#888"
                     strokeDasharray="5 5"
                     strokeWidth={2}
+                    style={{ pointerEvents: "none" }}
                     type="linear"
                   />
-                  {/* Market point */}
+                  {/* Points with per-point mouse handlers */}
                   <Scatter
-                    data={marketPoint.map((p) => ({
-                      ...p,
-                      return: p.return,
-                    }))}
+                    data={scatterPoints}
                     dataKey="return"
-                    fill="#f97316"
-                    name="Market"
-                    shape="diamond"
-                  />
-                  {/* Expected point on SML */}
-                  <Scatter
-                    data={expectedPoint.map((p) => ({
-                      ...p,
-                      return: p.return,
-                    }))}
-                    dataKey="return"
-                    fill="#888"
-                    name="Expected"
-                    shape="circle"
-                  />
-                  {/* Actual crypto point */}
-                  <Scatter
-                    data={cryptoPoint.map((p) => ({
-                      ...p,
-                      return: p.return,
-                    }))}
-                    dataKey="return"
-                    fill={data.isOvervalued ? "#ef4444" : "#22c55e"}
-                    name={symbol.toUpperCase()}
-                    shape="star"
-                  />
+                    isAnimationActive={false}
+                    name="Points"
+                    onMouseEnter={(pointData: any) => {
+                      const point = pointData.payload || pointData;
+                      const pointsAtBeta = scatterPoints.filter(
+                        (p) => p.beta === point.beta,
+                      );
+
+                      setTooltip({
+                        x: pointData.cx,
+                        y: pointData.cy,
+                        points: pointsAtBeta,
+                      });
+                    }}
+                    onMouseLeave={() => setTooltip(null)}
+                  >
+                    {scatterPoints.map((entry, index) => (
+                      <Cell key={index} fill={entry.color} />
+                    ))}
+                  </Scatter>
                 </ComposedChart>
               </ResponsiveContainer>
+              {tooltip && (
+                <div
+                  className="bg-content1 border border-default-200 rounded-lg p-3 shadow-lg"
+                  style={{
+                    position: "absolute",
+                    left: tooltip.x + 15,
+                    top: tooltip.y - 15,
+                    pointerEvents: "none",
+                    zIndex: 10,
+                  }}
+                >
+                  <p className="text-sm mb-1">
+                    Beta: {tooltip.points[0]?.beta?.toFixed(2)}
+                  </p>
+                  {tooltip.points.map((p) => (
+                    <p
+                      key={p.name}
+                      className="text-sm"
+                      style={{ color: p.color }}
+                    >
+                      {p.name}: {p.return?.toFixed(2)}%
+                    </p>
+                  ))}
+                </div>
+              )}
             </div>
           )}
           {data && (
             <div className="flex justify-between items-center mt-2">
               <div className="flex gap-4 text-xs">
                 <div className="flex items-center gap-1">
-                  <div className="w-3 h-3 border-2 border-dashed border-default-400" />
+                  <div className="w-3 h-3 border-2 border-dashed border-[#888]" />
                   <span>SML</span>
                 </div>
                 <div className="flex items-center gap-1">
                   <div
-                    className={`w-3 h-3 ${data.isOvervalued ? "bg-danger" : "bg-success"}`}
-                    style={{
-                      clipPath: "polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%)",
-                    }}
+                    className="w-3 h-3 rounded-full"
+                    style={{ backgroundColor: cryptoColor }}
                   />
                   <span>{symbol.toUpperCase()}</span>
                 </div>
                 <div className="flex items-center gap-1">
                   <div
-                    className="w-3 h-3 bg-warning"
-                    style={{
-                      clipPath: "polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%)",
-                    }}
+                    className="w-3 h-3 rounded-full"
+                    style={{ backgroundColor: "#f97316" }}
                   />
                   <span>Market</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <div
+                    className="w-3 h-3 rounded-full"
+                    style={{ backgroundColor: "#888888" }}
+                  />
+                  <span>Expected</span>
                 </div>
               </div>
               <p className="text-xs text-default-400">
@@ -367,7 +408,7 @@ export function SMLPanel({ cryptoId, symbol }: SMLPanelProps) {
                   Jensen&apos;s Alpha
                 </p>
                 <code className="text-xs bg-default-200 px-2 py-1 rounded">
-                  α = Actual Return - Expected Return
+                  α = Mean Return - Expected Market Mean Return
                 </code>
                 <p className="text-xs text-default-500 mt-2">
                   Positive α = outperformance
