@@ -26,6 +26,7 @@ const RISK_METRICS_SECTIONS = [
   "cvar",
   "beta",
   "alpha",
+  "sharpe",
   "sml",
   "skewness",
   "kurtosis",
@@ -126,6 +127,14 @@ export default function RiskMetricsMethodologyPage() {
                   Alpha
                 </Button>
                 <Button
+                  className="justify-start pl-6"
+                  size="sm"
+                  variant={activeSection === "sharpe" ? "flat" : "light"}
+                  onPress={() => scrollToSection("sharpe")}
+                >
+                  Sharpe Ratio
+                </Button>
+                <Button
                   className="justify-start"
                   size="sm"
                   variant={activeSection === "sml" ? "flat" : "light"}
@@ -190,8 +199,9 @@ export default function RiskMetricsMethodologyPage() {
               </p>
               <p className="text-default-600 mb-4">
                 Metrics use different calculation windows based on their
-                purpose: <strong>VaR and Beta use 365 days</strong> for more
-                stable risk estimates, while{" "}
+                purpose:{" "}
+                <strong>VaR, Beta, and Sharpe Ratio use 365 days</strong> for
+                more stable risk estimates, while{" "}
                 <strong>Skewness, Kurtosis, and SML use 90 days</strong> to
                 capture recent distribution characteristics.
               </p>
@@ -203,8 +213,10 @@ export default function RiskMetricsMethodologyPage() {
                 </div>
                 <div className="text-center p-4 bg-primary/10 rounded-lg">
                   <TrendingUp className="w-8 h-8 text-primary mx-auto mb-2" />
-                  <p className="font-bold">Beta/Alpha</p>
-                  <p className="text-xs text-default-500">Market Sensitivity</p>
+                  <p className="font-bold">Beta/Alpha/Sharpe</p>
+                  <p className="text-xs text-default-500">
+                    Market Sensitivity & Risk-Adjusted Return
+                  </p>
                 </div>
                 <div className="text-center p-4 bg-warning/10 rounded-lg">
                   <BarChart2 className="w-8 h-8 text-warning mx-auto mb-2" />
@@ -593,6 +605,135 @@ export default function RiskMetricsMethodologyPage() {
                     <li>
                       <strong>Zero Alpha:</strong> Returns fully explained by
                       market exposure
+                    </li>
+                  </ul>
+                </div>
+              </div>
+            </CardBody>
+          </Card>
+
+          {/* Sharpe Ratio Section */}
+          <Card id="sharpe">
+            <CardBody className="p-8">
+              <div className="flex items-center justify-center sm:justify-start gap-3 mb-4">
+                <TrendingUp className="w-6 h-6 text-success" />
+                <h2 className="text-2xl font-bold text-center sm:text-left">
+                  Sharpe Ratio
+                </h2>
+              </div>
+              <p className="text-default-600 mb-6">
+                The Sharpe Ratio measures the risk-adjusted return of an asset.
+                It tells you how much excess return you receive for the extra
+                volatility you endure — essentially, the return per unit of
+                risk.
+              </p>
+
+              <div className="space-y-6">
+                <div className="bg-default-50 p-6 rounded-lg">
+                  <h3 className="text-xl font-bold mb-3">Formula</h3>
+                  <div className="bg-default-100 p-4 rounded-lg text-center font-mono text-lg mb-4">
+                    <div>S = (Rp - Rf) / σp</div>
+                  </div>
+                  <div className="text-default-600 space-y-2">
+                    <p>
+                      <strong>Rp</strong> = Mean daily return of the asset
+                    </p>
+                    <p>
+                      <strong>Rf</strong> = Risk-free rate (0% for crypto)
+                    </p>
+                    <p>
+                      <strong>σp</strong> = Standard deviation of daily returns
+                    </p>
+                    <p className="text-sm text-default-500 mt-3">
+                      The daily Sharpe Ratio is annualized by multiplying by
+                      √365, giving a comparable annual figure.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="bg-default-50 p-6 rounded-lg">
+                  <h3 className="text-xl font-bold mb-3">Interpretation</h3>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b border-default-200">
+                          <th className="text-left py-3 px-4">Sharpe Ratio</th>
+                          <th className="text-left py-3 px-4">Quality</th>
+                          <th className="text-left py-3 px-4">Meaning</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr className="border-b border-default-100">
+                          <td className="py-3 px-4 font-mono">{"< 0"}</td>
+                          <td className="py-3 px-4">
+                            <Chip color="danger" size="sm" variant="flat">
+                              Negative
+                            </Chip>
+                          </td>
+                          <td className="py-3 px-4 text-default-500">
+                            The asset loses money or underperforms the risk-free
+                            rate
+                          </td>
+                        </tr>
+                        <tr className="border-b border-default-100">
+                          <td className="py-3 px-4 font-mono">0 - 1</td>
+                          <td className="py-3 px-4">
+                            <Chip color="warning" size="sm" variant="flat">
+                              Low
+                            </Chip>
+                          </td>
+                          <td className="py-3 px-4 text-default-500">
+                            Positive return but low reward relative to risk
+                            taken
+                          </td>
+                        </tr>
+                        <tr className="border-b border-default-100">
+                          <td className="py-3 px-4 font-mono">1 - 2</td>
+                          <td className="py-3 px-4">
+                            <Chip color="success" size="sm" variant="flat">
+                              Good
+                            </Chip>
+                          </td>
+                          <td className="py-3 px-4 text-default-500">
+                            Good risk-adjusted return — the strategy is
+                            efficient
+                          </td>
+                        </tr>
+                        <tr>
+                          <td className="py-3 px-4 font-mono">{"> 2"}</td>
+                          <td className="py-3 px-4">
+                            <Chip color="success" size="sm" variant="flat">
+                              Excellent
+                            </Chip>
+                          </td>
+                          <td className="py-3 px-4 text-default-500">
+                            Excellent risk-adjusted return — very efficient
+                            strategy
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                <div className="bg-default-50 p-6 rounded-lg">
+                  <h3 className="text-xl font-bold mb-3">Our Implementation</h3>
+                  <ul className="list-disc list-inside text-default-600 space-y-2">
+                    <li>
+                      Calculated using <strong>365 days</strong> of daily log
+                      returns
+                    </li>
+                    <li>
+                      Risk-free rate set to <strong>0%</strong> (standard for
+                      crypto markets)
+                    </li>
+                    <li>
+                      Annualized via <strong>√365</strong> to give a yearly
+                      comparable figure
+                    </li>
+                    <li>
+                      Historized daily in the database and recalculated with
+                      each new day of data
                     </li>
                   </ul>
                 </div>
@@ -1030,7 +1171,7 @@ export default function RiskMetricsMethodologyPage() {
                   <tbody>
                     <tr className="border-b border-default-200">
                       <td className="py-3 px-4 font-semibold">
-                        VaR / Beta Window
+                        VaR / Beta / Sharpe Window
                       </td>
                       <td className="py-3 px-4">
                         <Chip color="primary" size="sm">
