@@ -13,6 +13,14 @@ export default function JsonLd() {
         publisher: {
           "@id": `${siteConfig.siteUrl}/#organization`,
         },
+        potentialAction: {
+          "@type": "SearchAction",
+          target: {
+            "@type": "EntryPoint",
+            urlTemplate: `${siteConfig.siteUrl}/?search={search_term_string}`,
+          },
+          "query-input": "required name=search_term_string",
+        },
       },
       {
         "@type": "Organization",
@@ -21,11 +29,24 @@ export default function JsonLd() {
         url: siteConfig.siteUrl,
         logo: {
           "@type": "ImageObject",
-          url: `${siteConfig.siteUrl}/logo.png`,
+          url: `${siteConfig.siteUrl}/favicon.ico`,
         },
         sameAs: [siteConfig.links.github, siteConfig.links.twitter].filter(
           Boolean,
         ),
+      },
+      {
+        "@type": "WebPage",
+        "@id": `${siteConfig.siteUrl}/#webpage`,
+        url: siteConfig.siteUrl,
+        name: "CoinRisqLab | Real-time Crypto Analytics & Risk Metrics",
+        isPartOf: {
+          "@id": `${siteConfig.siteUrl}/#website`,
+        },
+        about: {
+          "@id": `${siteConfig.siteUrl}/#organization`,
+        },
+        description: siteConfig.description,
       },
     ],
   };

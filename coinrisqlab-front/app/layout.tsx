@@ -13,18 +13,21 @@ import JsonLd from "@/components/json-ld";
 export const metadata: Metadata = {
   metadataBase: new URL(siteConfig.siteUrl),
   title: {
-    default: "CoinRisqLab | Real-time Crypto Analytics",
+    default: "CoinRisqLab | Real-time Crypto Analytics & Risk Metrics",
     template: "%s | CoinRisqLab",
   },
   description: siteConfig.description,
   keywords: siteConfig.keywords,
   authors: siteConfig.authors,
   creator: siteConfig.creator,
+  alternates: {
+    canonical: siteConfig.siteUrl,
+  },
   openGraph: {
     type: "website",
     locale: "en_US",
     url: siteConfig.siteUrl,
-    title: "CoinRisqLab | Real-time Crypto Analytics",
+    title: "CoinRisqLab | Real-time Crypto Analytics & Risk Metrics",
     description: siteConfig.description,
     siteName: siteConfig.name,
     images: [
@@ -32,13 +35,13 @@ export const metadata: Metadata = {
         url: `/img/branding/1200x630.png`,
         width: 1200,
         height: 630,
-        alt: "CoinRisqLab - Real-time crypto market intelligence",
+        alt: "CoinRisqLab - Real-time crypto market intelligence and risk analytics",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "CoinRisqLab | Real-time Crypto Analytics",
+    title: "CoinRisqLab | Real-time Crypto Analytics & Risk Metrics",
     description: siteConfig.description,
     creator: "@coinrisqlab",
     images: [`/img/branding/1200x630.png`],
@@ -88,9 +91,12 @@ export default function RootLayout({
               {children}
             </main>
             <footer className="w-full flex flex-col items-center justify-center py-6 gap-4 border-t border-default-100 mt-8">
-              <div className="flex flex-col md:flex-row gap-3 md:gap-6 text-sm text-default-600 w-full md:w-auto px-6 md:px-0 md:justify-center">
+              <nav
+                aria-label="Footer navigation"
+                className="flex flex-col md:flex-row gap-3 md:gap-6 text-sm text-default-600 w-full md:w-auto px-6 md:px-0 md:justify-center"
+              >
                 <Link className="hover:text-primary transition-colors" href="/">
-                  Home
+                  Dashboard
                 </Link>
                 <Link
                   className="hover:text-primary transition-colors"
@@ -110,7 +116,13 @@ export default function RootLayout({
                 >
                   Methodology
                 </Link>
-              </div>
+                <Link
+                  className="hover:text-primary transition-colors"
+                  href="/methodology/risk-metrics"
+                >
+                  Risk Metrics
+                </Link>
+              </nav>
               <p className="text-default-500 text-xs">
                 Data provided by{" "}
                 <a

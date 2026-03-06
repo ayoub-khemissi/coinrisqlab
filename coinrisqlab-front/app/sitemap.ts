@@ -15,16 +15,42 @@ type CryptocurrencyResponse = {
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const routes = [
-    "",
-    "/index-coinrisqlab",
-    "/methodology",
-    "/methodology/index-coinrisqlab",
-    "/market-volatility",
+    { path: "", priority: 1, changeFrequency: "daily" as const },
+    {
+      path: "/index-coinrisqlab",
+      priority: 0.9,
+      changeFrequency: "daily" as const,
+    },
+    {
+      path: "/market-volatility",
+      priority: 0.9,
+      changeFrequency: "daily" as const,
+    },
+    {
+      path: "/methodology",
+      priority: 0.8,
+      changeFrequency: "monthly" as const,
+    },
+    {
+      path: "/methodology/index-coinrisqlab",
+      priority: 0.7,
+      changeFrequency: "monthly" as const,
+    },
+    {
+      path: "/methodology/volatility",
+      priority: 0.7,
+      changeFrequency: "monthly" as const,
+    },
+    {
+      path: "/methodology/risk-metrics",
+      priority: 0.7,
+      changeFrequency: "monthly" as const,
+    },
   ].map((route) => ({
-    url: `${siteConfig.siteUrl}${route}`,
+    url: `${siteConfig.siteUrl}${route.path}`,
     lastModified: new Date().toISOString(),
-    changeFrequency: "daily" as const,
-    priority: route === "" ? 1 : 0.8,
+    changeFrequency: route.changeFrequency,
+    priority: route.priority,
   }));
 
   try {
