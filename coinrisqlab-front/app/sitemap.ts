@@ -19,7 +19,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     "/index-coinrisqlab",
     "/methodology",
     "/methodology/index-coinrisqlab",
-    "/portfolio-risk",
+    "/market-volatility",
   ].map((route) => ({
     url: `${siteConfig.siteUrl}${route}`,
     lastModified: new Date().toISOString(),

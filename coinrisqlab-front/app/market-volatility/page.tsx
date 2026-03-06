@@ -29,13 +29,13 @@ import {
   RiskContributorsTable,
   VolatilityDistribution,
   CorrelationCard,
-} from "@/components/portfolio-risk";
+} from "@/components/market-volatility";
 import { useCryptoVolatility } from "@/hooks/useCryptoVolatility";
 import { lStorage } from "@/lib/localStorage";
 
 type Period = "7d" | "30d" | "90d" | "all";
 
-export default function PortfolioRiskPage() {
+export default function MarketVolatilityPage() {
   const [selectedPeriod, setSelectedPeriod] = useState<Period>("90d");
   const [volatilityMode, setVolatilityMode] = useState<"annualized" | "daily">(
     "annualized",
@@ -87,7 +87,7 @@ export default function PortfolioRiskPage() {
 
   // Load warning dismissed state from localStorage
   useEffect(() => {
-    const dismissed = lStorage.get("PORTFOLIO_RISK_WARNING_DISMISSED");
+    const dismissed = lStorage.get("MARKET_VOLATILITY_WARNING_DISMISSED");
 
     if (dismissed === "true") {
       setWarningDismissed(true);
@@ -176,7 +176,7 @@ export default function PortfolioRiskPage() {
 
   // Loading state (only show full-page loader on initial load)
   if (isInitialLoading) {
-    return <PageLoader message="Loading portfolio risk data..." />;
+    return <PageLoader message="Loading market volatility data..." />;
   }
 
   // Error state
@@ -185,7 +185,7 @@ export default function PortfolioRiskPage() {
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
           <p className="text-lg text-danger mb-2">
-            Error loading portfolio risk data
+            Error loading market volatility data
           </p>
           <p className="text-sm text-default-500">
             {volatilityError?.message || constituentsError?.message}
@@ -200,7 +200,7 @@ export default function PortfolioRiskPage() {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
-          <p className="text-lg mb-2">No portfolio risk data available</p>
+          <p className="text-lg mb-2">No market volatility data available</p>
           <p className="text-sm text-default-500">
             Please check back later when data has been calculated.
           </p>
@@ -216,7 +216,7 @@ export default function PortfolioRiskPage() {
       {/* Header */}
       <div className="text-center">
         <div className="flex flex-col md:flex-row items-center justify-center gap-3">
-          <h1 className={title()}>Portfolio Risk Analysis</h1>
+          <h1 className={title()}>Market Volatility</h1>
           <Link href="/methodology/volatility">
             <Button
               isIconOnly
@@ -269,7 +269,7 @@ export default function PortfolioRiskPage() {
                   setWarningFading(true);
                   setTimeout(() => {
                     setWarningDismissed(true);
-                    lStorage.set("PORTFOLIO_RISK_WARNING_DISMISSED", "true");
+                    lStorage.set("MARKET_VOLATILITY_WARNING_DISMISSED", "true");
                   }, 300); // Wait for fade-out animation to complete
                 }}
               >
@@ -505,7 +505,7 @@ export default function PortfolioRiskPage() {
         <CardBody className="p-6">
           <h2 className="text-lg font-semibold mb-4">Risk Contributors</h2>
           <p className="text-sm text-default-500 mb-6">
-            How each constituent contributes to the overall portfolio risk
+            How each constituent contributes to the overall market volatility
           </p>
           <RiskContributorsTable contributors={riskContributions} />
         </CardBody>

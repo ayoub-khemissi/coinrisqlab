@@ -7,7 +7,7 @@ export const LOCAL_STORAGE_KEYS = {
    * Stores whether the user has dismissed the "Limited Historical Data" warning
    * Value: "true" if dismissed
    */
-  PORTFOLIO_RISK_WARNING_DISMISSED: "portfolioRiskWarningDismissed",
+  MARKET_VOLATILITY_WARNING_DISMISSED: "marketVolatilityWarningDismissed",
 } as const;
 
 /**

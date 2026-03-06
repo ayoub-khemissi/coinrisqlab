@@ -26,8 +26,8 @@ const menuItems = [
     href: "/index-coinrisqlab",
   },
   {
-    label: "Portfolio Risk",
-    href: "/portfolio-risk",
+    label: "Market Volatility",
+    href: "/market-volatility",
   },
   {
     label: "Methodology",
@@ -75,8 +75,8 @@ export const Navbar = () => {
           </Link>
         </NavbarItem>
         <NavbarItem>
-          <Link as={NextLink} color="foreground" href="/portfolio-risk">
-            Portfolio Risk
+          <Link as={NextLink} color="foreground" href="/market-volatility">
+            Market Volatility
           </Link>
         </NavbarItem>
         <NavbarItem>

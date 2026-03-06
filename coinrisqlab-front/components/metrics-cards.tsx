@@ -399,7 +399,7 @@ function MetricsCardsComponent({
             </div>
             <button
               className="flex flex-col items-center cursor-pointer hover:opacity-80 transition-opacity"
-              onClick={() => router.push("/portfolio-risk")}
+              onClick={() => router.push("/market-volatility")}
             >
               <svg
                 height={height}

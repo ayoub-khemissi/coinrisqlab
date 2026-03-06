@@ -100,9 +100,9 @@ export default function RootLayout({
                 </Link>
                 <Link
                   className="hover:text-primary transition-colors"
-                  href="/portfolio-risk"
+                  href="/market-volatility"
                 >
-                  Portfolio Risk
+                  Market Volatility
                 </Link>
                 <Link
                   className="hover:text-primary transition-colors"

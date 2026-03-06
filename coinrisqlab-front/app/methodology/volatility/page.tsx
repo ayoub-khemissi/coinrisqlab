@@ -418,7 +418,7 @@ export default function VolatilityMethodologyPage() {
                   <strong>Application Usage:</strong>
                 </p>
                 <ul className="list-disc list-inside text-sm text-default-600 space-y-1">
-                  <li>Portfolio risk level indicators on the dashboard</li>
+                  <li>Market volatility level indicators on the dashboard</li>
                   <li>Individual cryptocurrency volatility badges</li>
                   <li>Risk contribution analysis in portfolio breakdown</li>
                   <li>Volatility gauge on the main dashboard</li>

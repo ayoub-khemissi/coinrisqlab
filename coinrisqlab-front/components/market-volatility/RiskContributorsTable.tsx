@@ -218,7 +218,7 @@ export function RiskContributorsTable({
               onClick={() => {
                 sStorage.set(
                   "CRYPTO_RETURN_PATH",
-                  "/portfolio-risk#risk-contributors",
+                  "/market-volatility#risk-contributors",
                 );
                 router.push(`/crypto/${item.coingecko_id}?panel=volatility`);
               }}

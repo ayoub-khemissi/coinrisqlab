@@ -1,10 +1,10 @@
 import { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Portfolio Risk Analysis",
+  title: "Market Volatility",
 };
 
-export default function PortfolioRiskLayout({
+export default function MarketVolatilityLayout({
   children,
 }: {
   children: React.ReactNode;

@@ -24,7 +24,7 @@ export const siteConfig = {
     "coinrisqlab",
     "coinrisqlab 80",
     "crypto analysis",
-    "portfolio risk",
+    "market volatility",
     "volatility",
     "bitcoin",
     "ethereum",
