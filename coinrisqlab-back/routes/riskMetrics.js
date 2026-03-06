@@ -493,29 +493,20 @@ api.get('/risk/crypto/:id/stress-test', async (req, res) => {
 
     const currentPrice = parseFloat(priceData[0].price_usd);
 
-    // Get price history for the chart
+    // Get daily price history for the chart (from ohlc table)
     const priceDateFilter = getDateFilter(period, 'timestamp');
-    const maxPoints = getMaxDataPoints(period);
 
     const [priceHistory] = await Database.execute(`
-      SELECT date, price FROM (
-        SELECT
-          timestamp as date,
-          price_usd as price,
-          ROW_NUMBER() OVER (ORDER BY timestamp) as rn,
-          COUNT(*) OVER () as total_count
-        FROM market_data
-        WHERE crypto_id = ?
-          ${priceDateFilter}
-      ) sub
-      WHERE
-        rn = 1
-        OR rn = total_count
-        OR MOD(rn - 1, GREATEST(1, FLOOR(total_count / ?))) = 0
-      ORDER BY date ASC
-    `, [crypto.id, maxPoints]);
+      SELECT
+        timestamp as date,
+        \`close\` as price
+      FROM ohlc
+      WHERE crypto_id = ?
+        ${priceDateFilter}
+      ORDER BY timestamp ASC
+    `, [crypto.id]);
 
-    // Calculate beta for stress test (use 365d period as per requirements)
+    // Calculate beta for stress test (use 365d period, consistent with methodology)
     const dateFilter = getDateFilter('365d');
     const cryptoReturns = await getCryptoLogReturns(crypto.id, dateFilter);
     const indexReturns = await getIndexLogReturns(dateFilter);

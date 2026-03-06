@@ -151,15 +151,20 @@ const LiveImpactDetails = memo(function LiveImpactDetails({
             {new Date(activeScenario.endDate).toLocaleDateString("fr-FR")}
           </p>
         </div>
-        <Chip color="danger" size="sm" variant="flat">
-          {activeScenario.marketShock.toFixed(2)}%
-        </Chip>
       </div>
 
-      {/* Impact visualization */}
+      {/* Market cumulative decline */}
+      <div className="text-center mb-3 p-3 bg-danger-50 dark:bg-danger-50/10 rounded-lg">
+        <p className="text-lg font-semibold text-danger">
+          Market falls {Math.abs(activeScenario.marketShock).toFixed(1)}% over{" "}
+          {activeScenario.durationDays} days
+        </p>
+      </div>
+
+      {/* Beta-adjusted impact */}
       <div className="text-center mb-2">
         <p className="text-sm text-default-500">
-          If we relived <strong>{activeScenario.name}</strong>:
+          Beta-adjusted loss for this asset:
         </p>
       </div>
       <div className="flex items-center justify-center gap-3 sm:gap-8 py-2">
@@ -224,12 +229,10 @@ export function StressTestPanel({ cryptoId, symbol }: StressTestPanelProps) {
           day: "numeric",
         }),
         price: p.price,
-        fullDateTime: new Date(p.date).toLocaleString("fr-FR", {
+        fullDateTime: new Date(p.date).toLocaleDateString("fr-FR", {
           year: "numeric",
           month: "long",
           day: "numeric",
-          hour: "2-digit",
-          minute: "2-digit",
         }),
         stressedPrice: null,
       };
@@ -454,10 +457,11 @@ export function StressTestPanel({ cryptoId, symbol }: StressTestPanelProps) {
         <CardBody className="p-4">
           <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
             <p className="text-sm text-default-500 flex-1">
-              <strong>Stress test</strong> simulates historical market crashes
-              on your position using the formula:{" "}
+              <strong>Stress test</strong> measures the cumulative market
+              decline over historical crisis windows, then adjusts for this
+              asset&apos;s 90-day beta:{" "}
               <code className="bg-default-100 px-1 rounded">
-                Stressed Price = Current Price x (1 + Shock x Beta)
+                Stressed Price = Current Price x (1 + Cumulative Shock x Beta)
               </code>
               . A beta of {data?.beta?.toFixed(2) || "1.0"} means this crypto
               {data?.beta && data.beta > 1

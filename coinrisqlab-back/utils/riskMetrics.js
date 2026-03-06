@@ -257,41 +257,45 @@ export function generateNormalCurve(mu, sigma, min, max, points = 100) {
  *
  * @param {number} beta - Crypto beta relative to market
  * @param {number} currentPrice - Current crypto price
- * @param {Array<{ id: string, name: string, shock: number, startDate: string, endDate: string, description: string }>} scenarios - Stress scenarios
- * @returns {Array<{ id: string, name: string, marketShock: number, expectedImpact: number, newPrice: number, priceChange: number, startDate: string, endDate: string, description: string }>}
+ * @param {Array<{ id: string, name: string, shock: number, startDate: string, endDate: string, durationDays: number, description: string }>} scenarios - Stress scenarios
+ * @returns {Array<{ id: string, name: string, marketShock: number, expectedImpact: number, newPrice: number, priceChange: number, startDate: string, endDate: string, durationDays: number, description: string }>}
  */
 export function calculateStressTest(beta, currentPrice, scenarios = null) {
   const defaultScenarios = [
     {
       id: 'covid-19',
       name: 'Covid-19',
-      shock: -0.5042,
+      shock: -0.6090,
       startDate: '2020-02-20',
       endDate: '2020-03-13',
+      durationDays: 22,
       description: 'Global pandemic market crash'
     },
     {
       id: 'china-mining-ban',
       name: 'Ban Mining China',
-      shock: -0.2507,
+      shock: -0.4064,
       startDate: '2021-05-12',
       endDate: '2021-05-23',
+      durationDays: 11,
       description: 'China cryptocurrency mining ban'
     },
     {
       id: 'ust-crash',
       name: 'Crash UST',
-      shock: -0.0473,
+      shock: -0.2559,
       startDate: '2022-05-07',
       endDate: '2022-05-12',
+      durationDays: 5,
       description: 'Terra/Luna stablecoin collapse'
     },
     {
       id: 'ftx-crash',
       name: 'Crash FTX',
-      shock: -0.0264,
-      startDate: '2022-11-05',
-      endDate: '2022-11-09',
+      shock: -0.1326,
+      startDate: '2022-10-31',
+      endDate: '2022-11-04',
+      durationDays: 4,
       description: 'FTX exchange collapse'
     }
   ];
@@ -312,6 +316,7 @@ export function calculateStressTest(beta, currentPrice, scenarios = null) {
       priceChange: priceChange,
       startDate: scenario.startDate,
       endDate: scenario.endDate,
+      durationDays: scenario.durationDays,
       description: scenario.description
     };
   });

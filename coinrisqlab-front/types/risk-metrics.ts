@@ -161,6 +161,7 @@ export interface StressScenario {
   priceChange: number;
   startDate: string;
   endDate: string;
+  durationDays: number;
   description: string;
 }
 
