@@ -64,23 +64,17 @@ async function exportConstituentsPrices() {
 
     const cryptoIds = constituents.map(c => c.crypto_id);
 
-    // 3. Get historical prices for constituents from market_data (D-1 to D-1-window, excludes today)
+    // 3. Get historical closing prices for constituents from ohlc (D-1 to D-1-window, excludes today)
     const [pricesData] = await Database.execute(`
       SELECT
-        md.crypto_id,
-        md.price_date,
-        md.price_usd
-      FROM market_data md
-      WHERE md.crypto_id IN (${cryptoIds.join(',')})
-        AND md.price_date > DATE_SUB(DATE_SUB(CURDATE(), INTERVAL 1 DAY), INTERVAL ${windowDays} DAY)
-        AND md.price_date <= DATE_SUB(CURDATE(), INTERVAL 1 DAY)
-        AND md.timestamp = (
-          SELECT MAX(md2.timestamp)
-          FROM market_data md2
-          WHERE md2.crypto_id = md.crypto_id
-            AND md2.price_date = md.price_date
-        )
-      ORDER BY md.price_date ASC
+        o.crypto_id,
+        DATE(o.timestamp) as price_date,
+        o.close as price_usd
+      FROM ohlc o
+      WHERE o.crypto_id IN (${cryptoIds.join(',')})
+        AND DATE(o.timestamp) >= DATE_SUB(DATE_SUB(CURDATE(), INTERVAL 1 DAY), INTERVAL ${windowDays} DAY)
+        AND DATE(o.timestamp) <= DATE_SUB(CURDATE(), INTERVAL 1 DAY)
+      ORDER BY o.timestamp ASC
     `);
 
     log.info(`Retrieved ${pricesData.length} price records`);
