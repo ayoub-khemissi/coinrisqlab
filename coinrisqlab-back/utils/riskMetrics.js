@@ -364,27 +364,18 @@ export function calculateSML(cryptoBeta, cryptoActualReturn, marketReturn, riskF
 }
 
 /**
- * Calculate annualized return from array of log returns
+ * Calculate cumulative return from array of log returns
  *
  * @param {number[]} logReturns - Array of daily log returns
- * @param {number} tradingDays - Trading days per year (default: 365)
- * @returns {number} Annualized return
+ * @returns {number} Cumulative return (sum of log returns)
  */
-export function calculateAnnualizedReturn(logReturns, tradingDays = 365) {
+export function calculateAnnualizedReturn(logReturns) {
   if (!logReturns || logReturns.length === 0) {
     return 0;
   }
 
-  // Sum of log returns = total log return
-  const totalLogReturn = logReturns.reduce((sum, r) => sum + r, 0);
-
-  // Daily average return
-  const dailyReturn = totalLogReturn / logReturns.length;
-
-  // Annualize
-  const annualizedReturn = dailyReturn * tradingDays;
-
-  return annualizedReturn;
+  // Sum of log returns = total cumulative return over the period
+  return logReturns.reduce((sum, r) => sum + r, 0);
 }
 
 /**
