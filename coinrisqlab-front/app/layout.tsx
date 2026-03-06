@@ -122,6 +122,12 @@ export default function RootLayout({
                 >
                   Risk Metrics
                 </Link>
+                <Link
+                  className="hover:text-primary transition-colors"
+                  href="/news"
+                >
+                  News
+                </Link>
               </nav>
               <p className="text-default-500 text-xs">
                 Data provided by{" "}

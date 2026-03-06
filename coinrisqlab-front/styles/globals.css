@@ -17,3 +17,94 @@
 .recharts-sector:focus {
   outline: none !important;
 }
+
+/* Markdown content styles */
+.markdown-content h1 {
+  font-size: 1.75rem;
+  font-weight: 700;
+  margin: 1.5rem 0 0.75rem;
+}
+
+.markdown-content h2 {
+  font-size: 1.5rem;
+  font-weight: 600;
+  margin: 1.25rem 0 0.5rem;
+}
+
+.markdown-content h3 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin: 1rem 0 0.5rem;
+}
+
+.markdown-content p {
+  margin: 0.75rem 0;
+  line-height: 1.7;
+}
+
+.markdown-content ul,
+.markdown-content ol {
+  padding-left: 1.5rem;
+  margin: 0.75rem 0;
+}
+
+.markdown-content li {
+  margin: 0.25rem 0;
+}
+
+.markdown-content blockquote {
+  border-left: 3px solid hsl(var(--heroui-primary));
+  padding-left: 1rem;
+  margin: 1rem 0;
+  opacity: 0.85;
+}
+
+.markdown-content code {
+  background: hsl(var(--heroui-default-100));
+  padding: 0.15rem 0.4rem;
+  border-radius: 0.25rem;
+  font-size: 0.875rem;
+}
+
+.markdown-content pre {
+  background: hsl(var(--heroui-default-100));
+  padding: 1rem;
+  border-radius: 0.5rem;
+  overflow-x: auto;
+  margin: 1rem 0;
+}
+
+.markdown-content pre code {
+  background: none;
+  padding: 0;
+}
+
+.markdown-content a {
+  color: hsl(var(--heroui-primary));
+  text-decoration: underline;
+}
+
+.markdown-content img {
+  max-width: 100%;
+  border-radius: 0.5rem;
+  margin: 1rem 0;
+}
+
+.markdown-content table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1rem 0;
+}
+
+.markdown-content th,
+.markdown-content td {
+  border: 1px solid hsl(var(--heroui-default-200));
+  padding: 0.5rem 0.75rem;
+  text-align: left;
+}
+
+.markdown-content hr {
+  border: none;
+  border-top: 1px solid hsl(var(--heroui-default-200));
+  margin: 1.5rem 0;
+}

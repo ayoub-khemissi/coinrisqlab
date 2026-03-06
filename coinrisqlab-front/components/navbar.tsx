@@ -33,6 +33,10 @@ const menuItems = [
     label: "Methodology",
     href: "/methodology",
   },
+  {
+    label: "News",
+    href: "/news",
+  },
 ];
 
 export const Navbar = () => {
@@ -82,6 +86,11 @@ export const Navbar = () => {
         <NavbarItem>
           <Link as={NextLink} color="foreground" href="/methodology">
             Methodology
+          </Link>
+        </NavbarItem>
+        <NavbarItem>
+          <Link as={NextLink} color="foreground" href="/news">
+            News
           </Link>
         </NavbarItem>
       </NavbarContent>
