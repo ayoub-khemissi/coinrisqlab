@@ -2,7 +2,7 @@
 
 import type { NewsRow } from "@/types/news";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { Input } from "@heroui/input";
 import { Button } from "@heroui/button";
 import { Switch } from "@heroui/switch";
@@ -25,7 +25,9 @@ interface NewsFormProps {
 export function NewsForm({ article, onSubmit, loading }: NewsFormProps) {
   const [title, setTitle] = useState(article?.title || "");
   const [content, setContent] = useState(article?.content || "");
-  const [authorName, setAuthorName] = useState(article?.author_name || "");
+  const [authorName, setAuthorName] = useState(
+    article?.author_name || "CoinRisqLab",
+  );
   const [publishedAt, setPublishedAt] = useState(() => {
     if (article?.published_at) {
       return parseAbsoluteToLocal(new Date(article.published_at).toISOString());
@@ -35,6 +37,43 @@ export function NewsForm({ article, onSubmit, loading }: NewsFormProps) {
   });
   const [isActive, setIsActive] = useState(article?.is_active !== false);
   const [imageUrl, setImageUrl] = useState(article?.image_url || "");
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+
+    if (!file) return;
+
+    setUploading(true);
+
+    try {
+      const formData = new FormData();
+
+      formData.append("file", file);
+
+      const res = await fetch("/api/admin/upload", {
+        method: "POST",
+        body: formData,
+      });
+
+      const data = await res.json();
+
+      if (data.url) {
+        setImageUrl(data.url);
+      } else {
+        alert(data.msg || "Upload failed");
+      }
+    } catch {
+      alert("Upload failed");
+    } finally {
+      setUploading(false);
+
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+    }
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -63,7 +102,11 @@ export function NewsForm({ article, onSubmit, loading }: NewsFormProps) {
       />
 
       <div className="space-y-3">
-        <h3 className="text-sm font-medium text-gray-400">Content</h3>
+        <h3 className="text-sm font-medium text-gray-400">Content (Markdown)</h3>
+        <p className="text-xs text-gray-500">
+          Supports full Markdown: ## headings, **bold**, *italic*, - lists,
+          [links](url), images, and code blocks.
+        </p>
         <div data-color-mode="dark">
           <MDEditor
             height={400}
@@ -100,22 +143,55 @@ export function NewsForm({ article, onSubmit, loading }: NewsFormProps) {
         />
       </div>
 
-      <Input
-        classNames={{
-          inputWrapper: "bg-[#161b22] border-gray-700",
-          input: "text-gray-200",
-        }}
-        label="Image URL"
-        value={imageUrl}
-        variant="bordered"
-        onValueChange={setImageUrl}
-      />
-
-      {imageUrl && (
-        <div className="rounded-lg overflow-hidden border border-gray-700 max-w-xs">
-          <img alt="Preview" className="w-full h-auto" src={imageUrl} />
+      <div className="space-y-3">
+        <h3 className="text-sm font-medium text-gray-400">Cover Image</h3>
+        <p className="text-xs text-gray-500">
+          Recommended: 1200x630px, JPEG/PNG/WebP, max 5 MB
+        </p>
+        <div className="flex gap-3 items-center">
+          <input
+            ref={fileInputRef}
+            accept="image/jpeg,image/png,image/webp"
+            className="hidden"
+            type="file"
+            onChange={handleUpload}
+          />
+          <Button
+            color="primary"
+            isLoading={uploading}
+            size="sm"
+            variant="flat"
+            onPress={() => fileInputRef.current?.click()}
+          >
+            Upload Image
+          </Button>
+          {imageUrl && (
+            <Button
+              color="danger"
+              size="sm"
+              variant="light"
+              onPress={() => setImageUrl("")}
+            >
+              Remove
+            </Button>
+          )}
         </div>
-      )}
+        <Input
+          classNames={{
+            inputWrapper: "bg-[#161b22] border-gray-700",
+            input: "text-gray-200",
+          }}
+          label="Or paste image URL"
+          value={imageUrl}
+          variant="bordered"
+          onValueChange={setImageUrl}
+        />
+        {imageUrl && (
+          <div className="rounded-lg overflow-hidden border border-gray-700 max-w-xs">
+            <img alt="Preview" className="w-full h-auto" src={imageUrl} />
+          </div>
+        )}
+      </div>
 
       <div className="flex items-center gap-3">
         <Switch

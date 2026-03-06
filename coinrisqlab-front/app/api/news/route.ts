@@ -17,6 +17,7 @@ export async function GET(request: NextRequest) {
       const news = result.rows.map((item) => ({
         id: item.id,
         title: item.title,
+        slug: item.slug,
         content: item.content,
         image_url: item.image_url,
         author_name: item.author_name,

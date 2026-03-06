@@ -36,5 +36,8 @@ yarn.lock
 package-lock.json
 bun.lockb
 
+# uploads
+/public/uploads/
+
 # environment variables
 .env

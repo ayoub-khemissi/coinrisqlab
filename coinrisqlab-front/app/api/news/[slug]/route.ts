@@ -1,14 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 
-import { getNewsById } from "@/lib/queries/news";
+import { getNewsBySlug } from "@/lib/queries/news";
 
 export async function GET(
   _request: NextRequest,
-  { params }: { params: Promise<{ id: string }> },
+  { params }: { params: Promise<{ slug: string }> },
 ) {
   try {
-    const { id } = await params;
-    const item = await getNewsById(parseInt(id));
+    const { slug } = await params;
+    const item = await getNewsBySlug(slug);
 
     if (!item) {
       return NextResponse.json({ error: "notFound" }, { status: 404 });
@@ -18,6 +18,7 @@ export async function GET(
       article: {
         id: item.id,
         title: item.title,
+        slug: item.slug,
         content: item.content,
         image_url: item.image_url,
         author_name: item.author_name,

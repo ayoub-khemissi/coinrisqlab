@@ -4,6 +4,42 @@ import { RowDataPacket, ResultSetHeader } from "mysql2";
 
 import { db } from "@/lib/db";
 
+function toMySQLDatetime(iso: string): string {
+  return iso.replace("T", " ").replace("Z", "").replace(/\.\d{3}$/, "");
+}
+
+function generateSlug(title: string): string {
+  return title
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9\s-]/g, "")
+    .replace(/\s+/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "")
+    .slice(0, 280);
+}
+
+async function ensureUniqueSlug(slug: string): Promise<string> {
+  const [rows] = await db.execute<RowDataPacket[]>(
+    "SELECT slug FROM news WHERE slug = ? OR slug LIKE ?",
+    [slug, `${slug}-%`],
+  );
+
+  if (rows.length === 0) return slug;
+
+  const existing = new Set(rows.map((r) => r.slug as string));
+  let candidate = slug;
+  let i = 2;
+
+  while (existing.has(candidate)) {
+    candidate = `${slug}-${i}`;
+    i++;
+  }
+
+  return candidate;
+}
+
 export async function getLatestNews(limit: number = 5): Promise<NewsRow[]> {
   const [rows] = await db.execute<RowDataPacket[]>(
     "SELECT * FROM news WHERE is_active = 1 AND published_at <= NOW() ORDER BY published_at DESC LIMIT ?",
@@ -11,6 +47,17 @@ export async function getLatestNews(limit: number = 5): Promise<NewsRow[]> {
   );
 
   return (rows as NewsRow[]).map(parseNewsRow);
+}
+
+export async function getNewsBySlug(slug: string): Promise<NewsRow | null> {
+  const [rows] = await db.execute<RowDataPacket[]>(
+    "SELECT * FROM news WHERE slug = ? AND is_active = 1 AND published_at <= NOW()",
+    [slug],
+  );
+
+  if (rows.length === 0) return null;
+
+  return parseNewsRow(rows[0] as NewsRow);
 }
 
 export async function getNewsById(id: number): Promise<NewsRow | null> {
@@ -68,15 +115,18 @@ export async function createNews(data: {
   published_at: string;
   is_active: boolean;
 }): Promise<number> {
+  const slug = await ensureUniqueSlug(generateSlug(data.title));
+
   const [result] = await db.execute<ResultSetHeader>(
-    `INSERT INTO news (title, content, image_url, author_name, published_at, is_active)
-     VALUES (?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO news (title, slug, content, image_url, author_name, published_at, is_active)
+     VALUES (?, ?, ?, ?, ?, ?, ?)`,
     [
       data.title,
+      slug,
       data.content,
       data.image_url,
       data.author_name,
-      data.published_at,
+      toMySQLDatetime(data.published_at),
       data.is_active ? 1 : 0,
     ],
   );
@@ -98,12 +148,23 @@ export async function updateNews(
   const fields: string[] = [];
   const params: (string | number | null)[] = [];
 
+  // If title changes, regenerate slug
+  if (data.title !== undefined) {
+    const slug = await ensureUniqueSlug(generateSlug(data.title));
+
+    fields.push("title = ?");
+    params.push(data.title);
+    fields.push("slug = ?");
+    params.push(slug);
+  }
+
   const fieldMap: Record<string, unknown> = {
-    title: data.title,
     content: data.content,
     image_url: data.image_url,
     author_name: data.author_name,
-    published_at: data.published_at,
+    published_at: data.published_at
+      ? toMySQLDatetime(data.published_at)
+      : undefined,
   };
 
   for (const [key, value] of Object.entries(fieldMap)) {

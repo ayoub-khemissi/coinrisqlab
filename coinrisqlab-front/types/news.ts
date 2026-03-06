@@ -1,6 +1,7 @@
 export interface NewsRow {
   id: number;
   title: string;
+  slug: string;
   content: string;
   image_url: string | null;
   author_name: string;
@@ -13,6 +14,7 @@ export interface NewsRow {
 export interface News {
   id: number;
   title: string;
+  slug: string;
   content: string;
   image_url: string | null;
   author_name: string;

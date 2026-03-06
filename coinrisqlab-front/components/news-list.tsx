@@ -69,7 +69,7 @@ export function NewsList() {
         <NextLink
           key={item.id}
           className="block group"
-          href={`/news/${item.id}`}
+          href={`/news/${item.slug}`}
         >
           <div className="rounded-2xl overflow-hidden border border-default-200 hover:border-primary/30 transition-colors bg-default-50">
             <div className="flex flex-col md:flex-row">
@@ -80,7 +80,7 @@ export function NewsList() {
                 />
               )}
               <div className="p-6 flex-1">
-                <h3 className="text-xl font-bold text-primary group-hover:opacity-80 transition-opacity mb-2">
+                <h3 className="text-xl font-bold group-hover:opacity-80 transition-opacity mb-2">
                   {item.title}
                 </h3>
                 <div className="flex items-center gap-3 text-sm text-default-400 mb-3">
@@ -94,7 +94,7 @@ export function NewsList() {
                   {item.content.replace(/[#*`>\-\[\]()!]/g, "").slice(0, 200)}
                   ...
                 </p>
-                <span className="inline-block mt-3 text-sm text-primary/70 group-hover:text-primary transition-colors">
+                <span className="inline-block mt-3 text-sm text-default-500 group-hover:text-foreground transition-colors">
                   Read more →
                 </span>
               </div>
@@ -106,7 +106,7 @@ export function NewsList() {
       {news.length < total && (
         <div className="flex justify-center pt-4">
           <Button
-            className="text-primary border-primary/30"
+            color="primary"
             isLoading={loadingMore}
             variant="bordered"
             onPress={handleLoadMore}

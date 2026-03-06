@@ -10,17 +10,17 @@ import NextLink from "next/link";
 import { MarkdownRenderer } from "@/components/markdown-renderer";
 
 interface Props {
-  id: string;
+  slug: string;
 }
 
-export function NewsArticleContent({ id }: Props) {
+export function NewsArticleContent({ slug }: Props) {
   const [article, setArticle] = useState<News | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchArticle = async () => {
       try {
-        const res = await fetch(`/api/news/${id}`);
+        const res = await fetch(`/api/news/${slug}`);
         const data = await res.json();
 
         setArticle(data.article || null);
@@ -32,7 +32,7 @@ export function NewsArticleContent({ id }: Props) {
     };
 
     fetchArticle();
-  }, [id]);
+  }, [slug]);
 
   if (loading) {
     return (
@@ -48,9 +48,9 @@ export function NewsArticleContent({ id }: Props) {
         <p className="text-default-400 mb-4">Article not found.</p>
         <Button
           as={NextLink}
-          className="text-primary border-primary/30"
+          color="primary"
           href="/news"
-          variant="bordered"
+          variant="flat"
         >
           Back to news
         </Button>
@@ -62,10 +62,11 @@ export function NewsArticleContent({ id }: Props) {
     <div className="container mx-auto max-w-4xl px-6 py-12">
       <Button
         as={NextLink}
-        className="text-primary border-primary/30 mb-8"
+        className="mb-8"
+        color="primary"
         href="/news"
         size="sm"
-        variant="bordered"
+        variant="flat"
       >
         ← Back to news
       </Button>
@@ -80,7 +81,7 @@ export function NewsArticleContent({ id }: Props) {
         </div>
       )}
 
-      <h1 className="text-3xl sm:text-4xl font-bold text-primary mb-4">
+      <h1 className="text-3xl sm:text-4xl font-bold mb-4">
         {article.title}
       </h1>
 
