@@ -20,8 +20,15 @@ async function fetchDailyData() {
     }
 
     const isMarketCapBackfill = process.argv.includes('--backfill-mcap');
+    const isHourlyBackfill = process.argv.includes('--backfill-hourly');
 
-    if (isMarketCapBackfill) {
+    if (isHourlyBackfill) {
+      log.info('Starting hourly backfill for all cryptos (days=90)...');
+      const stats = await runHourlyBackfill();
+      const duration = Date.now() - startTime;
+      log.info(`Hourly backfill completed in ${(duration / 1000).toFixed(2)}s`);
+      log.info(`API calls: ${stats.apiCalls}, hourly inserted: ${stats.hourlyInserted}, errors: ${stats.apiErrors}`);
+    } else if (isMarketCapBackfill) {
       log.info('Starting market cap backfill for all cryptos (days=730)...');
       const stats = await runMarketCapBackfill();
       const duration = Date.now() - startTime;
@@ -143,6 +150,20 @@ async function processDailyBackfill(cryptoId, symbol, coingeckoId) {
     log.debug(`${symbol}: Inserted ${ohlcInserted} ohlc record(s)`);
   }
 
+  // Also insert hourly data into ohlc_hourly
+  const hourlyData = aggregateToHourlyData(data);
+  let hourlyInserted = 0;
+  for (const [tsStr, hourData] of hourlyData) {
+    if (hourData.price > 0) {
+      await insertOhlcHourlyRecord(cryptoId, tsStr, hourData.price, hourData.marketCap || null, hourData.volume || null);
+      hourlyInserted++;
+    }
+  }
+
+  if (hourlyInserted > 0) {
+    log.debug(`${symbol}: Inserted ${hourlyInserted} ohlc_hourly record(s)`);
+  }
+
   return { ohlcInserted, apiCalled: true, apiError: false };
 }
 
@@ -253,6 +274,70 @@ async function runMarketCapBackfill() {
 }
 
 // ═══════════════════════════════════════════════════════════════
+// HOURLY BACKFILL (--backfill-hourly)
+// ═══════════════════════════════════════════════════════════════
+
+const HOURLY_BACKFILL_DAYS = 90; // CoinGecko returns hourly data for days<=90
+
+/**
+ * Backfill ohlc_hourly for ALL cryptos (days=90).
+ * CoinGecko returns hourly granularity when days<=90.
+ */
+async function runHourlyBackfill() {
+  const stats = { apiCalls: 0, hourlyInserted: 0, apiErrors: 0 };
+
+  const [cryptos] = await Database.execute(`
+    SELECT c.id, c.symbol, c.coingecko_id
+    FROM cryptocurrencies c
+    WHERE c.coingecko_id IS NOT NULL
+    ORDER BY c.symbol
+  `);
+
+  log.info(`[HourlyBackfill] Found ${cryptos.length} crypto(s) to backfill`);
+
+  for (const crypto of cryptos) {
+    try {
+      const { data, error: apiError } = await fetchMarketChart(crypto.coingecko_id, HOURLY_BACKFILL_DAYS);
+      stats.apiCalls++;
+
+      if (apiError) {
+        log.warn(`${crypto.symbol}: API error - ${apiError}`);
+        stats.apiErrors++;
+        await delay(API_DELAY_MS);
+        continue;
+      }
+
+      if (!data || !data.prices || data.prices.length === 0) {
+        log.warn(`${crypto.symbol}: No data returned from API`);
+        stats.apiErrors++;
+        await delay(API_DELAY_MS);
+        continue;
+      }
+
+      const hourlyData = aggregateToHourlyData(data);
+      let inserted = 0;
+
+      for (const [tsStr, hourData] of hourlyData) {
+        if (hourData.price > 0) {
+          await insertOhlcHourlyRecord(crypto.id, tsStr, hourData.price, hourData.marketCap || null, hourData.volume || null);
+          inserted++;
+        }
+      }
+
+      stats.hourlyInserted += inserted;
+      log.info(`${crypto.symbol}: Inserted ${inserted} hourly records`);
+
+      await delay(API_DELAY_MS);
+    } catch (error) {
+      log.error(`[HourlyBackfill] Error processing ${crypto.symbol}: ${error.message}`);
+      stats.apiErrors++;
+    }
+  }
+
+  return stats;
+}
+
+// ═══════════════════════════════════════════════════════════════
 // SHARED FUNCTIONS
 // ═══════════════════════════════════════════════════════════════
 
@@ -334,6 +419,52 @@ function aggregateToDailyData(data) {
 }
 
 /**
+ * Aggregate market_chart data into hourly data (last point per UTC hour).
+ * Excludes the current hour (incomplete).
+ */
+function aggregateToHourlyData(data) {
+  const now = new Date();
+  const currentHourStr = formatHourString(now);
+
+  const pricesByHour = new Map();
+  const mcapsByHour = new Map();
+  const volumesByHour = new Map();
+
+  for (const [ts, val] of data.prices) {
+    const hourStr = formatHourString(new Date(ts));
+    if (hourStr === currentHourStr) continue;
+    pricesByHour.set(hourStr, val);
+  }
+
+  if (data.market_caps) {
+    for (const [ts, val] of data.market_caps) {
+      const hourStr = formatHourString(new Date(ts));
+      if (hourStr === currentHourStr) continue;
+      mcapsByHour.set(hourStr, val);
+    }
+  }
+
+  if (data.total_volumes) {
+    for (const [ts, val] of data.total_volumes) {
+      const hourStr = formatHourString(new Date(ts));
+      if (hourStr === currentHourStr) continue;
+      volumesByHour.set(hourStr, val);
+    }
+  }
+
+  const hourlyData = new Map();
+  for (const [hourStr, price] of pricesByHour) {
+    hourlyData.set(hourStr, {
+      price,
+      marketCap: mcapsByHour.get(hourStr) || 0,
+      volume: volumesByHour.get(hourStr) || 0,
+    });
+  }
+
+  return hourlyData;
+}
+
+/**
  * Insert an OHLC record (daily only). open=high=low=close=price.
  */
 async function insertOhlcRecord(cryptoId, dateStr, price, marketCap = null, volume = null) {
@@ -352,6 +483,20 @@ async function insertOhlcRecord(cryptoId, dateStr, price, marketCap = null, volu
 }
 
 /**
+ * Insert an hourly record into ohlc_hourly.
+ */
+async function insertOhlcHourlyRecord(cryptoId, timestampStr, price, marketCap = null, volume = null) {
+  await Database.execute(`
+    INSERT INTO ohlc_hourly (crypto_id, timestamp, close, market_cap, volume)
+    VALUES (?, ?, ?, ?, ?)
+    ON DUPLICATE KEY UPDATE
+    close = VALUES(close),
+    market_cap = VALUES(market_cap),
+    volume = VALUES(volume)
+  `, [cryptoId, timestampStr, price, marketCap, volume]);
+}
+
+/**
  * Format a Date as YYYY-MM-DD string (UTC).
  */
 function formatDateString(date) {
@@ -359,6 +504,15 @@ function formatDateString(date) {
   const month = String(date.getUTCMonth() + 1).padStart(2, '0');
   const day = String(date.getUTCDate()).padStart(2, '0');
   return `${year}-${month}-${day}`;
+}
+
+/**
+ * Format a Date as YYYY-MM-DD HH:00:00 string (UTC, rounded to hour).
+ */
+function formatHourString(date) {
+  const dateStr = formatDateString(date);
+  const hour = String(date.getUTCHours()).padStart(2, '0');
+  return `${dateStr} ${hour}:00:00`;
 }
 
 /**

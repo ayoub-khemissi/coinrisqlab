@@ -14,7 +14,7 @@ import {
   calculateAnnualizedReturn
 } from '../utils/riskMetrics.js';
 import { mean, standardDeviation } from '../utils/statistics.js';
-import { getDateFilter, getMaxDataPoints } from '../utils/queryHelpers.js';
+import { getDateFilter } from '../utils/queryHelpers.js';
 
 /**
  * Helper: Get crypto by coingecko_id
@@ -90,21 +90,38 @@ api.get('/risk/crypto/:id/price-history', async (req, res) => {
     }
 
     const dateFilter = getDateFilter(period, 'timestamp');
-    const maxPoints = getMaxDataPoints(period);
 
-    // Get price history with intelligent downsampling
-    // UNION ALL market_data (hourly, recent) + ohlc (daily, long history)
-    // ohlc fills dates absent from market_data via NOT EXISTS anti-join
-    const [prices] = await Database.execute(`
-      SELECT date, price FROM (
-        SELECT
-          date, price,
-          ROW_NUMBER() OVER (ORDER BY date) as rn,
-          COUNT(*) OVER () as total_count
-        FROM (
-          SELECT timestamp as date, price_usd as price
-          FROM market_data
-          WHERE crypto_id = ? ${dateFilter}
+    let prices;
+
+    // Interval strategy: 24h=5min, 7d=15min, 30d=1h, 90d=3h, 365d/all=daily
+    const intervalMap = { '24h': 5, '7d': 15 };
+    const intervalMinutes = intervalMap[period] || null;
+
+    if (period === '24h' || period === '7d') {
+      // Very short periods: use market_data only (sub-hourly granularity)
+      [prices] = await Database.execute(`
+        SELECT md.timestamp as date, md.price_usd as price
+        FROM market_data md
+        WHERE md.crypto_id = ? ${dateFilter}
+          AND md.timestamp = (
+            SELECT MIN(md2.timestamp)
+            FROM market_data md2
+            WHERE md2.crypto_id = md.crypto_id
+              AND DATE(md2.timestamp) = DATE(md.timestamp)
+              AND HOUR(md2.timestamp) = HOUR(md.timestamp)
+              AND FLOOR(MINUTE(md2.timestamp) / ${intervalMinutes}) = FLOOR(MINUTE(md.timestamp) / ${intervalMinutes})
+          )
+        ORDER BY md.timestamp ASC
+      `, [crypto.id]);
+    } else if (period === '30d' || period === '90d') {
+      // Medium periods: ohlc_hourly downsampled + ohlc daily for dates without hourly data
+      const hourInterval = period === '30d' ? 1 : 3;
+      [prices] = await Database.execute(`
+        SELECT date, price FROM (
+          SELECT oh.timestamp as date, oh.close as price
+          FROM ohlc_hourly oh
+          WHERE oh.crypto_id = ? ${dateFilter.replace(/timestamp/g, 'oh.timestamp')}
+            AND MOD(HOUR(oh.timestamp), ${hourInterval}) = 0
 
           UNION ALL
 
@@ -112,16 +129,41 @@ api.get('/risk/crypto/:id/price-history', async (req, res) => {
           FROM ohlc o
           WHERE o.crypto_id = ? ${dateFilter.replace(/timestamp/g, 'o.timestamp')}
             AND NOT EXISTS (
-              SELECT 1 FROM market_data md
-              WHERE md.crypto_id = o.crypto_id
-                AND md.price_date = DATE(o.timestamp)
+              SELECT 1 FROM ohlc_hourly oh2
+              WHERE oh2.crypto_id = o.crypto_id
+                AND DATE(oh2.timestamp) = DATE(o.timestamp)
             )
         ) combined
-      ) sub
-      WHERE rn = 1 OR rn = total_count
-         OR MOD(rn - 1, GREATEST(1, FLOOR(total_count / ?))) = 0
-      ORDER BY date ASC
-    `, [crypto.id, crypto.id, maxPoints]);
+        ORDER BY date ASC
+      `, [crypto.id, crypto.id]);
+    } else {
+      // Long periods (365d, all): 1 point per day from ohlc
+      [prices] = await Database.execute(`
+        SELECT date, price FROM (
+          SELECT DATE(o.timestamp) as date, o.close as price
+          FROM ohlc o
+          WHERE o.crypto_id = ? ${dateFilter.replace(/timestamp/g, 'o.timestamp')}
+
+          UNION ALL
+
+          SELECT md.price_date as date, md.price_usd as price
+          FROM market_data md
+          WHERE md.crypto_id = ? ${dateFilter.replace(/timestamp/g, 'md.timestamp')}
+            AND md.timestamp = (
+              SELECT MAX(md2.timestamp)
+              FROM market_data md2
+              WHERE md2.crypto_id = md.crypto_id
+                AND md2.price_date = md.price_date
+            )
+            AND NOT EXISTS (
+              SELECT 1 FROM ohlc o2
+              WHERE o2.crypto_id = md.crypto_id
+                AND DATE(o2.timestamp) = md.price_date
+            )
+        ) daily
+        ORDER BY date ASC
+      `, [crypto.id, crypto.id]);
+    }
 
     // Get latest market data with percent changes
     const [latest] = await Database.execute(`

@@ -291,6 +291,20 @@ CREATE TABLE IF NOT EXISTS `ohlc` (
     KEY `idx_timestamp` (`timestamp`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+DROP TABLE IF EXISTS `ohlc_hourly`;
+CREATE TABLE IF NOT EXISTS `ohlc_hourly` (
+    `id` BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    `crypto_id` INT UNSIGNED NOT NULL,
+    `timestamp` DATETIME NOT NULL COMMENT 'Hourly timestamp of the data point',
+    `close` DECIMAL(30, 18) NOT NULL DEFAULT 0 COMMENT 'Closing price at this hour',
+    `market_cap` DECIMAL(40, 8) NULL COMMENT 'Market capitalization in USD',
+    `volume` DECIMAL(30, 8) NULL COMMENT 'Volume in USD',
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY `fk_ohlc_hourly_crypto_idx` (`crypto_id`) REFERENCES `cryptocurrencies`(`id`) ON DELETE CASCADE,
+    UNIQUE KEY `idx_crypto_timestamp` (`crypto_id`, `timestamp`),
+    KEY `idx_timestamp` (`timestamp`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 DROP TABLE IF EXISTS `crypto_distribution_stats`;
 CREATE TABLE IF NOT EXISTS `crypto_distribution_stats` (
     `id` BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
