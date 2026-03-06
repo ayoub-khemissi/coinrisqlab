@@ -284,9 +284,10 @@ export default function CryptoDetailContent() {
           <Image
             alt={basic.name}
             className="w-16 h-16"
-            height={64}
+            height={200}
+            quality={100}
             src={basic.logo_url}
-            width={64}
+            width={200}
           />
         )}
         <div className="flex-1">
