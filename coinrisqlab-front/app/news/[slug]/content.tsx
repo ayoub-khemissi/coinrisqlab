@@ -46,12 +46,7 @@ export function NewsArticleContent({ slug }: Props) {
     return (
       <div className="text-center py-16">
         <p className="text-default-400 mb-4">Article not found.</p>
-        <Button
-          as={NextLink}
-          color="primary"
-          href="/news"
-          variant="flat"
-        >
+        <Button as={NextLink} color="primary" href="/news" variant="flat">
           Back to news
         </Button>
       </div>
@@ -81,9 +76,7 @@ export function NewsArticleContent({ slug }: Props) {
         </div>
       )}
 
-      <h1 className="text-3xl sm:text-4xl font-bold mb-4">
-        {article.title}
-      </h1>
+      <h1 className="text-3xl sm:text-4xl font-bold mb-4">{article.title}</h1>
 
       <div className="flex items-center gap-3 text-sm text-default-400 mb-8">
         <span>By {article.author_name}</span>

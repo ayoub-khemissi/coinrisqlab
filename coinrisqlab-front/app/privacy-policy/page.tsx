@@ -95,8 +95,8 @@ export default function PrivacyPolicyPage() {
           </h2>
           <ul className="list-disc list-inside mt-2 space-y-1">
             <li>
-              <strong>Technical cookies:</strong> maximum 13 months in accordance
-              with CNIL recommendations
+              <strong>Technical cookies:</strong> maximum 13 months in
+              accordance with CNIL recommendations
             </li>
           </ul>
         </div>

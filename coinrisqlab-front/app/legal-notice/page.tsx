@@ -82,9 +82,9 @@ export default function LegalNoticePage() {
           </p>
           <p className="mt-2">
             Any reproduction, representation, modification, publication, or
-            adaptation of all or part of the website&apos;s content, by any means
-            or process, is prohibited without prior written authorization from
-            the publisher.
+            adaptation of all or part of the website&apos;s content, by any
+            means or process, is prohibited without prior written authorization
+            from the publisher.
           </p>
         </div>
 

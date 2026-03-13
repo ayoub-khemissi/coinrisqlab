@@ -1,6 +1,7 @@
-import { NextRequest, NextResponse } from "next/server";
 import { writeFile } from "fs/promises";
 import path from "path";
+
+import { NextRequest, NextResponse } from "next/server";
 
 import { verifyAdminSession } from "@/lib/admin-auth";
 
@@ -42,7 +43,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const ext = file.type.split("/")[1] === "jpeg" ? "jpg" : file.type.split("/")[1];
+    const ext =
+      file.type.split("/")[1] === "jpeg" ? "jpg" : file.type.split("/")[1];
     const filename = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
     const uploadDir = path.join(process.cwd(), "public", "uploads", "news");
     const filePath = path.join(uploadDir, filename);

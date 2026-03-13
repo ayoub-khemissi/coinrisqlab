@@ -102,7 +102,9 @@ export function NewsForm({ article, onSubmit, loading }: NewsFormProps) {
       />
 
       <div className="space-y-3">
-        <h3 className="text-sm font-medium text-gray-400">Content (Markdown)</h3>
+        <h3 className="text-sm font-medium text-gray-400">
+          Content (Markdown)
+        </h3>
         <p className="text-xs text-gray-500">
           Supports full Markdown: ## headings, **bold**, *italic*, - lists,
           [links](url), images, and code blocks.

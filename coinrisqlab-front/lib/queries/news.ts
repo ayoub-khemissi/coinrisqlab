@@ -5,7 +5,10 @@ import { RowDataPacket, ResultSetHeader } from "mysql2";
 import { db } from "@/lib/db";
 
 function toMySQLDatetime(iso: string): string {
-  return iso.replace("T", " ").replace("Z", "").replace(/\.\d{3}$/, "");
+  return iso
+    .replace("T", " ")
+    .replace("Z", "")
+    .replace(/\.\d{3}$/, "");
 }
 
 function generateSlug(title: string): string {

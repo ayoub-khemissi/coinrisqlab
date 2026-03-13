@@ -28,7 +28,11 @@ export async function middleware(request: NextRequest) {
   }
 
   // Unauthenticated user on admin pages (except login) → redirect to login
-  if (pathname.startsWith("/admin") && pathname !== "/admin/login" && !isAuthenticated) {
+  if (
+    pathname.startsWith("/admin") &&
+    pathname !== "/admin/login" &&
+    !isAuthenticated
+  ) {
     return NextResponse.redirect(new URL("/admin/login", request.url));
   }
 
