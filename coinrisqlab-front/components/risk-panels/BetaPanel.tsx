@@ -405,9 +405,9 @@ export function BetaPanel({
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-default-200">
-                  <th className="text-left py-2 px-3">Sharpe Range</th>
+                  <th className="text-left py-2 px-3">Sharpe Ratio</th>
                   <th className="text-left py-2 px-3">Quality</th>
-                  <th className="text-left py-2 px-3">Meaning</th>
+                  <th className="text-left py-2 px-3">Interpretation</th>
                 </tr>
               </thead>
               <tbody>
@@ -419,22 +419,22 @@ export function BetaPanel({
                     </Chip>
                   </td>
                   <td className="py-2 px-3 text-default-500">
-                    Worse than risk-free rate
+                    Negative average return relative to risk taken
                   </td>
                 </tr>
                 <tr className="border-b border-default-100">
-                  <td className="py-2 px-3">0 - 1</td>
+                  <td className="py-2 px-3">{"0 – 1"}</td>
                   <td className="py-2 px-3">
                     <Chip color="warning" size="sm" variant="flat">
                       Low
                     </Chip>
                   </td>
                   <td className="py-2 px-3 text-default-500">
-                    Low risk-adjusted return
+                    Low return per unit of risk
                   </td>
                 </tr>
                 <tr className="border-b border-default-100">
-                  <td className="py-2 px-3">1 - 2</td>
+                  <td className="py-2 px-3">{"1 – 2"}</td>
                   <td className="py-2 px-3">
                     <Chip color="success" size="sm" variant="flat">
                       Good
@@ -452,12 +452,16 @@ export function BetaPanel({
                     </Chip>
                   </td>
                   <td className="py-2 px-3 text-default-500">
-                    Excellent risk-adjusted return
+                    Strong risk-adjusted performance
                   </td>
                 </tr>
               </tbody>
             </table>
           </div>
+          <p className="text-sm text-default-500 mt-4">
+            The higher the ratio, the better the return compensates for the risk
+            taken.
+          </p>
         </CardBody>
       </Card>
 
@@ -471,11 +475,9 @@ export function BetaPanel({
                 security&apos;s returns to movements in the market.
               </p>
               <p>
-                <strong>Sharpe Ratio</strong> measures risk-adjusted return:{" "}
-                <code className="bg-default-100 px-1 rounded">
-                  S = (Rp - Rf) / σp
-                </code>{" "}
-                where Rf = 0% (risk-free rate), annualized via √365.
+                <strong>Sharpe Ratio</strong> measures excess return per unit of
+                risk. It answers the question: How much additional return does
+                an investor obtain for each unit of volatility taken?
               </p>
             </div>
             <MethodologyLink section="beta" variant="full" />
