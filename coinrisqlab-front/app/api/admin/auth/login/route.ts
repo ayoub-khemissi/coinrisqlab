@@ -59,6 +59,7 @@ export async function POST(request: NextRequest) {
       },
     });
   } catch (error) {
+    // eslint-disable-next-line no-console
     console.error("Admin login error:", error);
 
     return NextResponse.json({ error: "serverError" }, { status: 500 });

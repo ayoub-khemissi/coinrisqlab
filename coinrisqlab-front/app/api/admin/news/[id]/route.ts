@@ -24,6 +24,7 @@ export async function GET(
 
     return NextResponse.json({ article });
   } catch (error) {
+    // eslint-disable-next-line no-console
     console.error("Admin news detail error:", error);
 
     return NextResponse.json({ error: "serverError" }, { status: 500 });
@@ -59,6 +60,7 @@ export async function PUT(
 
     return NextResponse.json({ success: updated });
   } catch (error) {
+    // eslint-disable-next-line no-console
     console.error("Admin news update error:", error);
 
     return NextResponse.json({ error: "serverError" }, { status: 500 });
@@ -85,6 +87,7 @@ export async function DELETE(
 
     return NextResponse.json({ success: deleted });
   } catch (error) {
+    // eslint-disable-next-line no-console
     console.error("Admin news delete error:", error);
 
     return NextResponse.json({ error: "serverError" }, { status: 500 });

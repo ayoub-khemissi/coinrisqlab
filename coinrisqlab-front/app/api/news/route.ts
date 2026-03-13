@@ -44,6 +44,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(news);
   } catch (error) {
+    // eslint-disable-next-line no-console
     console.error("News fetch error:", error);
 
     return NextResponse.json([], { status: 200 });

@@ -57,6 +57,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ success: true, url });
   } catch (error) {
+    // eslint-disable-next-line no-console
     console.error("Upload error:", error);
 
     return NextResponse.json({ error: "serverError" }, { status: 500 });

@@ -18,6 +18,7 @@ export async function GET() {
 
     return NextResponse.json({ news });
   } catch (error) {
+    // eslint-disable-next-line no-console
     console.error("Admin news fetch error:", error);
 
     return NextResponse.json({ error: "serverError" }, { status: 500 });
@@ -54,6 +55,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ success: true, id: articleId });
   } catch (error) {
+    // eslint-disable-next-line no-console
     console.error("Admin news create error:", error);
 
     return NextResponse.json({ error: "serverError" }, { status: 500 });
