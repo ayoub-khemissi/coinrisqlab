@@ -457,13 +457,13 @@ export function StressTestPanel({ cryptoId, symbol }: StressTestPanelProps) {
         <CardBody className="p-4">
           <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
             <p className="text-sm text-default-500 flex-1">
-              <strong>Stress test</strong> measures the cumulative market
-              decline over historical crisis windows, then adjusts for this
-              asset&apos;s 90-day beta:{" "}
-              <code className="bg-default-100 px-1 rounded">
-                Stressed Price = Current Price x (1 + Cumulative Shock x Beta)
-              </code>
-              . A beta of {data?.beta?.toFixed(2) || "1.0"} means this crypto
+              <strong>Stress testing</strong> estimates the potential impact of
+              historical crisis events on an asset, using its beta to project
+              how it would react to similar market shocks. For each historical
+              scenario, we select the relevant crisis window, compute the
+              aggregate crypto market return over that period, and use the
+              cumulative decline as the market shock. A beta of{" "}
+              {data?.beta?.toFixed(2) || "1.0"} means this crypto
               {data?.beta && data.beta > 1
                 ? ` amplifies market movements by ${((data.beta - 1) * 100).toFixed(0)}%`
                 : data?.beta && data.beta < 1

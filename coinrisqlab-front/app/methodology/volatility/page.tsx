@@ -182,23 +182,28 @@ export default function VolatilityMethodologyPage() {
                 </h2>
               </div>
               <p className="text-default-600 mb-4">
-                The CoinRisqLab Volatility system calculates risk metrics for
-                both individual cryptocurrencies and the top 40 portfolio. Our
-                methodology uses <strong>logarithmic returns</strong> and
-                implements a <strong>rolling window approach</strong> to measure
-                historical volatility.
+                Volatility measures the degree of variation in an asset&apos;s
+                returns over time. It reflects the typical magnitude of price
+                fluctuations and therefore represents the level of risk or
+                uncertainty associated with the asset&apos;s price movements.
+                High volatility indicates larger and more unpredictable price
+                swings, whereas low volatility corresponds to smaller and more
+                stable price changes.
               </p>
               <p className="text-default-600 mb-4">
+                Volatility is estimated using historical price data over a{" "}
+                <strong>90-day rolling window</strong>. The procedure consists
+                of three main steps: collecting price data, computing{" "}
+                <strong>logarithmic returns</strong>, and estimating volatility
+                using the <strong>unbiased standard deviation</strong> of
+                returns.
+              </p>
+              <p className="text-default-600">
                 For portfolio-level calculations, we use proper{" "}
                 <strong>market-cap weighting</strong> and full{" "}
                 <strong>covariance matrix calculations</strong> to account for
                 correlations between constituents, providing a comprehensive
                 view of portfolio risk.
-              </p>
-              <p className="text-default-600">
-                This approach is based on Modern Portfolio Theory and uses the
-                same statistical methods employed by professional financial
-                institutions to measure and manage risk.
               </p>
             </CardBody>
           </Card>
@@ -213,9 +218,10 @@ export default function VolatilityMethodologyPage() {
                 <div className="border-l-4 border-primary pl-4">
                   <h3 className="font-bold text-lg">Volatility</h3>
                   <p className="text-default-600">
-                    A statistical measure of the dispersion of returns for a
-                    given security or market index. Higher volatility means
-                    higher risk and larger price swings.
+                    Measures the degree of variation in an asset&apos;s returns
+                    over time. It reflects the typical magnitude of price
+                    fluctuations and represents the level of risk or uncertainty
+                    associated with the asset&apos;s price movements.
                   </p>
                 </div>
 
@@ -623,17 +629,17 @@ export default function VolatilityMethodologyPage() {
                     Calculation Formula
                   </h3>
                   <p className="text-default-600 mb-4">
-                    For each consecutive pair of days:
+                    Daily returns are calculated using logarithmic returns,
+                    which are widely used in financial analysis due to their
+                    desirable statistical properties and time additivity:
                   </p>
                   <div className="bg-content1 p-4 rounded-lg font-mono text-sm mb-4">
-                    <div>Log_Return[t] = ln(Price[t] / Price[t-1])</div>
-                    <div className="mt-2">
-                      &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-                      = ln(Price[t]) - ln(Price[t-1])
-                    </div>
+                    <div>{"r_t = ln(P_t / P_{t-1})"}</div>
                   </div>
                   <p className="text-default-600 text-sm">
-                    Where <code>ln()</code> is the natural logarithm function.
+                    {
+                      "Where P_t is the closing price at time t and P_{t-1} is the closing price at time t−1."
+                    }
                   </p>
                 </div>
 
@@ -664,8 +670,8 @@ export default function VolatilityMethodologyPage() {
                 </h2>
               </div>
               <p className="text-default-600 mb-6">
-                The second stage calculates rolling volatility for individual
-                cryptocurrencies using the log returns from Stage 1.
+                Volatility is estimated as the unbiased standard deviation of
+                logarithmic returns computed over the previous 90 trading days.
               </p>
 
               <div className="space-y-6">
@@ -698,12 +704,15 @@ export default function VolatilityMethodologyPage() {
 
                   <div className="space-y-4">
                     <div>
-                      <p className="font-bold mb-2">a) Mean Return</p>
+                      <p className="font-bold mb-2">
+                        a) Unbiased Variance Estimation
+                      </p>
                       <div className="bg-content1 p-4 rounded-lg font-mono text-sm">
-                        <div>μ = (1/n) × Σ(i=1 to n) r[i]</div>
+                        <div>s² = (1/(n-1)) × Σ(i=1 to n) (r_i - r̄)²</div>
                         <div className="text-xs text-default-500 mt-2">
-                          Where n = 90 (window size), r[i] = log return for day
-                          i
+                          Where r_i = logarithmic return at observation i, r̄ =
+                          average logarithmic return over the sample, n = 90
+                          observations
                         </div>
                       </div>
                     </div>
@@ -713,8 +722,12 @@ export default function VolatilityMethodologyPage() {
                         b) Daily Volatility (Standard Deviation)
                       </p>
                       <div className="bg-content1 p-4 rounded-lg font-mono text-sm">
-                        <div>
-                          σ_daily = √[(1/(n-1)) × Σ(i=1 to n) (r[i] - μ)²]
+                        <div>σ = √s²</div>
+                        <div className="text-xs text-default-500 mt-2">
+                          This measure captures the magnitude of return
+                          fluctuations over the selected time window and
+                          reflects the level of uncertainty associated with the
+                          asset&apos;s price movements.
                         </div>
                       </div>
                     </div>
@@ -722,7 +735,7 @@ export default function VolatilityMethodologyPage() {
                     <div>
                       <p className="font-bold mb-2">c) Annualized Volatility</p>
                       <div className="bg-content1 p-4 rounded-lg font-mono text-sm">
-                        <div>σ_annual = σ_daily × √365</div>
+                        <div>σ_annual = σ × √365</div>
                         <div className="text-xs text-default-500 mt-2">
                           Where 365 = trading days per year (crypto markets
                           24/7)

@@ -454,10 +454,13 @@ export function VolatilityPanel({
         <CardBody className="p-4">
           <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
             <p className="text-sm text-default-500 flex-1">
-              <strong>Volatility</strong> measures the degree of variation of
-              returns over time. High volatility indicates greater price swings,
-              signaling higher risk and uncertainty, while low volatility
-              suggests more stable and predictable price movements.
+              <strong>Volatility</strong> measures the degree of variation in an
+              asset&apos;s returns over time. It reflects the typical magnitude
+              of price fluctuations and therefore represents the level of risk
+              or uncertainty associated with the asset&apos;s price movements.
+              High volatility indicates larger and more unpredictable price
+              swings, whereas low volatility corresponds to smaller and more
+              stable price changes.
             </p>
             <MethodologyLink section="volatility" variant="full" />
           </div>

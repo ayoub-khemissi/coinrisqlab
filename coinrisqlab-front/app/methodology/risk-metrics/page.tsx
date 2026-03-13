@@ -1039,15 +1039,61 @@ export default function RiskMetricsMethodologyPage() {
               <p className="text-default-600 mb-6">
                 Stress testing estimates the potential impact of historical
                 crisis events on an asset, using its beta to project how it
-                would react to similar market shocks.
+                would react to similar market shocks. For each historical
+                scenario, we select the relevant crisis window, compute the
+                aggregate crypto market return over that period, and use the
+                cumulative decline as the market shock.
               </p>
 
               <div className="space-y-6">
                 <div className="bg-danger/5 p-6 rounded-lg border-l-4 border-danger">
-                  <h3 className="text-xl font-bold mb-3">Formula</h3>
+                  <h3 className="text-xl font-bold mb-3">Methodology</h3>
+                  <p className="text-default-600 mb-4">
+                    For each stress scenario, we first define a historical event
+                    window corresponding to a major crypto market disruption. We
+                    then retrieve the total crypto market capitalization over
+                    that period and compute the daily log returns:
+                  </p>
+                  <div className="bg-content1 p-4 rounded-lg font-mono text-sm mb-4">
+                    <div>{"r_t = ln(M_t / M_{t-1})"}</div>
+                    <div className="text-xs text-default-500 mt-2">
+                      Where M_t is the total crypto market capitalization at
+                      time t
+                    </div>
+                  </div>
+                  <p className="text-default-600 mb-4">
+                    The cumulative market move over the scenario window is
+                    obtained by summing the log returns:
+                  </p>
+                  <div className="bg-content1 p-4 rounded-lg font-mono text-sm mb-4">
+                    <div>R_market_log = Σ(t=1 to n) r_t</div>
+                  </div>
+                  <p className="text-default-600 mb-4">
+                    The cumulative market shock is then expressed in standard
+                    return terms:
+                  </p>
+                  <div className="bg-content1 p-4 rounded-lg font-mono text-sm mb-4">
+                    <div>Shock_market = e^(R_market_log) - 1</div>
+                  </div>
+                  <p className="text-default-600 mb-4">
+                    To account for differences in asset sensitivity, the market
+                    shock is scaled by each asset&apos;s historical beta. For
+                    stress testing purposes, negative betas are floored at 0:
+                  </p>
+                  <div className="bg-content1 p-4 rounded-lg font-mono text-sm mb-4">
+                    <div>β_i_stress = max(β_i, 0)</div>
+                    <div className="mt-2">
+                      Shock_i = β_i_stress × Shock_market
+                    </div>
+                  </div>
+                  <p className="text-default-600 mb-4">
+                    The stressed price of each asset is then computed as:
+                  </p>
                   <div className="bg-content1 p-4 rounded-lg font-mono text-sm">
-                    <div>Expected Impact = Beta × Market Shock</div>
-                    <div>New Price = Current Price × (1 + Expected Impact)</div>
+                    <div>P_i_stress = P_i,0 × (1 + Shock_i)</div>
+                    <div className="text-xs text-default-500 mt-2">
+                      Where P_i,0 is the current asset price
+                    </div>
                   </div>
                 </div>
 
@@ -1129,18 +1175,20 @@ export default function RiskMetricsMethodologyPage() {
                       <strong>Asset:</strong> Ethereum (ETH)
                     </div>
                     <div>
-                      <strong>Current Price:</strong> $2,500
+                      <strong>Current Price (P_i,0):</strong> $2,500
                     </div>
                     <div>
-                      <strong>Beta:</strong> 1.2
+                      <strong>Beta (β_i):</strong> 1.2
                     </div>
                     <div>
-                      <strong>Scenario:</strong> COVID-19 (-50.42%)
+                      <strong>Scenario:</strong> COVID-19 (Shock_market =
+                      -50.42%)
                     </div>
                     <div className="pt-2 border-t border-default-200 mt-2">
-                      <div>Expected Impact = 1.2 × (-50.42%) = -60.50%</div>
+                      <div>β_i_stress = max(1.2, 0) = 1.2</div>
+                      <div>Shock_i = 1.2 × (-50.42%) = -60.50%</div>
                       <div>
-                        New Price = $2,500 × (1 - 0.605) ={" "}
+                        P_i_stress = $2,500 × (1 - 0.605) ={" "}
                         <strong>$987.50</strong>
                       </div>
                     </div>
