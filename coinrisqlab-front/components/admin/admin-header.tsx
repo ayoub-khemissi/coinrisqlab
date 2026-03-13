@@ -5,6 +5,7 @@ import { Button } from "@heroui/button";
 import { useRouter } from "next/navigation";
 
 import { useAdminAuth } from "@/lib/admin-auth-context";
+import { ThemeSwitch } from "@/components/theme-switch";
 
 export function AdminHeader() {
   const router = useRouter();
@@ -16,7 +17,7 @@ export function AdminHeader() {
   };
 
   return (
-    <header className="h-14 bg-[#0d1117] border-b border-gray-800 flex items-center justify-between px-6">
+    <header className="h-14 bg-background border-b border-divider flex items-center justify-between px-6">
       <div className="flex items-center gap-2">
         <NextLink
           className="flex justify-start items-center gap-2 group"
@@ -28,10 +29,13 @@ export function AdminHeader() {
         </NextLink>
       </div>
       <div className="flex items-center gap-4">
+        <ThemeSwitch />
         {admin && (
-          <span className="text-sm text-gray-400">
+          <span className="text-sm text-default-500">
             {admin.display_name}
-            <span className="text-xs text-gray-600 ml-2">({admin.role})</span>
+            <span className="text-xs text-default-400 ml-2">
+              ({admin.role})
+            </span>
           </span>
         )}
         <Button

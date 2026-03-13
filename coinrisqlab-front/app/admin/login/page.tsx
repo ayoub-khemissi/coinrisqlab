@@ -44,7 +44,7 @@ export default function AdminLoginPage() {
   };
 
   return (
-    <div className="fixed inset-0 z-[100] bg-[#0d1117] flex items-center justify-center">
+    <div className="fixed inset-0 z-[100] bg-background flex items-center justify-center">
       <div className="w-full max-w-md p-8">
         <div className="text-center mb-8">
           <div className="w-16 h-16 mx-auto rounded-xl bg-primary flex items-center justify-center mb-4">
@@ -55,23 +55,24 @@ export default function AdminLoginPage() {
 
         <form className="space-y-4" onSubmit={handleSubmit}>
           <Input
-            classNames={{ inputWrapper: "bg-[#161b22] border-gray-700" }}
             label="Username"
             value={username}
+            variant="bordered"
             onValueChange={setUsername}
           />
           <Input
-            classNames={{ inputWrapper: "bg-[#161b22] border-gray-700" }}
             label="Password"
             type="password"
             value={password}
+            variant="bordered"
             onValueChange={setPassword}
           />
 
-          {error && <p className="text-red-400 text-sm">{error}</p>}
+          {error && <p className="text-danger text-sm">{error}</p>}
 
           <Button
-            className="w-full bg-primary text-white font-bold"
+            className="w-full font-bold"
+            color="primary"
             isLoading={loading}
             type="submit"
           >

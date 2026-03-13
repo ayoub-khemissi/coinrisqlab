@@ -46,7 +46,7 @@ export default function AdminNewsPage() {
   const getStatusChip = (article: NewsRow) => {
     if (!article.is_active) {
       return (
-        <Chip className="bg-red-500/10 text-red-400" size="sm">
+        <Chip color="danger" size="sm" variant="flat">
           Inactive
         </Chip>
       );
@@ -56,14 +56,14 @@ export default function AdminNewsPage() {
 
     if (publishDate > now) {
       return (
-        <Chip className="bg-orange-500/10 text-orange-400" size="sm">
+        <Chip color="warning" size="sm" variant="flat">
           Scheduled
         </Chip>
       );
     }
 
     return (
-      <Chip className="bg-green-500/10 text-green-400" size="sm">
+      <Chip color="success" size="sm" variant="flat">
         Active
       </Chip>
     );
@@ -80,24 +80,18 @@ export default function AdminNewsPage() {
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold text-gray-100">News Articles</h1>
+        <h1 className="text-2xl font-bold text-foreground">News Articles</h1>
         <Button
           as={NextLink}
-          className="bg-primary text-white font-bold"
+          className="font-bold"
+          color="primary"
           href="/admin/news/new"
         >
           Add Article
         </Button>
       </div>
 
-      <Table
-        aria-label="News articles"
-        classNames={{
-          wrapper: "bg-[#161b22] border border-gray-800",
-          th: "bg-[#0d1117] text-gray-500 border-b border-gray-800",
-          td: "text-gray-300",
-        }}
-      >
+      <Table aria-label="News articles">
         <TableHeader>
           <TableColumn>ID</TableColumn>
           <TableColumn>Title</TableColumn>
@@ -109,20 +103,20 @@ export default function AdminNewsPage() {
         <TableBody>
           {news.map((article) => (
             <TableRow key={article.id}>
-              <TableCell className="text-gray-500">#{article.id}</TableCell>
+              <TableCell className="text-default-400">#{article.id}</TableCell>
               <TableCell>
-                <span className="text-gray-200">{article.title}</span>
+                <span className="text-foreground">{article.title}</span>
               </TableCell>
               <TableCell>{article.author_name}</TableCell>
               <TableCell>{getStatusChip(article)}</TableCell>
-              <TableCell className="text-gray-400 text-sm">
+              <TableCell className="text-default-500 text-sm">
                 {new Date(article.published_at).toLocaleString()}
               </TableCell>
               <TableCell>
                 <div className="flex gap-1">
                   <Button
                     as={NextLink}
-                    className="text-blue-400"
+                    color="primary"
                     href={`/admin/news/${article.id}/edit`}
                     size="sm"
                     variant="light"
@@ -130,7 +124,7 @@ export default function AdminNewsPage() {
                     Edit
                   </Button>
                   <Button
-                    className="text-red-400"
+                    color="danger"
                     size="sm"
                     variant="light"
                     onPress={() => handleDelete(article.id)}

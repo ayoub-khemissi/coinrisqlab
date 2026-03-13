@@ -92,10 +92,6 @@ export function NewsForm({ article, onSubmit, loading }: NewsFormProps) {
     <form className="space-y-6" onSubmit={handleSubmit}>
       <Input
         isRequired
-        classNames={{
-          inputWrapper: "bg-[#161b22] border-gray-700",
-          input: "text-gray-200",
-        }}
         label="Title"
         value={title}
         variant="bordered"
@@ -103,39 +99,29 @@ export function NewsForm({ article, onSubmit, loading }: NewsFormProps) {
       />
 
       <div className="space-y-3">
-        <h3 className="text-sm font-medium text-gray-400">
+        <h3 className="text-sm font-medium text-default-500">
           Content (Markdown)
         </h3>
-        <p className="text-xs text-gray-500">
+        <p className="text-xs text-default-400">
           Supports full Markdown: ## headings, **bold**, *italic*, - lists,
           [links](url), images, and code blocks.
         </p>
-        <div data-color-mode="dark">
-          <MDEditor
-            height={400}
-            value={content}
-            onChange={(val) => setContent(val || "")}
-          />
-        </div>
+        <MDEditor
+          height={400}
+          value={content}
+          onChange={(val) => setContent(val || "")}
+        />
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <Input
           isRequired
-          classNames={{
-            inputWrapper: "bg-[#161b22] border-gray-700",
-            input: "text-gray-200",
-          }}
           label="Author"
           value={authorName}
           variant="bordered"
           onValueChange={setAuthorName}
         />
         <DatePicker
-          classNames={{
-            inputWrapper: "bg-[#161b22] border-gray-700",
-            input: "text-gray-200",
-          }}
           granularity="minute"
           label="Published At"
           value={publishedAt}
@@ -147,8 +133,8 @@ export function NewsForm({ article, onSubmit, loading }: NewsFormProps) {
       </div>
 
       <div className="space-y-3">
-        <h3 className="text-sm font-medium text-gray-400">Cover Image</h3>
-        <p className="text-xs text-gray-500">
+        <h3 className="text-sm font-medium text-default-500">Cover Image</h3>
+        <p className="text-xs text-default-400">
           Recommended: 1200x630px, JPEG/PNG/WebP, max 5 MB
         </p>
         <div className="flex gap-3 items-center">
@@ -180,17 +166,13 @@ export function NewsForm({ article, onSubmit, loading }: NewsFormProps) {
           )}
         </div>
         <Input
-          classNames={{
-            inputWrapper: "bg-[#161b22] border-gray-700",
-            input: "text-gray-200",
-          }}
           label="Or paste image URL"
           value={imageUrl}
           variant="bordered"
           onValueChange={setImageUrl}
         />
         {imageUrl && (
-          <div className="rounded-lg overflow-hidden border border-gray-700 max-w-xs">
+          <div className="rounded-lg overflow-hidden border border-divider max-w-xs">
             <Image
               unoptimized
               alt="Preview"
@@ -205,19 +187,18 @@ export function NewsForm({ article, onSubmit, loading }: NewsFormProps) {
 
       <div className="flex items-center gap-3">
         <Switch
-          classNames={{
-            wrapper: "group-data-[selected=true]:bg-green-500 bg-gray-700",
-          }}
+          color="success"
           isSelected={isActive}
           onValueChange={setIsActive}
         />
-        <span className="text-sm text-gray-300">
+        <span className="text-sm text-default-600">
           {isActive ? "Active" : "Inactive"}
         </span>
       </div>
 
       <Button
-        className="bg-primary text-white font-bold"
+        className="font-bold"
+        color="primary"
         isLoading={loading}
         type="submit"
       >

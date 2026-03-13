@@ -60,12 +60,14 @@ export default function AdminNewsEditPage() {
   }
 
   if (!article) {
-    return <p className="text-gray-400 text-center py-16">Article not found</p>;
+    return (
+      <p className="text-default-500 text-center py-16">Article not found</p>
+    );
   }
 
   return (
     <div>
-      <h1 className="text-2xl font-bold text-gray-100 mb-6">
+      <h1 className="text-2xl font-bold text-foreground mb-6">
         Edit Article — {article.title}
       </h1>
       <NewsForm article={article} loading={saving} onSubmit={handleSubmit} />

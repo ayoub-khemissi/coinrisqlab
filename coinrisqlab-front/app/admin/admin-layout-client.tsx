@@ -27,7 +27,7 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
 
   if (loading) {
     return (
-      <div className="fixed inset-0 z-50 bg-[#0d1117] flex items-center justify-center">
+      <div className="fixed inset-0 z-50 bg-background flex items-center justify-center">
         <Spinner color="primary" size="lg" />
       </div>
     );
@@ -36,11 +36,11 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
   if (!admin) return null;
 
   return (
-    <div className="fixed inset-0 z-50 bg-[#0d1117] flex">
+    <div className="fixed inset-0 z-50 bg-background flex">
       <AdminSidebar />
       <div className="flex-1 flex flex-col overflow-hidden">
         <AdminHeader />
-        <main className="flex-1 overflow-y-auto p-6 bg-[#010409]">
+        <main className="flex-1 overflow-y-auto p-6 bg-content1">
           {children}
         </main>
       </div>

@@ -28,7 +28,7 @@ export default function AdminNewsNewPage() {
 
   return (
     <div>
-      <h1 className="text-2xl font-bold text-gray-100 mb-6">Add Article</h1>
+      <h1 className="text-2xl font-bold text-foreground mb-6">Add Article</h1>
       <NewsForm loading={loading} onSubmit={handleSubmit} />
     </div>
   );

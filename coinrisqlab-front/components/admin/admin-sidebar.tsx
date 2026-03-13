@@ -14,8 +14,8 @@ export function AdminSidebar() {
   const basePath = "/admin";
 
   return (
-    <aside className="w-64 min-h-screen bg-[#0d1117] border-r border-gray-800 flex flex-col">
-      <div className="p-6 border-b border-gray-800">
+    <aside className="w-64 min-h-screen bg-background border-r border-divider flex flex-col">
+      <div className="p-6 border-b border-divider">
         <NextLink className="flex items-center gap-2" href={basePath}>
           <span className="font-bold text-lg text-primary uppercase">
             CoinRisqLab
@@ -40,7 +40,7 @@ export function AdminSidebar() {
                   className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
                     isActive
                       ? "bg-primary/10 text-primary border border-primary/20"
-                      : "text-gray-400 hover:text-gray-200 hover:bg-gray-800/50"
+                      : "text-default-500 hover:text-foreground hover:bg-default-100"
                   }`}
                   href={href}
                 >
