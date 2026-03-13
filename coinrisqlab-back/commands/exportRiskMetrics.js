@@ -14,7 +14,7 @@ const __dirname = path.dirname(__filename);
  *
  * Tables exported (one sheet/section per table):
  *   crypto_beta, crypto_distribution_stats, crypto_log_returns,
- *   crypto_sml, crypto_var, crypto_volatility
+ *   crypto_sml, crypto_var, crypto_volatility, crypto_sharpe
  *
  * Output: one CSV file per metric table, all placed in exports/
  */
@@ -49,6 +49,11 @@ const METRIC_TABLES = [
     name: 'volatility',
     table: 'crypto_volatility',
     columns: ['daily_volatility', 'annualized_volatility', 'mean_return'],
+  },
+  {
+    name: 'sharpe',
+    table: 'crypto_sharpe',
+    columns: ['sharpe_ratio', 'mean_return', 'std_return', 'num_observations'],
   },
 ];
 
