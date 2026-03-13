@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { Spinner } from "@heroui/spinner";
 import { Button } from "@heroui/button";
 import NextLink from "next/link";
+import Image from "next/image";
 
 import { MarkdownRenderer } from "@/components/markdown-renderer";
 
@@ -67,11 +68,14 @@ export function NewsArticleContent({ slug }: Props) {
       </Button>
 
       {article.image_url && (
-        <div className="rounded-2xl overflow-hidden mb-8 border border-default-200">
-          <img
+        <div className="relative rounded-2xl overflow-hidden mb-8 border border-default-200 max-h-[400px]">
+          <Image
+            unoptimized
             alt={article.title}
-            className="w-full h-auto max-h-[400px] object-cover"
+            className="w-full h-auto object-cover"
+            height={400}
             src={article.image_url}
+            width={800}
           />
         </div>
       )}

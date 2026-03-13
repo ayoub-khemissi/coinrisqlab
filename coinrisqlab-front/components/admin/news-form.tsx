@@ -12,6 +12,7 @@ import {
   getLocalTimeZone,
   parseAbsoluteToLocal,
 } from "@internationalized/date";
+import Image from "next/image";
 import dynamic from "next/dynamic";
 
 const MDEditor = dynamic(() => import("@uiw/react-md-editor"), { ssr: false });
@@ -190,7 +191,14 @@ export function NewsForm({ article, onSubmit, loading }: NewsFormProps) {
         />
         {imageUrl && (
           <div className="rounded-lg overflow-hidden border border-gray-700 max-w-xs">
-            <img alt="Preview" className="w-full h-auto" src={imageUrl} />
+            <Image
+              unoptimized
+              alt="Preview"
+              className="w-full h-auto"
+              height={200}
+              src={imageUrl}
+              width={320}
+            />
           </div>
         )}
       </div>
