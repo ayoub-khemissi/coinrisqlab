@@ -442,24 +442,47 @@ export default function RiskMetricsMethodologyPage() {
                   Beta (Market Sensitivity)
                 </h2>
               </div>
-              <p className="text-default-600 mb-6">
+              <p className="text-default-600 mb-4">
                 Beta measures the sensitivity of an asset&apos;s returns to
                 market movements. It indicates how much an asset tends to move
                 relative to the overall market (CoinRisqLab 80 Index).
               </p>
+              <p className="text-default-600 mb-6">
+                For each asset, beta is estimated over a 365-day rolling window
+                using daily logarithmic returns. The market benchmark used is
+                the CoinRisqLab 80 Index, which represents the aggregated
+                performance of a universe of 80 crypto-assets.
+              </p>
 
               <div className="space-y-6">
                 <div className="bg-primary/5 p-6 rounded-lg border-l-4 border-primary">
-                  <h3 className="text-xl font-bold mb-3">Formula</h3>
+                  <h3 className="text-xl font-bold mb-3">
+                    OLS Regression Model
+                  </h3>
+                  <p className="text-default-600 mb-4">
+                    The estimation is based on a simple linear regression using
+                    the Ordinary Least Squares (OLS) method:
+                  </p>
                   <div className="bg-content1 p-4 rounded-lg font-mono text-sm mb-4">
-                    <div>Beta = Cov(R_asset, R_market) / Var(R_market)</div>
+                    <div>{"R_{i,t} = α_i + β_i × R_{m,t} + ε_t"}</div>
                     <div className="text-xs text-default-500 mt-2">
-                      Where R = logarithmic returns
+                      {"Where R_{i,t}"} = logarithmic return of asset i at time
+                      t, {"R_{m,t}"} = logarithmic return of the CoinRisqLab 80
+                      Index, {"β_i"} = sensitivity of the asset to market
+                      movements
                     </div>
                   </div>
+                  <p className="text-default-600 mb-4">
+                    Within this framework, the beta coefficient estimated by OLS
+                    is equivalent to:
+                  </p>
+                  <div className="bg-content1 p-4 rounded-lg font-mono text-sm mb-4">
+                    <div>{"β_i = Cov(R_i, R_m) / Var(R_m)"}</div>
+                  </div>
                   <p className="text-default-600">
-                    Beta is calculated using Ordinary Least Squares (OLS)
-                    regression of asset returns against market returns.
+                    This formula compares the covariance between the asset and
+                    the market (their tendency to move together) to the variance
+                    of the market (the magnitude of market fluctuations).
                   </p>
                 </div>
 
@@ -750,24 +773,48 @@ export default function RiskMetricsMethodologyPage() {
                   Security Market Line (SML)
                 </h2>
               </div>
+              <p className="text-default-600 mb-4">
+                The Security Market Line (SML) measures whether a crypto-asset
+                is fairly priced relative to its systematic risk. It is derived
+                from the Capital Asset Pricing Model (CAPM) and describes the
+                relationship between expected return and systematic risk (Beta).
+              </p>
+              <p className="text-default-600 mb-4">
+                The SML allows us to determine whether an asset is undervalued,
+                fairly valued, or overvalued relative to the market. To
+                represent the crypto market, we use the CoinRisqLab 80 Index,
+                which tracks the performance of 80 liquid cryptocurrencies,
+                providing a broad representation of the crypto market.
+              </p>
               <p className="text-default-600 mb-6">
-                The Security Market Line is a graphical representation of the
-                Capital Asset Pricing Model (CAPM). It shows the theoretical
-                relationship between systematic risk (beta) and expected return.
+                All calculations are performed using a rolling 90-day window.
+                This period balances statistical robustness and market
+                responsiveness. Using shorter windows would increase noise,
+                while longer windows could dilute recent market dynamics.
               </p>
 
               <div className="space-y-6">
                 <div className="bg-success/5 p-6 rounded-lg border-l-4 border-success">
-                  <h3 className="text-xl font-bold mb-3">CAPM Formula</h3>
+                  <h3 className="text-xl font-bold mb-3">Methodology</h3>
+                  <p className="text-default-600 mb-4">
+                    For each asset and for the market index, we compute daily
+                    logarithmic returns. The expected market return is estimated
+                    as the mean of daily returns of the CoinRisqLab 80 Index
+                    over the last 90 days. The beta of each crypto-asset, based
+                    on 90 days, measures its sensitivity to market movements.
+                  </p>
+                  <p className="text-default-600 mb-4">
+                    The expected return predicted by the CAPM is:
+                  </p>
                   <div className="bg-content1 p-4 rounded-lg font-mono text-sm mb-4">
-                    <div>E(R) = Rf + Beta × (Rm - Rf)</div>
+                    <div>{"E(R_i) = r_f + β_i × (E(R_M) - r_f)"}</div>
                     <div className="text-xs text-default-500 mt-2">
-                      Where: E(R) = Expected Return, Rf = Risk-free Rate, Rm =
-                      Market Return
+                      This represents the return an asset should deliver given
+                      its systematic risk.
                     </div>
                   </div>
                   <p className="text-default-600 text-sm">
-                    <strong>Note:</strong> We use Rf = 0 (simplified model for
+                    <strong>Note:</strong> We use r_f = 0 (simplified model for
                     crypto markets where traditional risk-free rates are less
                     relevant).
                   </p>
@@ -778,13 +825,15 @@ export default function RiskMetricsMethodologyPage() {
                     Jensen&apos;s Alpha
                   </h3>
                   <p className="text-default-600 mb-4">
-                    The vertical distance between an asset&apos;s actual return
-                    and the SML represents Jensen&apos;s Alpha:
+                    We compare the CAPM expected return to the realized return
+                    over the same 90-day period:
                   </p>
                   <div className="bg-content1 p-4 rounded-lg font-mono text-sm mb-4">
-                    <div>
-                      Jensen&apos;s Alpha = Actual Return - Expected Return
-                      (from CAPM)
+                    <div>{"α_i = R_i - E(R_i)"}</div>
+                    <div className="text-xs text-default-500 mt-2">
+                      {"α > 0"} → asset outperforms CAPM → potentially
+                      undervalued | {"α < 0"} → asset underperforms CAPM →
+                      potentially overvalued
                     </div>
                   </div>
                   <div className="overflow-x-auto">
@@ -805,8 +854,8 @@ export default function RiskMetricsMethodologyPage() {
                             </Chip>
                           </td>
                           <td className="py-3 px-4 text-default-600">
-                            Undervalued - Generates excess returns for its risk
-                            level
+                            Asset delivers higher return than its risk →
+                            potentially undervalued
                           </td>
                         </tr>
                         <tr className="border-b border-default-200">
@@ -816,7 +865,7 @@ export default function RiskMetricsMethodologyPage() {
                             </Chip>
                           </td>
                           <td className="py-3 px-4 text-default-600">
-                            Fairly valued - Return matches risk
+                            Fairly priced
                           </td>
                         </tr>
                         <tr>
@@ -826,7 +875,7 @@ export default function RiskMetricsMethodologyPage() {
                             </Chip>
                           </td>
                           <td className="py-3 px-4 text-default-600">
-                            Overvalued - Insufficient return for risk taken
+                            Return too low for its risk → potentially overvalued
                           </td>
                         </tr>
                       </tbody>

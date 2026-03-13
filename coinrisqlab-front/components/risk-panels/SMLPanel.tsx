@@ -424,12 +424,12 @@ export function SMLPanel({ cryptoId, symbol }: SMLPanelProps) {
         <CardBody className="p-4">
           <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
             <p className="text-sm text-default-500 flex-1">
-              <strong>Security Market Line (SML)</strong> is a visual
-              representation of the Capital Asset Pricing Model (CAPM). It plots
-              the relationship between an asset&apos;s systematic risk (beta)
-              and its expected return. Assets above the SML are considered
-              undervalued (generating positive alpha), while those below are
-              considered overvalued.
+              The <strong>Security Market Line (SML)</strong> measures whether a
+              crypto-asset is fairly priced relative to its systematic risk. It
+              is derived from the Capital Asset Pricing Model (CAPM). Assets
+              above the SML are considered potentially undervalued (generating
+              positive alpha), while those below are considered potentially
+              overvalued.
             </p>
             <MethodologyLink section="sml" variant="full" />
           </div>

@@ -1,0 +1,33 @@
+Revue des dates Stress Test (Excel vs Backend)
+================================================
+
+Source : docs/Stress-Test.xlsx
+
+Comparaison des dates entre l'Excel fourni et le backend actuel (coinrisqlab-back/utils/riskMetrics.js) :
+
+  Scenario             Excel                       Backend actuel               Statut
+  Covid-19             20.02.2020 - 13.03.2020     2020-02-20 -> 2020-03-13     Identique
+  Ban Mining China     12.05.2021 - 23.05.2021     2021-05-12 -> 2021-05-23     Identique
+  Crash UST            07.05.2022 - 12.05.2022     2022-05-07 -> 2022-05-12     Identique
+  Crash FTX            05.11.2022 - 09.11.2022     2022-10-31 -> 2022-11-04     DIFFERENT
+
+Point d'attention FTX
+---------------------
+L'Excel donne la fenetre 5 nov - 9 nov 2022, mais le backend utilise 31 oct - 4 nov 2022
+(corrige lors d'une precedente iteration, cf. resume-modifs-stress-test.txt).
+
+Si les dates FTX changent, le market shock (-13.26% actuellement) devra etre recalcule
+sur la nouvelle fenetre.
+
+Valeurs de choc actuelles (backend)
+------------------------------------
+  Covid-19:           -60.90%   (22 jours)
+  Ban Mining China:   -40.64%   (11 jours)
+  Crash UST:          -25.59%   (5 jours)
+  Crash FTX:          -13.26%   (4 jours)
+
+TODO
+----
+- Confirmer les dates FTX (05/11 - 09/11 ou 31/10 - 04/11)
+- Obtenir les nouvelles valeurs de market shock si les dates changent
+- Mettre a jour le backend (riskMetrics.js) et la page methodology (risk-metrics/page.tsx)

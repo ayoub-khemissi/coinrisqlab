@@ -388,6 +388,10 @@ export function BetaPanel({
               </tbody>
             </table>
           </div>
+          <p className="text-sm text-default-500 mt-4">
+            Beta captures systematic risk, which is the risk related to overall
+            market movements.
+          </p>
         </CardBody>
       </Card>
 
@@ -463,11 +467,8 @@ export function BetaPanel({
           <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
             <div className="text-sm text-default-500 flex-1 space-y-2">
               <p>
-                <strong>Beta</strong> measures the volatility of an asset
-                relative to the market:{" "}
-                <code className="bg-default-100 px-1 rounded">
-                  Beta = Cov(R_crypto, R_market) / Var(R_market)
-                </code>
+                <strong>Beta</strong> measures the sensitivity of a
+                security&apos;s returns to movements in the market.
               </p>
               <p>
                 <strong>Sharpe Ratio</strong> measures risk-adjusted return:{" "}
