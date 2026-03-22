@@ -109,6 +109,19 @@
   margin: 1.5rem 0;
 }
 
+/* ── KaTeX formula overflow ── */
+.katex-display {
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 0.25rem 0;
+}
+
+@media (max-width: 767px) {
+  .katex {
+    font-size: 0.85em;
+  }
+}
+
 /* ── Mobile sticky-scroll tables ── */
 @media (max-width: 767px) {
   .sticky-scroll-table {
