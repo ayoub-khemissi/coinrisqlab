@@ -265,7 +265,7 @@ export function calculateStressTest(beta, currentPrice, scenarios = null) {
     {
       id: 'covid-19',
       name: 'Covid-19',
-      shock: -0.6090,
+      shock: -0.5164,
       startDate: '2020-02-20',
       endDate: '2020-03-13',
       durationDays: 22,
@@ -274,7 +274,7 @@ export function calculateStressTest(beta, currentPrice, scenarios = null) {
     {
       id: 'china-mining-ban',
       name: 'Ban Mining China',
-      shock: -0.4064,
+      shock: -0.3687,
       startDate: '2021-05-12',
       endDate: '2021-05-23',
       durationDays: 11,
@@ -283,7 +283,7 @@ export function calculateStressTest(beta, currentPrice, scenarios = null) {
     {
       id: 'ust-crash',
       name: 'Crash UST',
-      shock: -0.2559,
+      shock: -0.2428,
       startDate: '2022-05-07',
       endDate: '2022-05-12',
       durationDays: 5,
@@ -292,7 +292,7 @@ export function calculateStressTest(beta, currentPrice, scenarios = null) {
     {
       id: 'ftx-crash',
       name: 'Crash FTX',
-      shock: -0.1326,
+      shock: -0.1270,
       startDate: '2022-10-31',
       endDate: '2022-11-04',
       durationDays: 4,
