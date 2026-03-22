@@ -211,7 +211,7 @@ function ConstituentsTableComponent({ constituents }: ConstituentsTableProps) {
     <Table
       aria-label="CoinRisqLab 80 Index constituents table"
       classNames={{
-        wrapper: "",
+        wrapper: "sticky-scroll-table",
       }}
       sortDescriptor={
         sortColumn && sortOrder

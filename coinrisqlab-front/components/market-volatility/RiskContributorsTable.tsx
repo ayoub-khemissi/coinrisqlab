@@ -167,7 +167,13 @@ export function RiskContributorsTable({
       )}
 
       {/* Table */}
-      <Table key={volatilityMode} aria-label="Risk contributors table">
+      <Table
+        key={volatilityMode}
+        aria-label="Risk contributors table"
+        classNames={{
+          wrapper: "sticky-scroll-table",
+        }}
+      >
         <TableHeader>
           <TableColumn
             key="rank"

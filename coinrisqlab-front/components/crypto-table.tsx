@@ -205,7 +205,7 @@ function CryptoTableComponent({
         ) : null
       }
       classNames={{
-        wrapper: "",
+        wrapper: "sticky-scroll-table",
       }}
       sortDescriptor={
         sortColumn && sortOrder
