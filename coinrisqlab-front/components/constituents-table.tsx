@@ -38,7 +38,7 @@ function ConstituentsTableComponent({ constituents }: ConstituentsTableProps) {
 
   const columns = [
     { key: "rank_position", label: "Rank", sortable: true },
-    { key: "name", label: "Cryptocurrency", sortable: true },
+    { key: "name", label: "Crypto", sortable: true },
     { key: "price_usd", label: "Price", sortable: true },
     { key: "percent_change_24h", label: "24h %", sortable: true },
     { key: "percent_change_7d", label: "7d %", sortable: true },
@@ -111,14 +111,25 @@ function ConstituentsTableComponent({ constituents }: ConstituentsTableProps) {
 
       case "name":
         return (
-          <div className="flex items-center gap-2 md:gap-3">
-            <span className="text-xs text-default-400 font-semibold md:hidden">
-              #{constituent.rank_position}
-            </span>
+          <div className="flex items-center gap-1.5 md:gap-3">
+            <div className="flex flex-col items-center md:hidden">
+              <span className="text-[10px] text-default-400 font-semibold leading-none mb-0.5">
+                #{constituent.rank_position}
+              </span>
+              <Image
+                alt={constituent.name}
+                className="!rounded-full min-w-5 min-h-5 w-5 h-5"
+                height={20}
+                radius="full"
+                src={constituent.image_url || undefined}
+                width={20}
+              />
+            </div>
             <Image
               alt={constituent.name}
-              className="rounded-full min-w-6 min-h-6 md:min-w-8 md:min-h-8"
+              className="!rounded-full min-w-8 min-h-8 hidden md:block"
               height={32}
+              radius="full"
               src={constituent.image_url || undefined}
               width={32}
             />
@@ -126,7 +137,7 @@ function ConstituentsTableComponent({ constituents }: ConstituentsTableProps) {
               <span className="font-semibold hidden md:inline">
                 {constituent.name}
               </span>
-              <span className="text-sm text-default-500 font-semibold md:font-normal">
+              <span className="text-xs md:text-sm text-default-500 font-semibold md:font-normal">
                 {constituent.symbol}
               </span>
             </div>
