@@ -27,7 +27,7 @@ export function Math({ children, display = false, className }: MathProps) {
     return (
       <div
         dangerouslySetInnerHTML={{ __html: html }}
-        className={className}
+        className={`overflow-x-auto overflow-y-hidden${className ? ` ${className}` : ""}`}
         role="math"
       />
     );

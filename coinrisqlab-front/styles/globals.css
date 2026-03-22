@@ -114,9 +114,23 @@
   overflow-x: auto;
   overflow-y: hidden;
   padding: 0.25rem 0;
+  max-width: 100%;
+}
+
+.katex-display > .katex {
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding-bottom: 2px;
 }
 
 @media (max-width: 767px) {
+  .katex {
+    font-size: 0.75em;
+  }
+}
+
+@media (min-width: 768px) and (max-width: 1023px) {
   .katex {
     font-size: 0.85em;
   }
@@ -127,6 +141,7 @@
   .sticky-scroll-table {
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
+    padding-left: 0 !important;
   }
 
   /* Hide rank column on mobile (merged into name cell) */
@@ -135,20 +150,36 @@
     display: none;
   }
 
-  /* Name column becomes the only sticky column */
+  /* Name column becomes the only sticky column — compact */
   .sticky-scroll-table th:nth-child(2),
   .sticky-scroll-table td:nth-child(2) {
     position: sticky;
     left: 0;
     z-index: 20;
-    min-width: 100px;
-    max-width: 120px;
+    width: 72px;
+    min-width: 72px;
+    max-width: 72px;
+    padding-left: 6px;
+    padding-right: 6px;
   }
 
-  /* Header background */
+  /* Header background — match the table header grey */
   .sticky-scroll-table thead th:nth-child(2) {
-    background: hsl(var(--heroui-content1));
+    background: hsl(var(--heroui-default-100));
     z-index: 21;
+  }
+
+  /* Force sticky column content to stay within bounds */
+  .sticky-scroll-table td:nth-child(2) > div {
+    max-width: 100%;
+    overflow: hidden;
+  }
+
+  .sticky-scroll-table td:nth-child(2) span:not(.hidden) {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 60px;
   }
 
   /* Body background */
