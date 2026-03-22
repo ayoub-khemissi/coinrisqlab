@@ -85,6 +85,17 @@ export default function RootLayout({
           fontSans.variable,
         )}
       >
+        {process.env.NEXT_PUBLIC_GTM_ID && (
+          <noscript>
+            <iframe
+              height="0"
+              src={`https://www.googletagmanager.com/ns.html?id=${process.env.NEXT_PUBLIC_GTM_ID}`}
+              style={{ display: "none", visibility: "hidden" }}
+              title="Google Tag Manager"
+              width="0"
+            />
+          </noscript>
+        )}
         <Providers themeProps={{ attribute: "class", defaultTheme: "dark" }}>
           <div className="relative flex flex-col h-screen">
             <Navbar />
