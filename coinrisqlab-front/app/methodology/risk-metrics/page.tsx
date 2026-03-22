@@ -17,6 +17,7 @@ import {
   Activity,
 } from "lucide-react";
 
+import { Math } from "@/components/math";
 import { title } from "@/components/primitives";
 import { useScrollSpy } from "@/hooks/useScrollSpy";
 
@@ -272,10 +273,12 @@ export default function RiskMetricsMethodologyPage() {
                     For each cryptocurrency with sufficient data (≥90 log
                     returns):
                   </p>
-                  <div className="bg-content1 p-4 rounded-lg font-mono text-sm">
-                    <div>
-                      Window[i] = [Return[i-89], Return[i-88], ..., Return[i]]
-                    </div>
+                  <div className="bg-content1 p-4 rounded-lg">
+                    <Math display>
+                      {
+                        "\\text{Window}[i] = \\bigl[r_{i-89},\\; r_{i-88},\\; \\ldots,\\; r_i\\bigr]"
+                      }
+                    </Math>
                   </div>
                   <p className="text-default-600 mt-4 text-sm">
                     The window slides forward one day at a time, always
@@ -296,12 +299,17 @@ export default function RiskMetricsMethodologyPage() {
                       <p className="font-bold mb-2">
                         a) Unbiased Variance Estimation
                       </p>
-                      <div className="bg-content1 p-4 rounded-lg font-mono text-sm">
-                        <div>s² = (1/(n-1)) × Σ(i=1 to n) (r_i - r̄)²</div>
+                      <div className="bg-content1 p-4 rounded-lg">
+                        <Math display>
+                          {
+                            "s^2 = \\frac{1}{n-1}\\sum_{i=1}^{n}(r_i - \\bar{r})^2"
+                          }
+                        </Math>
                         <div className="text-xs text-default-500 mt-2">
-                          Where r_i = logarithmic return at observation i, r̄ =
-                          average logarithmic return over the sample, n = 90
-                          observations
+                          Where <Math>{"r_i"}</Math> = logarithmic return at
+                          observation <Math>{"i"}</Math>,{" "}
+                          <Math>{"\\bar{r}"}</Math> = average logarithmic return
+                          over the sample, <Math>{"n = 90"}</Math> observations
                         </div>
                       </div>
                     </div>
@@ -310,8 +318,8 @@ export default function RiskMetricsMethodologyPage() {
                       <p className="font-bold mb-2">
                         b) Daily Volatility (Standard Deviation)
                       </p>
-                      <div className="bg-content1 p-4 rounded-lg font-mono text-sm">
-                        <div>σ = √s²</div>
+                      <div className="bg-content1 p-4 rounded-lg">
+                        <Math display>{"\\sigma = \\sqrt{s^2}"}</Math>
                         <div className="text-xs text-default-500 mt-2">
                           This measure captures the magnitude of return
                           fluctuations over the selected time window and
@@ -323,8 +331,12 @@ export default function RiskMetricsMethodologyPage() {
 
                     <div>
                       <p className="font-bold mb-2">c) Annualized Volatility</p>
-                      <div className="bg-content1 p-4 rounded-lg font-mono text-sm">
-                        <div>σ_annual = σ × √365</div>
+                      <div className="bg-content1 p-4 rounded-lg">
+                        <Math display>
+                          {
+                            "\\sigma_{\\text{annual}} = \\sigma \\times \\sqrt{365}"
+                          }
+                        </Math>
                         <div className="text-xs text-default-500 mt-2">
                           Where 365 = trading days per year (crypto markets
                           24/7)
@@ -419,10 +431,15 @@ export default function RiskMetricsMethodologyPage() {
                     the return distribution. For example, VaR 95% indicates the
                     loss that will not be exceeded 95% of the time.
                   </p>
-                  <div className="bg-content1 p-4 rounded-lg font-mono text-sm">
-                    <div>VaR(α) = -Percentile(Returns, 100 - α)</div>
+                  <div className="bg-content1 p-4 rounded-lg">
+                    <Math display>
+                      {
+                        "\\text{VaR}(\\alpha) = -\\text{Percentile}(\\text{Returns},\\; 100 - \\alpha)"
+                      }
+                    </Math>
                     <div className="text-xs text-default-500 mt-2">
-                      Where α = confidence level (95% or 99%)
+                      Where <Math>{"\\alpha"}</Math> = confidence level (95% or
+                      99%)
                     </div>
                   </div>
                 </div>
@@ -539,10 +556,12 @@ export default function RiskMetricsMethodologyPage() {
               <div className="space-y-6">
                 <div className="bg-danger/5 p-6 rounded-lg border-l-4 border-danger">
                   <h3 className="text-xl font-bold mb-3">Formula</h3>
-                  <div className="bg-content1 p-4 rounded-lg font-mono text-sm">
-                    <div>
-                      CVaR(α) = -Average(Returns where Return &lt; -VaR(α))
-                    </div>
+                  <div className="bg-content1 p-4 rounded-lg">
+                    <Math display>
+                      {
+                        "\\text{CVaR}(\\alpha) = -\\mathbb{E}\\bigl[R \\;\\big|\\; R < -\\text{VaR}(\\alpha)\\bigr]"
+                      }
+                    </Math>
                     <div className="text-xs text-default-500 mt-2">
                       Average of all returns in the tail beyond VaR
                     </div>
@@ -623,21 +642,30 @@ export default function RiskMetricsMethodologyPage() {
                     The estimation is based on a simple linear regression using
                     the Ordinary Least Squares (OLS) method:
                   </p>
-                  <div className="bg-content1 p-4 rounded-lg font-mono text-sm mb-4">
-                    <div>{"R_{i,t} = α_i + β_i × R_{m,t} + ε_t"}</div>
+                  <div className="bg-content1 p-4 rounded-lg mb-4">
+                    <Math display>
+                      {
+                        "R_{i,t} = \\alpha_i + \\beta_i \\times R_{m,t} + \\varepsilon_t"
+                      }
+                    </Math>
                     <div className="text-xs text-default-500 mt-2">
-                      {"Where R_{i,t}"} = logarithmic return of asset i at time
-                      t, {"R_{m,t}"} = logarithmic return of the CoinRisqLab 80
-                      Index, {"β_i"} = sensitivity of the asset to market
-                      movements
+                      Where <Math>{"R_{i,t}"}</Math> = logarithmic return of
+                      asset <Math>{"i"}</Math> at time <Math>{"t"}</Math>,{" "}
+                      <Math>{"R_{m,t}"}</Math> = logarithmic return of the
+                      CoinRisqLab 80 Index, <Math>{"\\beta_i"}</Math> =
+                      sensitivity of the asset to market movements
                     </div>
                   </div>
                   <p className="text-default-600 mb-4">
                     Within this framework, the beta coefficient estimated by OLS
                     is equivalent to:
                   </p>
-                  <div className="bg-content1 p-4 rounded-lg font-mono text-sm mb-4">
-                    <div>{"β_i = Cov(R_i, R_m) / Var(R_m)"}</div>
+                  <div className="bg-content1 p-4 rounded-lg mb-4">
+                    <Math display>
+                      {
+                        "\\beta_i = \\frac{\\text{Cov}(R_i,\\, R_m)}{\\text{Var}(R_m)}"
+                      }
+                    </Math>
                   </div>
                   <p className="text-default-600">
                     This formula compares the covariance between the asset and
@@ -765,8 +793,12 @@ export default function RiskMetricsMethodologyPage() {
               <div className="space-y-6">
                 <div className="bg-success/5 p-6 rounded-lg border-l-4 border-success">
                   <h3 className="text-xl font-bold mb-3">Formula</h3>
-                  <div className="bg-content1 p-4 rounded-lg font-mono text-sm">
-                    <div>Alpha = Mean(R_asset) - Beta × Mean(R_market)</div>
+                  <div className="bg-content1 p-4 rounded-lg">
+                    <Math display>
+                      {
+                        "\\alpha = \\overline{R}_{\\text{asset}} - \\beta \\times \\overline{R}_{\\text{market}}"
+                      }
+                    </Math>
                     <div className="text-xs text-default-500 mt-2">
                       The y-intercept of the regression line
                     </div>
@@ -814,22 +846,24 @@ export default function RiskMetricsMethodologyPage() {
               <div className="space-y-6">
                 <div className="bg-default-50 p-6 rounded-lg">
                   <h3 className="text-xl font-bold mb-3">Formula</h3>
-                  <div className="bg-default-100 p-4 rounded-lg text-center font-mono text-lg mb-4">
-                    <div>S = (Rp - Rf) / σp</div>
+                  <div className="bg-default-100 p-4 rounded-lg text-center mb-4">
+                    <Math display>{"S = \\frac{R_p - R_f}{\\sigma_p}"}</Math>
                   </div>
                   <div className="text-default-600 space-y-2">
                     <p>
-                      <strong>Rp</strong> = Mean daily return of the asset
+                      <Math>{"R_p"}</Math> = Mean daily return of the asset
                     </p>
                     <p>
-                      <strong>Rf</strong> = Risk-free rate (0% for crypto)
+                      <Math>{"R_f"}</Math> = Risk-free rate (0% for crypto)
                     </p>
                     <p>
-                      <strong>σp</strong> = Standard deviation of daily returns
+                      <Math>{"\\sigma_p"}</Math> = Standard deviation of daily
+                      returns
                     </p>
                     <p className="text-sm text-default-500 mt-3">
-                      The daily Sharpe Ratio is annualized by multiplying by
-                      √365, giving a comparable annual figure.
+                      The daily Sharpe Ratio is annualized by multiplying by{" "}
+                      <Math>{"\\sqrt{365}"}</Math>, giving a comparable annual
+                      figure.
                     </p>
                   </div>
                 </div>
@@ -911,8 +945,8 @@ export default function RiskMetricsMethodologyPage() {
                       crypto markets)
                     </li>
                     <li>
-                      Annualized via <strong>√365</strong> to give a yearly
-                      comparable figure
+                      Annualized via <Math>{"\\sqrt{365}"}</Math> to give a
+                      yearly comparable figure
                     </li>
                     <li>
                       Historized daily in the database and recalculated with
@@ -966,17 +1000,21 @@ export default function RiskMetricsMethodologyPage() {
                   <p className="text-default-600 mb-4">
                     The expected return predicted by the CAPM is:
                   </p>
-                  <div className="bg-content1 p-4 rounded-lg font-mono text-sm mb-4">
-                    <div>{"E(R_i) = r_f + β_i × (E(R_M) - r_f)"}</div>
+                  <div className="bg-content1 p-4 rounded-lg mb-4">
+                    <Math display>
+                      {
+                        "\\mathbb{E}(R_i) = r_f + \\beta_i \\times \\bigl(\\mathbb{E}(R_M) - r_f\\bigr)"
+                      }
+                    </Math>
                     <div className="text-xs text-default-500 mt-2">
                       This represents the return an asset should deliver given
                       its systematic risk.
                     </div>
                   </div>
                   <p className="text-default-600 text-sm">
-                    <strong>Note:</strong> We use r_f = 0 (simplified model for
-                    crypto markets where traditional risk-free rates are less
-                    relevant).
+                    <strong>Note:</strong> We use <Math>{"r_f = 0"}</Math>{" "}
+                    (simplified model for crypto markets where traditional
+                    risk-free rates are less relevant).
                   </p>
                 </div>
 
@@ -988,12 +1026,12 @@ export default function RiskMetricsMethodologyPage() {
                     We compare the CAPM expected return to the realized return
                     over the same 90-day period:
                   </p>
-                  <div className="bg-content1 p-4 rounded-lg font-mono text-sm mb-4">
-                    <div>{"α_i = R_i - E(R_i)"}</div>
+                  <div className="bg-content1 p-4 rounded-lg mb-4">
+                    <Math display>{"\\alpha_i = R_i - \\mathbb{E}(R_i)"}</Math>
                     <div className="text-xs text-default-500 mt-2">
-                      {"α > 0"} → asset outperforms CAPM → potentially
-                      undervalued | {"α < 0"} → asset underperforms CAPM →
-                      potentially overvalued
+                      <Math>{"\\alpha > 0"}</Math> → asset outperforms CAPM →
+                      potentially undervalued | <Math>{"\\alpha < 0"}</Math> →
+                      asset underperforms CAPM → potentially overvalued
                     </div>
                   </div>
                   <div className="overflow-x-auto">
@@ -1066,8 +1104,12 @@ export default function RiskMetricsMethodologyPage() {
                   <h3 className="text-xl font-bold mb-3">
                     Fisher&apos;s Skewness Formula
                   </h3>
-                  <div className="bg-content1 p-4 rounded-lg font-mono text-sm">
-                    <div>Skewness = (n / ((n-1)(n-2))) × Σ((x - μ) / σ)³</div>
+                  <div className="bg-content1 p-4 rounded-lg">
+                    <Math display>
+                      {
+                        "\\text{Skewness} = \\frac{n}{(n-1)(n-2)} \\sum_{i=1}^{n} \\left(\\frac{x_i - \\mu}{\\sigma}\\right)^{3}"
+                      }
+                    </Math>
                     <div className="text-xs text-default-500 mt-2">
                       Third standardized moment with sample bias correction
                     </div>
@@ -1159,11 +1201,12 @@ export default function RiskMetricsMethodologyPage() {
                   <h3 className="text-xl font-bold mb-3">
                     Excess Kurtosis Formula (Fisher)
                   </h3>
-                  <div className="bg-content1 p-4 rounded-lg font-mono text-sm">
-                    <div>
-                      Excess Kurtosis = ((n+1)n / ((n-1)(n-2)(n-3))) × Σ((x - μ)
-                      / σ)⁴ - 3(n-1)² / ((n-2)(n-3))
-                    </div>
+                  <div className="bg-content1 p-4 rounded-lg">
+                    <Math display>
+                      {
+                        "\\text{Excess Kurtosis} = \\frac{(n+1)\\,n}{(n-1)(n-2)(n-3)} \\sum_{i=1}^{n} \\left(\\frac{x_i - \\mu}{\\sigma}\\right)^{4} - \\frac{3(n-1)^2}{(n-2)(n-3)}"
+                      }
+                    </Math>
                     <div className="text-xs text-default-500 mt-2">
                       Fourth standardized moment minus 3 (so normal distribution
                       = 0)
@@ -1263,45 +1306,61 @@ export default function RiskMetricsMethodologyPage() {
                     then retrieve the total crypto market capitalization over
                     that period and compute the daily log returns:
                   </p>
-                  <div className="bg-content1 p-4 rounded-lg font-mono text-sm mb-4">
-                    <div>{"r_t = ln(M_t / M_{t-1})"}</div>
+                  <div className="bg-content1 p-4 rounded-lg mb-4">
+                    <Math display>
+                      {"r_t = \\ln\\!\\left(\\frac{M_t}{M_{t-1}}\\right)"}
+                    </Math>
                     <div className="text-xs text-default-500 mt-2">
-                      Where M_t is the total crypto market capitalization at
-                      time t
+                      Where <Math>{"M_t"}</Math> is the total crypto market
+                      capitalization at time <Math>{"t"}</Math>
                     </div>
                   </div>
                   <p className="text-default-600 mb-4">
                     The cumulative market move over the scenario window is
                     obtained by summing the log returns:
                   </p>
-                  <div className="bg-content1 p-4 rounded-lg font-mono text-sm mb-4">
-                    <div>R_market_log = Σ(t=1 to n) r_t</div>
+                  <div className="bg-content1 p-4 rounded-lg mb-4">
+                    <Math display>
+                      {"R_{\\text{market,log}} = \\sum_{t=1}^{n} r_t"}
+                    </Math>
                   </div>
                   <p className="text-default-600 mb-4">
                     The cumulative market shock is then expressed in standard
                     return terms:
                   </p>
-                  <div className="bg-content1 p-4 rounded-lg font-mono text-sm mb-4">
-                    <div>Shock_market = e^(R_market_log) - 1</div>
+                  <div className="bg-content1 p-4 rounded-lg mb-4">
+                    <Math display>
+                      {
+                        "\\text{Shock}_{\\text{market}} = e^{R_{\\text{market,log}}} - 1"
+                      }
+                    </Math>
                   </div>
                   <p className="text-default-600 mb-4">
                     To account for differences in asset sensitivity, the market
                     shock is scaled by each asset&apos;s historical beta. For
                     stress testing purposes, negative betas are floored at 0:
                   </p>
-                  <div className="bg-content1 p-4 rounded-lg font-mono text-sm mb-4">
-                    <div>β_i_stress = max(β_i, 0)</div>
-                    <div className="mt-2">
-                      Shock_i = β_i_stress × Shock_market
-                    </div>
+                  <div className="bg-content1 p-4 rounded-lg mb-4">
+                    <Math display>
+                      {"\\beta_{i,\\text{stress}} = \\max(\\beta_i,\\; 0)"}
+                    </Math>
+                    <Math display>
+                      {
+                        "\\text{Shock}_i = \\beta_{i,\\text{stress}} \\times \\text{Shock}_{\\text{market}}"
+                      }
+                    </Math>
                   </div>
                   <p className="text-default-600 mb-4">
                     The stressed price of each asset is then computed as:
                   </p>
-                  <div className="bg-content1 p-4 rounded-lg font-mono text-sm">
-                    <div>P_i_stress = P_i,0 × (1 + Shock_i)</div>
+                  <div className="bg-content1 p-4 rounded-lg">
+                    <Math display>
+                      {
+                        "P_{i,\\text{stress}} = P_{i,0} \\times (1 + \\text{Shock}_i)"
+                      }
+                    </Math>
                     <div className="text-xs text-default-500 mt-2">
-                      Where P_i,0 is the current asset price
+                      Where <Math>{"P_{i,0}"}</Math> is the current asset price
                     </div>
                   </div>
                 </div>

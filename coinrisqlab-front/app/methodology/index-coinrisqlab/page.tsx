@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 
 import { title } from "@/components/primitives";
+import { Math } from "@/components/math";
 import { useScrollSpy } from "@/hooks/useScrollSpy";
 
 const INDEX_SECTIONS = [
@@ -192,9 +193,11 @@ export default function IndexMethodologyPage() {
                     The total market value of a cryptocurrency, calculated by
                     multiplying its current price by its circulating supply.
                   </p>
-                  <code className="text-sm bg-default-100 px-2 py-1 rounded mt-2 inline-block">
-                    Market Cap = Price × Circulating Supply
-                  </code>
+                  <Math>
+                    {
+                      "\\text{Market Cap} = \\text{Price} \\times \\text{Circulating Supply}"
+                    }
+                  </Math>
                 </div>
 
                 <div className="border-l-4 border-success pl-4">
@@ -450,11 +453,12 @@ export default function IndexMethodologyPage() {
                     The divisor is calculated only once during the first
                     execution to anchor the index to the base level of 100:
                   </p>
-                  <div className="bg-content1 p-4 rounded-lg font-mono text-sm">
-                    <div className="mb-2">
-                      Divisor = Initial_Total_Market_Cap / Base_Level
-                    </div>
-                    <div>Divisor = Initial_Market_Cap / 100</div>
+                  <div className="bg-content1 p-4 rounded-lg">
+                    <Math display>
+                      {
+                        "\\text{Divisor} = \\frac{\\text{Initial Total Market Cap}}{\\text{Base Level}} = \\frac{\\text{Initial Market Cap}}{100}"
+                      }
+                    </Math>
                   </div>
                   <p className="text-default-600 mt-4 text-sm">
                     <strong>Note:</strong> The divisor remains constant unless
@@ -469,10 +473,12 @@ export default function IndexMethodologyPage() {
                   <p className="text-default-600 mb-4">
                     Calculate the sum of all constituent market capitalizations:
                   </p>
-                  <div className="bg-content1 p-4 rounded-lg font-mono text-sm">
-                    <div>
-                      Total_Market_Cap = Σ(Price_USD × Circulating_Supply)
-                    </div>
+                  <div className="bg-content1 p-4 rounded-lg">
+                    <Math display>
+                      {
+                        "\\text{Total Market Cap} = \\sum_{i=1}^{80} \\left( \\text{Price}_{\\text{USD},i} \\times \\text{Circulating Supply}_i \\right)"
+                      }
+                    </Math>
                     <div className="text-xs text-default-500 mt-2">
                       for all 80 constituents
                     </div>
@@ -486,24 +492,37 @@ export default function IndexMethodologyPage() {
                   <p className="text-default-600 mb-4">
                     Divide the total market cap by the divisor:
                   </p>
-                  <div className="bg-content1 p-4 rounded-lg font-mono text-sm mb-4">
-                    <div>Index_Level = Total_Market_Cap / Divisor</div>
+                  <div className="bg-content1 p-4 rounded-lg mb-4">
+                    <Math display>
+                      {
+                        "\\text{Index Level} = \\frac{\\text{Total Market Cap}}{\\text{Divisor}}"
+                      }
+                    </Math>
                   </div>
                   <p className="text-default-600 mb-4">Complete formula:</p>
                   <div className="bg-content1 p-6 rounded-lg overflow-x-auto">
-                    <pre className="text-xs sm:text-sm whitespace-pre">
-                      {`                n=80
-                Σ  (P[i] × Q[i])
-               i=1
-Index_Level = ─────────────────────
-                     D
-
-Where:
-  P[i] = USD price of cryptocurrency i
-  Q[i] = Circulating supply of cryptocurrency i
-  D    = Divisor (constant)
-  n    = 80 constituents`}
-                    </pre>
+                    <Math display>
+                      {
+                        "\\text{Index Level} = \\frac{\\displaystyle\\sum_{i=1}^{n=80} \\left( P_i \\times Q_i \\right)}{D}"
+                      }
+                    </Math>
+                    <div className="text-xs text-default-500 mt-4 space-y-1">
+                      <div>Where:</div>
+                      <div>
+                        <Math>{"P_i"}</Math> = USD price of cryptocurrency{" "}
+                        <Math>{"i"}</Math>
+                      </div>
+                      <div>
+                        <Math>{"Q_i"}</Math> = Circulating supply of
+                        cryptocurrency <Math>{"i"}</Math>
+                      </div>
+                      <div>
+                        <Math>{"D"}</Math> = Divisor (constant)
+                      </div>
+                      <div>
+                        <Math>{"n"}</Math> = 80 constituents
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -524,12 +543,19 @@ Where:
                 proportion of the total market capitalization:
               </p>
               <div className="bg-default-50 p-6 rounded-lg">
-                <div className="bg-content1 p-4 rounded-lg font-mono text-sm mb-4">
-                  <div>
-                    Weight[i] = (Market_Cap[i] / Total_Market_Cap) × 100
-                  </div>
+                <div className="bg-content1 p-4 rounded-lg mb-4">
+                  <Math display>
+                    {
+                      "w_i = \\frac{\\text{Market Cap}_i}{\\text{Total Market Cap}} \\times 100"
+                    }
+                  </Math>
                   <div className="text-xs text-default-500 mt-2">
-                    Where: Market_Cap[i] = Price_USD[i] × Circulating_Supply[i]
+                    Where:{" "}
+                    <Math>
+                      {
+                        "\\text{Market Cap}_i = \\text{Price}_{\\text{USD},i} \\times \\text{Circulating Supply}_i"
+                      }
+                    </Math>
                   </div>
                 </div>
                 <ul className="list-disc list-inside text-default-600 space-y-2">
@@ -567,11 +593,12 @@ Where:
                       <strong>Base Level:</strong> 100
                     </div>
                     <div className="pt-4 border-t border-default-200 mt-4">
-                      <strong>Calculated Divisor:</strong> 2,500,000,000,000 /
-                      100 ={" "}
-                      <Chip className="ml-2" color="primary" size="sm">
-                        25,000,000,000
-                      </Chip>
+                      <strong>Calculated Divisor:</strong>{" "}
+                      <Math>
+                        {
+                          "\\frac{2{,}500{,}000{,}000{,}000}{100} = 25{,}000{,}000{,}000"
+                        }
+                      </Math>
                     </div>
                   </div>
                 </div>
@@ -592,11 +619,12 @@ Where:
                       <strong>Divisor:</strong> 25,000,000,000 (constant)
                     </div>
                     <div className="pt-4 border-t border-default-200 mt-4">
-                      <strong>New Index Level:</strong> 2,750,000,000,000 /
-                      25,000,000,000 ={" "}
-                      <Chip className="ml-2" color="success" size="sm">
-                        110
-                      </Chip>
+                      <strong>New Index Level:</strong>{" "}
+                      <Math>
+                        {
+                          "\\frac{2{,}750{,}000{,}000{,}000}{25{,}000{,}000{,}000} = 110"
+                        }
+                      </Math>
                     </div>
                   </div>
                   <p className="text-default-600 mt-4">

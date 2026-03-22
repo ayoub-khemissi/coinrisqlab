@@ -19,6 +19,7 @@ import { AlertTriangle } from "lucide-react";
 
 import { MethodologyLink } from "./MethodologyLink";
 
+import { Math as MathFormula } from "@/components/math";
 import { useSML } from "@/hooks/useRiskMetrics";
 
 interface SMLPanelProps {
@@ -396,22 +397,26 @@ export function SMLPanel({ cryptoId, symbol }: SMLPanelProps) {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="p-4 bg-default-100 rounded-lg">
                 <p className="text-sm font-semibold mb-2">CAPM Formula</p>
-                <code className="text-xs bg-default-200 px-2 py-1 rounded">
-                  E(R) = Rf + β × (Rm - Rf)
-                </code>
+                <MathFormula display>
+                  {"\\mathbb{E}(R) = R_f + \\beta \\times (R_m - R_f)"}
+                </MathFormula>
                 <p className="text-xs text-default-500 mt-2">
-                  With Rf = 0%: E(R) = β × Rm
+                  With <MathFormula>{"R_f = 0\\%"}</MathFormula>:{" "}
+                  <MathFormula>
+                    {"\\mathbb{E}(R) = \\beta \\times R_m"}
+                  </MathFormula>
                 </p>
               </div>
               <div className="p-4 bg-default-100 rounded-lg">
                 <p className="text-sm font-semibold mb-2">
                   Jensen&apos;s Alpha
                 </p>
-                <code className="text-xs bg-default-200 px-2 py-1 rounded">
-                  α = Mean Return - Expected Market Mean Return
-                </code>
+                <MathFormula display>
+                  {"\\alpha = \\bar{R} - \\mathbb{E}(R)"}
+                </MathFormula>
                 <p className="text-xs text-default-500 mt-2">
-                  Positive α = outperformance
+                  Positive <MathFormula>{"\\alpha"}</MathFormula> =
+                  outperformance
                 </p>
               </div>
             </div>

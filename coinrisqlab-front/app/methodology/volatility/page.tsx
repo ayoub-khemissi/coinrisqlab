@@ -15,6 +15,7 @@ import {
   BarChart3,
 } from "lucide-react";
 
+import { Math } from "@/components/math";
 import { title } from "@/components/primitives";
 import { useScrollSpy } from "@/hooks/useScrollSpy";
 
@@ -225,9 +226,11 @@ export default function VolatilityMethodologyPage() {
                     Logarithmic returns have better statistical properties than
                     simple percentage returns.
                   </p>
-                  <code className="text-sm bg-default-100 px-2 py-1 rounded inline-block">
-                    Log_Return = ln(Price_today / Price_yesterday)
-                  </code>
+                  <Math>
+                    {
+                      "r_t = \\ln\\left(\\frac{P_{\\text{today}}}{P_{\\text{yesterday}}}\\right)"
+                    }
+                  </Math>
                 </div>
 
                 <div className="border-l-4 border-warning pl-4">
@@ -246,9 +249,11 @@ export default function VolatilityMethodologyPage() {
                     annual equivalent by multiplying by the square root of the
                     number of trading periods in a year.
                   </p>
-                  <code className="text-sm bg-default-100 px-2 py-1 rounded inline-block">
-                    Annual_Volatility = Daily_Volatility × √365
-                  </code>
+                  <Math>
+                    {
+                      "\\sigma_{\\text{annual}} = \\sigma_{\\text{daily}} \\times \\sqrt{365}"
+                    }
+                  </Math>
                 </div>
 
                 <div className="border-l-4 border-secondary pl-4">
@@ -295,9 +300,9 @@ export default function VolatilityMethodologyPage() {
                   </h3>
                   <p className="text-default-600">
                     When calculating variance from a sample of data (like 90
-                    days of returns), we divide by <code>n-1</code> instead of{" "}
-                    <code>n</code> to get an unbiased estimate. This is applied
-                    to all our variance and covariance calculations.
+                    days of returns), we divide by <Math>{"n-1"}</Math> instead
+                    of <Math>{"n"}</Math> to get an unbiased estimate. This is
+                    applied to all our variance and covariance calculations.
                   </p>
                 </div>
               </div>
@@ -612,13 +617,15 @@ export default function VolatilityMethodologyPage() {
                     which are widely used in financial analysis due to their
                     desirable statistical properties and time additivity:
                   </p>
-                  <div className="bg-content1 p-4 rounded-lg font-mono text-sm mb-4">
-                    <div>{"r_t = ln(P_t / P_{t-1})"}</div>
+                  <div className="bg-content1 p-4 rounded-lg mb-4">
+                    <Math display>
+                      {"r_t = \\ln\\left(\\frac{P_t}{P_{t-1}}\\right)"}
+                    </Math>
                   </div>
                   <p className="text-default-600 text-sm">
-                    {
-                      "Where P_t is the closing price at time t and P_{t-1} is the closing price at time t−1."
-                    }
+                    Where <Math>{"P_t"}</Math> is the closing price at time{" "}
+                    <Math>{"t"}</Math> and <Math>{"P_{t-1}"}</Math> is the
+                    closing price at time <Math>{"t-1"}</Math>.
                   </p>
                 </div>
 
@@ -686,10 +693,19 @@ export default function VolatilityMethodologyPage() {
                   <p className="text-default-600 mb-4">
                     Weights are based on market capitalization:
                   </p>
-                  <div className="bg-content1 p-4 rounded-lg font-mono text-sm mb-4">
-                    <div>w[i] = MarketCap[i] / Σ(j=1 to n) MarketCap[j]</div>
+                  <div className="bg-content1 p-4 rounded-lg mb-4">
+                    <Math display>
+                      {
+                        "w_i = \\frac{\\text{MarketCap}_i}{\\sum_{j=1}^{n} \\text{MarketCap}_j}"
+                      }
+                    </Math>
                     <div className="text-xs text-default-500 mt-2">
-                      Where MarketCap[i] = Price[i] × CirculatingSupply[i]
+                      Where{" "}
+                      <Math>
+                        {
+                          "\\text{MarketCap}_i = \\text{Price}_i \\times \\text{CirculatingSupply}_i"
+                        }
+                      </Math>
                     </div>
                   </div>
                   <p className="text-default-600 text-sm">
@@ -704,14 +720,16 @@ export default function VolatilityMethodologyPage() {
                   <p className="text-default-600 mb-4">
                     Build the covariance matrix for all constituent pairs:
                   </p>
-                  <div className="bg-content1 p-4 rounded-lg font-mono text-sm mb-4">
-                    <div>
-                      Cov(i,j) = (1/(T-1)) × Σ(t=1 to T) [(r[i,t] - μ[i]) ×
-                      (r[j,t] - μ[j])]
-                    </div>
+                  <div className="bg-content1 p-4 rounded-lg mb-4">
+                    <Math display>
+                      {
+                        "\\text{Cov}(i,j) = \\frac{1}{T-1} \\sum_{t=1}^{T} \\left(r_{i,t} - \\mu_i\\right)\\left(r_{j,t} - \\mu_j\\right)"
+                      }
+                    </Math>
                     <div className="text-xs text-default-500 mt-2">
-                      Where r[i,t] = log return of asset i at time t, T = 90
-                      (window size)
+                      Where <Math>{"r_{i,t}"}</Math> = log return of asset{" "}
+                      <Math>{"i"}</Math> at time <Math>{"t"}</Math>,{" "}
+                      <Math>{"T = 90"}</Math> (window size)
                     </div>
                   </div>
                   <p className="text-default-600 text-sm mb-4">
@@ -734,21 +752,34 @@ export default function VolatilityMethodologyPage() {
                     Using modern portfolio theory:
                   </p>
                   <div className="bg-content1 p-6 rounded-lg mb-4 overflow-x-auto">
-                    <pre className="text-xs sm:text-sm whitespace-pre">
-                      {`σ²_portfolio = w' × Σ × w
-
-Where:
-  w  = column vector of weights [w₁, w₂, ..., wₙ]'
-  Σ  = covariance matrix (n×n)
-  w' = transpose of weight vector`}
-                    </pre>
+                    <Math display>
+                      {
+                        "\\sigma^2_p = \\mathbf{w}^\\top \\Sigma \\, \\mathbf{w}"
+                      }
+                    </Math>
+                    <div className="text-sm text-default-600 mt-3 space-y-1">
+                      <div>Where:</div>
+                      <div className="pl-4">
+                        <Math>{"\\mathbf{w}"}</Math> = column vector of weights{" "}
+                        <Math>{"[w_1, w_2, \\ldots, w_n]^\\top"}</Math>
+                      </div>
+                      <div className="pl-4">
+                        <Math>{"\\Sigma"}</Math> = covariance matrix (
+                        <Math>{"n \\times n"}</Math>)
+                      </div>
+                      <div className="pl-4">
+                        <Math>{"\\mathbf{w}^\\top"}</Math> = transpose of weight
+                        vector
+                      </div>
+                    </div>
                   </div>
                   <p className="text-default-600 mb-4">Expanded form:</p>
-                  <div className="bg-content1 p-4 rounded-lg font-mono text-sm">
-                    <div>
-                      σ²_portfolio = Σ(i=1 to n) Σ(j=1 to n) w[i] × w[j] ×
-                      Cov(i,j)
-                    </div>
+                  <div className="bg-content1 p-4 rounded-lg">
+                    <Math display>
+                      {
+                        "\\sigma^2_p = \\sum_{i=1}^{n} \\sum_{j=1}^{n} w_i \\, w_j \\, \\text{Cov}(i,j)"
+                      }
+                    </Math>
                   </div>
                 </div>
 
@@ -756,9 +787,15 @@ Where:
                   <h3 className="text-xl font-bold mb-3">
                     Step 4: Annualization
                   </h3>
-                  <div className="bg-content1 p-4 rounded-lg font-mono text-sm space-y-2">
-                    <div>σ_portfolio_daily = √(σ²_portfolio)</div>
-                    <div>σ_portfolio_annual = σ_portfolio_daily × √365</div>
+                  <div className="bg-content1 p-4 rounded-lg space-y-4">
+                    <Math display>
+                      {"\\sigma_{\\text{daily}} = \\sqrt{\\sigma^2_p}"}
+                    </Math>
+                    <Math display>
+                      {
+                        "\\sigma_{\\text{annual}} = \\sigma_{\\text{daily}} \\times \\sqrt{365}"
+                      }
+                    </Math>
                   </div>
                 </div>
               </div>
@@ -784,47 +821,54 @@ Where:
                     <strong>Given:</strong> 2-asset portfolio for simplicity
                   </p>
                   <div className="bg-content1 p-4 rounded-lg space-y-2 text-sm mb-4">
-                    <div>Asset 1 (BTC): weight = 0.60, σ₁ = 0.03</div>
-                    <div>Asset 2 (ETH): weight = 0.40, σ₂ = 0.04</div>
-                    <div>Correlation: ρ = 0.70</div>
+                    <div>
+                      Asset 1 (BTC): weight <Math>{"w_1 = 0.60"}</Math>,{" "}
+                      <Math>{"\\sigma_1 = 0.03"}</Math>
+                    </div>
+                    <div>
+                      Asset 2 (ETH): weight <Math>{"w_2 = 0.40"}</Math>,{" "}
+                      <Math>{"\\sigma_2 = 0.04"}</Math>
+                    </div>
+                    <div>
+                      Correlation: <Math>{"\\rho = 0.70"}</Math>
+                    </div>
                   </div>
 
                   <p className="text-default-600 mb-2">
                     <strong>Covariance matrix:</strong>
                   </p>
-                  <div className="bg-content1 p-4 rounded-lg font-mono text-xs mb-4 overflow-x-auto">
-                    <pre className="text-xs whitespace-pre">
-                      {`Σ = [σ₁²           ρ×σ₁×σ₂  ]
-    [ρ×σ₁×σ₂       σ₂²      ]
-
-  = [0.0009         0.00084  ]
-    [0.00084        0.0016   ]`}
-                    </pre>
+                  <div className="bg-content1 p-4 rounded-lg mb-4 overflow-x-auto">
+                    <Math display>
+                      {
+                        "\\Sigma = \\begin{bmatrix} \\sigma_1^2 & \\rho \\, \\sigma_1 \\, \\sigma_2 \\\\ \\rho \\, \\sigma_1 \\, \\sigma_2 & \\sigma_2^2 \\end{bmatrix} = \\begin{bmatrix} 0.0009 & 0.00084 \\\\ 0.00084 & 0.0016 \\end{bmatrix}"
+                      }
+                    </Math>
                   </div>
 
                   <p className="text-default-600 mb-2">
                     <strong>Portfolio variance:</strong>
                   </p>
-                  <div className="bg-content1 p-4 rounded-lg font-mono text-xs mb-4 overflow-x-auto">
-                    <pre className="text-xs whitespace-pre">
-                      {`σ²_p = [0.6  0.4] × [0.0009    0.00084] × [0.6]
-                     [0.00084   0.0016 ]   [0.4]
-
-     = [0.6  0.4] × [0.000876]
-                     [0.001144]
-
-     = 0.000983`}
-                    </pre>
+                  <div className="bg-content1 p-4 rounded-lg mb-4 overflow-x-auto">
+                    <Math display>
+                      {
+                        "\\begin{aligned} \\sigma^2_p &= \\begin{bmatrix} 0.6 & 0.4 \\end{bmatrix} \\begin{bmatrix} 0.0009 & 0.00084 \\\\ 0.00084 & 0.0016 \\end{bmatrix} \\begin{bmatrix} 0.6 \\\\ 0.4 \\end{bmatrix} \\\\\\\\ &= \\begin{bmatrix} 0.6 & 0.4 \\end{bmatrix} \\begin{bmatrix} 0.000876 \\\\ 0.001144 \\end{bmatrix} \\\\\\\\ &= 0.000983 \\end{aligned}"
+                      }
+                    </Math>
                   </div>
 
                   <div className="bg-content1 p-4 rounded-lg space-y-2 text-sm">
                     <div>
-                      <strong>Daily portfolio volatility:</strong> σ_p =
-                      √0.000983 = 0.0313 (3.13% per day)
+                      <strong>Daily portfolio volatility:</strong>{" "}
+                      <Math>{"\\sigma_p = \\sqrt{0.000983} = 0.0313"}</Math>{" "}
+                      (3.13% per day)
                     </div>
                     <div>
                       <strong>Annualized portfolio volatility:</strong>{" "}
-                      σ_p_annual = 0.0313 × √365 = 0.598
+                      <Math>
+                        {
+                          "\\sigma_{p,\\text{annual}} = 0.0313 \\times \\sqrt{365} = 0.598"
+                        }
+                      </Math>
                     </div>
                   </div>
                   <div className="text-default-600 mt-4">
@@ -905,8 +949,10 @@ Where:
                   Mathematical Relationship
                 </h3>
                 <p className="text-default-600 mb-4">The general principle:</p>
-                <div className="bg-content1 p-4 rounded-lg font-mono text-sm">
-                  <div>σ_portfolio ≤ Σ w[i] × σ[i]</div>
+                <div className="bg-content1 p-4 rounded-lg">
+                  <Math display>
+                    {"\\sigma_p \\leq \\sum_{i=1}^{n} w_i \\, \\sigma_i"}
+                  </Math>
                   <div className="text-xs text-default-500 mt-2">
                     (Portfolio volatility ≤ Weighted average of individual
                     volatilities)
