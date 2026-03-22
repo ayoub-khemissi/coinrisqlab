@@ -22,6 +22,7 @@ import { useScrollSpy } from "@/hooks/useScrollSpy";
 
 const RISK_METRICS_SECTIONS = [
   "overview",
+  "volatility",
   "var",
   "cvar",
   "beta",
@@ -93,6 +94,14 @@ export default function RiskMetricsMethodologyPage() {
                   onPress={() => scrollToSection("overview")}
                 >
                   Overview
+                </Button>
+                <Button
+                  className="justify-start"
+                  size="sm"
+                  variant={activeSection === "volatility" ? "flat" : "light"}
+                  onPress={() => scrollToSection("volatility")}
+                >
+                  Volatility
                 </Button>
                 <Button
                   className="justify-start"
@@ -199,13 +208,19 @@ export default function RiskMetricsMethodologyPage() {
               </p>
               <p className="text-default-600 mb-4">
                 Metrics use different calculation windows based on their
-                purpose:{" "}
+                purpose: <strong>Volatility uses a 90-day window</strong> for
+                recent risk assessment,{" "}
                 <strong>VaR, Beta, and Sharpe Ratio use 365 days</strong> for
                 more stable risk estimates, while{" "}
                 <strong>Skewness, Kurtosis, and SML use 90 days</strong> to
                 capture recent distribution characteristics.
               </p>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6">
+              <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mt-6">
+                <div className="text-center p-4 bg-success/10 rounded-lg">
+                  <Activity className="w-8 h-8 text-success mx-auto mb-2" />
+                  <p className="font-bold">Volatility</p>
+                  <p className="text-xs text-default-500">Price Uncertainty</p>
+                </div>
                 <div className="text-center p-4 bg-danger/10 rounded-lg">
                   <Shield className="w-8 h-8 text-danger mx-auto mb-2" />
                   <p className="font-bold">VaR/CVaR</p>
@@ -223,10 +238,155 @@ export default function RiskMetricsMethodologyPage() {
                   <p className="font-bold">Skew/Kurtosis</p>
                   <p className="text-xs text-default-500">Distribution Shape</p>
                 </div>
-                <div className="text-center p-4 bg-success/10 rounded-lg">
-                  <GitBranch className="w-8 h-8 text-success mx-auto mb-2" />
+                <div className="text-center p-4 bg-secondary/10 rounded-lg">
+                  <GitBranch className="w-8 h-8 text-secondary mx-auto mb-2" />
                   <p className="font-bold">SML</p>
                   <p className="text-xs text-default-500">CAPM Valuation</p>
+                </div>
+              </div>
+            </CardBody>
+          </Card>
+
+          {/* Volatility Section */}
+          <Card id="volatility">
+            <CardBody className="p-8">
+              <div className="flex items-center justify-center sm:justify-start gap-3 mb-4">
+                <Activity className="w-6 h-6 text-success" />
+                <h2 className="text-2xl font-bold text-center sm:text-left">
+                  Volatility
+                </h2>
+              </div>
+              <p className="text-default-600 mb-6">
+                Volatility measures the degree of variation in a
+                cryptocurrency&apos;s returns over time. It is estimated as the
+                unbiased standard deviation of logarithmic returns computed over
+                the previous <strong>90 trading days</strong>.
+              </p>
+
+              <div className="space-y-6">
+                <div className="bg-success/5 p-6 rounded-lg border-l-4 border-success">
+                  <h3 className="text-xl font-bold mb-3">
+                    Rolling Window Setup
+                  </h3>
+                  <p className="text-default-600 mb-4">
+                    For each cryptocurrency with sufficient data (≥90 log
+                    returns):
+                  </p>
+                  <div className="bg-content1 p-4 rounded-lg font-mono text-sm">
+                    <div>
+                      Window[i] = [Return[i-89], Return[i-88], ..., Return[i]]
+                    </div>
+                  </div>
+                  <p className="text-default-600 mt-4 text-sm">
+                    The window slides forward one day at a time, always
+                    containing exactly 90 consecutive daily log returns.
+                  </p>
+                </div>
+
+                <div className="bg-default-50 p-6 rounded-lg">
+                  <h3 className="text-xl font-bold mb-3">
+                    Statistical Calculations
+                  </h3>
+                  <p className="text-default-600 mb-4">
+                    For each 90-day window, we calculate:
+                  </p>
+
+                  <div className="space-y-4">
+                    <div>
+                      <p className="font-bold mb-2">
+                        a) Unbiased Variance Estimation
+                      </p>
+                      <div className="bg-content1 p-4 rounded-lg font-mono text-sm">
+                        <div>s² = (1/(n-1)) × Σ(i=1 to n) (r_i - r̄)²</div>
+                        <div className="text-xs text-default-500 mt-2">
+                          Where r_i = logarithmic return at observation i, r̄ =
+                          average logarithmic return over the sample, n = 90
+                          observations
+                        </div>
+                      </div>
+                    </div>
+
+                    <div>
+                      <p className="font-bold mb-2">
+                        b) Daily Volatility (Standard Deviation)
+                      </p>
+                      <div className="bg-content1 p-4 rounded-lg font-mono text-sm">
+                        <div>σ = √s²</div>
+                        <div className="text-xs text-default-500 mt-2">
+                          This measure captures the magnitude of return
+                          fluctuations over the selected time window and
+                          reflects the level of uncertainty associated with the
+                          asset&apos;s price movements.
+                        </div>
+                      </div>
+                    </div>
+
+                    <div>
+                      <p className="font-bold mb-2">c) Annualized Volatility</p>
+                      <div className="bg-content1 p-4 rounded-lg font-mono text-sm">
+                        <div>σ_annual = σ × √365</div>
+                        <div className="text-xs text-default-500 mt-2">
+                          Where 365 = trading days per year (crypto markets
+                          24/7)
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-warning/5 p-6 rounded-lg border-l-4 border-warning">
+                  <h3 className="text-xl font-bold mb-3">
+                    Why Multiply by √365?
+                  </h3>
+                  <p className="text-default-600">
+                    The square root of time rule applies under the assumption of
+                    independent and identically distributed returns. Since
+                    cryptocurrency markets operate 24/7 throughout the year, we
+                    use 365 days to convert daily volatility to an annual
+                    measure that&apos;s comparable across different assets and
+                    time periods.
+                  </p>
+                </div>
+
+                <div className="bg-primary/5 p-6 rounded-lg">
+                  <h3 className="text-xl font-bold mb-3">Example</h3>
+                  <p className="text-default-600 mb-4">
+                    <strong>Given:</strong> Bitcoin (BTC) with 90-day log
+                    returns
+                  </p>
+                  <div className="bg-content1 p-4 rounded-lg space-y-2 text-sm">
+                    <div>
+                      Day 1: Price = $40,000 → $42,000, r₁ = ln(42000/40000) =
+                      0.0488
+                    </div>
+                    <div>
+                      Day 2: Price = $42,000 → $41,000, r₂ = ln(41000/42000) =
+                      -0.0241
+                    </div>
+                    <div>...</div>
+                    <div>
+                      Day 90: Price = $45,000 → $46,000, r₉₀ = ln(46000/45000) =
+                      0.0220
+                    </div>
+                    <div className="border-t border-default-200 pt-2 mt-2">
+                      <strong>Mean return:</strong> μ = 0.0015
+                    </div>
+                    <div>
+                      <strong>Daily volatility:</strong> σ_daily = 0.03 (3% per
+                      day)
+                    </div>
+                    <div>
+                      <strong>Annualized volatility:</strong> σ_annual = 0.03 ×
+                      √365 = 0.573
+                    </div>
+                  </div>
+                  <div className="text-default-600 mt-4">
+                    <strong>Result:</strong> Bitcoin has an annualized
+                    volatility of{" "}
+                    <Chip className="ml-1" color="primary" size="sm">
+                      57.3%
+                    </Chip>
+                  </div>
                 </div>
               </div>
             </CardBody>

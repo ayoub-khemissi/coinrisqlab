@@ -56,9 +56,9 @@ export default function MethodologyPage() {
               </div>
 
               <p className="text-default-600">
-                Understand how we measure risk through volatility calculations,
-                including logarithmic returns, rolling windows, and
-                portfolio-level volatility with covariance matrices.
+                Understand how we measure market risk through portfolio-level
+                volatility calculations, including logarithmic returns, rolling
+                windows, and covariance matrices.
               </p>
 
               <div className="mt-auto pt-4">
@@ -83,9 +83,9 @@ export default function MethodologyPage() {
               </div>
 
               <p className="text-default-600">
-                Learn how we calculate VaR, CVaR, Beta, Alpha, SML, Skewness,
-                and Kurtosis to provide a comprehensive risk profile for each
-                cryptocurrency.
+                Learn how we calculate Volatility, VaR, CVaR, Beta, Alpha, SML,
+                Skewness, and Kurtosis to provide a comprehensive risk profile
+                for each cryptocurrency.
               </p>
 
               <div className="mt-auto pt-4">

@@ -26,7 +26,6 @@ const VOLATILITY_SECTIONS = [
   "pipeline",
   "stage1",
   "stage2",
-  "stage3",
   "examples",
   "diversification",
 ];
@@ -137,15 +136,7 @@ export default function VolatilityMethodologyPage() {
                   variant={activeSection === "stage2" ? "flat" : "light"}
                   onPress={() => scrollToSection("stage2")}
                 >
-                  Stage 2: Crypto Volatility
-                </Button>
-                <Button
-                  className="justify-start pl-6"
-                  size="sm"
-                  variant={activeSection === "stage3" ? "flat" : "light"}
-                  onPress={() => scrollToSection("stage3")}
-                >
-                  Stage 3: Portfolio Volatility
+                  Stage 2: Portfolio Volatility
                 </Button>
                 <Button
                   className="justify-start"
@@ -182,28 +173,30 @@ export default function VolatilityMethodologyPage() {
                 </h2>
               </div>
               <p className="text-default-600 mb-4">
-                Volatility measures the degree of variation in an asset&apos;s
-                returns over time. It reflects the typical magnitude of price
-                fluctuations and therefore represents the level of risk or
-                uncertainty associated with the asset&apos;s price movements.
-                High volatility indicates larger and more unpredictable price
-                swings, whereas low volatility corresponds to smaller and more
-                stable price changes.
+                Market volatility measures the overall risk of the CoinRisqLab
+                80 Index portfolio. It captures how the combined value of the
+                portfolio fluctuates over time, accounting for both individual
+                asset movements and the correlations between them.
               </p>
               <p className="text-default-600 mb-4">
-                Volatility is estimated using historical price data over a{" "}
-                <strong>90-day rolling window</strong>. The procedure consists
-                of three main steps: collecting price data, computing{" "}
-                <strong>logarithmic returns</strong>, and estimating volatility
-                using the <strong>unbiased standard deviation</strong> of
-                returns.
+                Portfolio volatility is estimated using historical price data
+                over a <strong>90-day rolling window</strong>. The procedure
+                consists of two main steps: computing{" "}
+                <strong>logarithmic returns</strong> for each constituent, then
+                calculating portfolio-level volatility using{" "}
+                <strong>market-cap weighting</strong> and the full{" "}
+                <strong>covariance matrix</strong> to account for correlations
+                between constituents.
               </p>
               <p className="text-default-600">
-                For portfolio-level calculations, we use proper{" "}
-                <strong>market-cap weighting</strong> and full{" "}
-                <strong>covariance matrix calculations</strong> to account for
-                correlations between constituents, providing a comprehensive
-                view of portfolio risk.
+                For individual cryptocurrency volatility, see the{" "}
+                <a
+                  className="text-primary hover:underline"
+                  href="/methodology/risk-metrics#volatility"
+                >
+                  Risk Metrics methodology
+                </a>
+                .
               </p>
             </CardBody>
           </Card>
@@ -527,8 +520,8 @@ export default function VolatilityMethodologyPage() {
                 </h2>
               </div>
               <p className="text-default-600 mb-6">
-                The volatility calculation follows a three-stage pipeline, where
-                each stage builds upon the previous one:
+                The market volatility calculation follows a two-stage pipeline,
+                where each stage builds upon the previous one:
               </p>
               <div className="bg-default-50 p-6 rounded-lg">
                 <div className="flex flex-col gap-4">
@@ -550,20 +543,6 @@ export default function VolatilityMethodologyPage() {
                   <div className="flex flex-col sm:flex-row sm:items-center gap-3 items-center">
                     <Chip className="min-w-16 w-fit" color="success" size="lg">
                       Stage 2
-                    </Chip>
-                    <div className="text-center sm:text-left">
-                      <p className="font-bold">Individual Crypto Volatility</p>
-                      <p className="text-sm text-default-600">
-                        Calculate rolling volatility for each cryptocurrency
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex items-center justify-center">
-                    <div className="w-px h-8 bg-default-300" />
-                  </div>
-                  <div className="flex flex-col sm:flex-row sm:items-center gap-3 items-center">
-                    <Chip className="min-w-16 w-fit" color="warning" size="lg">
-                      Stage 3
                     </Chip>
                     <div className="text-center sm:text-left">
                       <p className="font-bold">Portfolio Volatility</p>
@@ -658,116 +637,12 @@ export default function VolatilityMethodologyPage() {
             </CardBody>
           </Card>
 
-          {/* Stage 2: Crypto Volatility Section */}
+          {/* Stage 2: Portfolio Volatility Section */}
           <Card id="stage2">
             <CardBody className="p-8">
               <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-4 items-center">
                 <Chip color="success" size="lg">
                   Stage 2
-                </Chip>
-                <h2 className="text-2xl font-bold text-center sm:text-left">
-                  Individual Crypto Volatility
-                </h2>
-              </div>
-              <p className="text-default-600 mb-6">
-                Volatility is estimated as the unbiased standard deviation of
-                logarithmic returns computed over the previous 90 trading days.
-              </p>
-
-              <div className="space-y-6">
-                <div className="bg-success/5 p-6 rounded-lg border-l-4 border-success">
-                  <h3 className="text-xl font-bold mb-3">
-                    Rolling Window Setup
-                  </h3>
-                  <p className="text-default-600 mb-4">
-                    For each cryptocurrency with sufficient data (≥90 log
-                    returns):
-                  </p>
-                  <div className="bg-content1 p-4 rounded-lg font-mono text-sm">
-                    <div>
-                      Window[i] = [Return[i-89], Return[i-88], ..., Return[i]]
-                    </div>
-                  </div>
-                  <p className="text-default-600 mt-4 text-sm">
-                    The window slides forward one day at a time, always
-                    containing exactly 90 consecutive daily log returns.
-                  </p>
-                </div>
-
-                <div className="bg-default-50 p-6 rounded-lg">
-                  <h3 className="text-xl font-bold mb-3">
-                    Statistical Calculations
-                  </h3>
-                  <p className="text-default-600 mb-4">
-                    For each 90-day window, we calculate:
-                  </p>
-
-                  <div className="space-y-4">
-                    <div>
-                      <p className="font-bold mb-2">
-                        a) Unbiased Variance Estimation
-                      </p>
-                      <div className="bg-content1 p-4 rounded-lg font-mono text-sm">
-                        <div>s² = (1/(n-1)) × Σ(i=1 to n) (r_i - r̄)²</div>
-                        <div className="text-xs text-default-500 mt-2">
-                          Where r_i = logarithmic return at observation i, r̄ =
-                          average logarithmic return over the sample, n = 90
-                          observations
-                        </div>
-                      </div>
-                    </div>
-
-                    <div>
-                      <p className="font-bold mb-2">
-                        b) Daily Volatility (Standard Deviation)
-                      </p>
-                      <div className="bg-content1 p-4 rounded-lg font-mono text-sm">
-                        <div>σ = √s²</div>
-                        <div className="text-xs text-default-500 mt-2">
-                          This measure captures the magnitude of return
-                          fluctuations over the selected time window and
-                          reflects the level of uncertainty associated with the
-                          asset&apos;s price movements.
-                        </div>
-                      </div>
-                    </div>
-
-                    <div>
-                      <p className="font-bold mb-2">c) Annualized Volatility</p>
-                      <div className="bg-content1 p-4 rounded-lg font-mono text-sm">
-                        <div>σ_annual = σ × √365</div>
-                        <div className="text-xs text-default-500 mt-2">
-                          Where 365 = trading days per year (crypto markets
-                          24/7)
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="bg-warning/5 p-6 rounded-lg border-l-4 border-warning">
-                  <h3 className="text-xl font-bold mb-3">
-                    Why Multiply by √365?
-                  </h3>
-                  <p className="text-default-600">
-                    The square root of time rule applies under the assumption of
-                    independent and identically distributed returns. Since
-                    cryptocurrency markets operate 24/7 throughout the year, we
-                    use 365 days to convert daily volatility to an annual
-                    measure that&apos;s comparable across different assets and
-                    time periods.
-                  </p>
-                </div>
-              </div>
-            </CardBody>
-          </Card>
-
-          {/* Stage 3: Portfolio Volatility Section */}
-          <Card id="stage3">
-            <CardBody className="p-8">
-              <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-4 items-center">
-                <Chip color="warning" size="lg">
-                  Stage 3
                 </Chip>
                 <h2 className="text-2xl font-bold text-center sm:text-left">
                   Portfolio Volatility
@@ -901,52 +776,9 @@ Where:
               </div>
 
               <div className="space-y-6">
-                <div className="bg-primary/5 p-6 rounded-lg">
-                  <h3 className="text-xl font-bold mb-3">
-                    Example 1: Individual Crypto Volatility
-                  </h3>
-                  <p className="text-default-600 mb-4">
-                    <strong>Given:</strong> Bitcoin (BTC) with 90-day log
-                    returns
-                  </p>
-                  <div className="bg-content1 p-4 rounded-lg space-y-2 text-sm">
-                    <div>
-                      Day 1: Price = $40,000 → $42,000, r₁ = ln(42000/40000) =
-                      0.0488
-                    </div>
-                    <div>
-                      Day 2: Price = $42,000 → $41,000, r₂ = ln(41000/42000) =
-                      -0.0241
-                    </div>
-                    <div>...</div>
-                    <div>
-                      Day 90: Price = $45,000 → $46,000, r₉₀ = ln(46000/45000) =
-                      0.0220
-                    </div>
-                    <div className="border-t border-default-200 pt-2 mt-2">
-                      <strong>Mean return:</strong> μ = 0.0015
-                    </div>
-                    <div>
-                      <strong>Daily volatility:</strong> σ_daily = 0.03 (3% per
-                      day)
-                    </div>
-                    <div>
-                      <strong>Annualized volatility:</strong> σ_annual = 0.03 ×
-                      √365 = 0.573
-                    </div>
-                  </div>
-                  <div className="text-default-600 mt-4">
-                    <strong>Result:</strong> Bitcoin has an annualized
-                    volatility of{" "}
-                    <Chip className="ml-1" color="primary" size="sm">
-                      57.3%
-                    </Chip>
-                  </div>
-                </div>
-
                 <div className="bg-success/5 p-6 rounded-lg">
                   <h3 className="text-xl font-bold mb-3">
-                    Example 2: Portfolio Volatility (Simplified)
+                    Portfolio Volatility Example (Simplified)
                   </h3>
                   <p className="text-default-600 mb-4">
                     <strong>Given:</strong> 2-asset portfolio for simplicity
