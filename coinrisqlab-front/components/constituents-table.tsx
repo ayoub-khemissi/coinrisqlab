@@ -111,17 +111,22 @@ function ConstituentsTableComponent({ constituents }: ConstituentsTableProps) {
 
       case "name":
         return (
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 md:gap-3">
+            <span className="text-xs text-default-400 font-semibold md:hidden">
+              #{constituent.rank_position}
+            </span>
             <Image
               alt={constituent.name}
-              className="rounded-full min-w-8 min-h-8"
+              className="rounded-full min-w-6 min-h-6 md:min-w-8 md:min-h-8"
               height={32}
               src={constituent.image_url || undefined}
               width={32}
             />
             <div className="flex flex-col">
-              <span className="font-semibold">{constituent.name}</span>
-              <span className="text-sm text-default-500">
+              <span className="font-semibold hidden md:inline">
+                {constituent.name}
+              </span>
+              <span className="text-sm text-default-500 font-semibold md:font-normal">
                 {constituent.symbol}
               </span>
             </div>

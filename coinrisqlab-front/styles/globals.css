@@ -129,45 +129,39 @@
     -webkit-overflow-scrolling: touch;
   }
 
-  /* Rank column */
+  /* Hide rank column on mobile (merged into name cell) */
   .sticky-scroll-table th:first-child,
   .sticky-scroll-table td:first-child {
-    position: sticky;
-    left: 0;
-    z-index: 20;
-    min-width: 52px;
-    width: 52px;
+    display: none;
   }
 
-  /* Cryptocurrency / Name column */
+  /* Name column becomes the only sticky column */
   .sticky-scroll-table th:nth-child(2),
   .sticky-scroll-table td:nth-child(2) {
     position: sticky;
-    left: 52px;
+    left: 0;
     z-index: 20;
-    min-width: 150px;
+    min-width: 100px;
+    max-width: 120px;
   }
 
-  /* Header background (above body cells) */
-  .sticky-scroll-table thead th:first-child,
+  /* Header background */
   .sticky-scroll-table thead th:nth-child(2) {
     background: hsl(var(--heroui-content1));
     z-index: 21;
   }
 
   /* Body background */
-  .sticky-scroll-table tbody td:first-child,
   .sticky-scroll-table tbody td:nth-child(2) {
     background: hsl(var(--heroui-content1));
   }
 
-  /* Hover state must override sticky background */
-  .sticky-scroll-table tbody tr:hover td:first-child,
+  /* Hover state */
   .sticky-scroll-table tbody tr:hover td:nth-child(2) {
     background: hsl(var(--heroui-default-100));
   }
 
-  /* Shadow edge on the last sticky column */
+  /* Shadow edge on sticky column */
   .sticky-scroll-table th:nth-child(2),
   .sticky-scroll-table td:nth-child(2) {
     box-shadow: 4px 0 6px -2px rgba(0, 0, 0, 0.1);

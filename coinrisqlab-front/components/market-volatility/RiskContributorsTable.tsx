@@ -235,17 +235,22 @@ export function RiskContributorsTable({
                 </span>
               </TableCell>
               <TableCell>
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2 md:gap-3">
+                  <span className="text-xs text-default-400 font-semibold md:hidden">
+                    #{filteredAndSortedData.indexOf(item) + 1}
+                  </span>
                   <Image
                     alt={item.name}
-                    className="rounded-full min-w-8 min-h-8"
+                    className="rounded-full min-w-6 min-h-6 md:min-w-8 md:min-h-8"
                     height={32}
                     src={item.image_url || undefined}
                     width={32}
                   />
                   <div className="flex flex-col">
-                    <span className="font-semibold">{item.name}</span>
-                    <span className="text-sm text-default-500">
+                    <span className="font-semibold hidden md:inline">
+                      {item.name}
+                    </span>
+                    <span className="text-sm text-default-500 font-semibold md:font-normal">
                       {item.symbol}
                     </span>
                   </div>
