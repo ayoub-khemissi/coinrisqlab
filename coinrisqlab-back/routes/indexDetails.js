@@ -35,10 +35,10 @@ api.get('/index-details', async (req, res) => {
           FROM index_history ih2
           INNER JOIN index_config ic2 ON ih2.index_config_id = ic2.id
           WHERE ic2.index_name = 'CoinRisqLab 80'
-            AND ih2.timestamp <= DATE_SUB(ih.timestamp, INTERVAL 1 DAY)
+            AND ih2.timestamp <= DATE_SUB(ih.timestamp, INTERVAL 1 HOUR)
           ORDER BY ih2.timestamp DESC
           LIMIT 1
-        ) as previous_level_24h
+        ) as previous_level_1h
       FROM index_history ih
       INNER JOIN index_config ic ON ih.index_config_id = ic.id
       WHERE ic.index_name = 'CoinRisqLab 80'
@@ -132,15 +132,15 @@ api.get('/index-details', async (req, res) => {
       lastMonth: lastMonthIndex[0]?.index_level || null
     };
 
-    const percent_change_24h = current && current.previous_level_24h
-      ? ((current.index_level - current.previous_level_24h) / current.previous_level_24h * 100)
+    const percent_change_1h = current && current.previous_level_1h
+      ? ((current.index_level - current.previous_level_1h) / current.previous_level_1h * 100)
       : 0;
 
     res.json({
       data: {
         current: {
           ...current,
-          percent_change_24h
+          percent_change_1h
         },
         historicalValues,
         history: indexHistory,

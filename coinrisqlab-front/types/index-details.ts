@@ -18,7 +18,7 @@ export interface IndexCurrent {
   timestamp: string;
   total_market_cap_usd: string;
   number_of_constituents: number;
-  percent_change_24h: number;
+  percent_change_1h: number;
 }
 
 export interface HistoricalValues {

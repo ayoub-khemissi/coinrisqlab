@@ -493,7 +493,7 @@ function MetricsCardsComponent({
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {indexData.current && (
           <MetricCard
-            change={parseFloat(indexData.current.percent_change_24h.toString())}
+            change={parseFloat(indexData.current.percent_change_1h.toString())}
             chartData={indexData.history.map((item) => ({
               value: parseFloat(item.index_level.toString()),
             }))}

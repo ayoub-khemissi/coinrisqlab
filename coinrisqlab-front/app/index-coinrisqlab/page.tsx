@@ -184,11 +184,11 @@ export default function IndexPage() {
                     {current && (
                       <Chip
                         color={
-                          current.percent_change_24h > 0 ? "success" : "danger"
+                          current.percent_change_1h > 0 ? "success" : "danger"
                         }
                         size="sm"
                         startContent={
-                          current.percent_change_24h > 0 ? (
+                          current.percent_change_1h > 0 ? (
                             <TrendingUp size={14} />
                           ) : (
                             <TrendingDown size={14} />
@@ -196,7 +196,7 @@ export default function IndexPage() {
                         }
                         variant="flat"
                       >
-                        {formatPercentage(current.percent_change_24h)}
+                        {formatPercentage(current.percent_change_1h)}
                       </Chip>
                     )}
                   </div>
