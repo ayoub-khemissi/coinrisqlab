@@ -15,6 +15,7 @@ import NextLink from "next/link";
 
 import { siteConfig } from "@/config/site";
 import { ThemeSwitch } from "@/components/theme-switch";
+import { UserNavButton } from "@/components/user-nav-button";
 
 const menuItems = [
   {
@@ -95,9 +96,10 @@ export const Navbar = () => {
         </NavbarItem>
       </NavbarContent>
 
-      {/* Theme switch (always visible) */}
+      {/* Theme switch + user button (always visible) */}
       <NavbarContent justify="end">
         <ThemeSwitch />
+        <UserNavButton />
       </NavbarContent>
 
       {/* Mobile menu */}

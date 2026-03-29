@@ -10,49 +10,57 @@ Quick reference for deploying changes on the production server.
 ## Frontend only
 
 ```bash
-cd /home/ubuntu/coinrisqlab/coinrisqlab
-git pull
-cd coinrisqlab-front
+cd /home/ubuntu/coinrisqlab/coinrisqlab/coinrisqlab-front
 npm run build
-pm2 restart coinrisqlab-front
+pm2 stop coinrisqlab-front
+sleep 1
+sudo fuser -k 3000/tcp 2>/dev/null
+sleep 1
+pm2 start coinrisqlab-front
 ```
 
 ## Backend only
 
 ```bash
-cd /home/ubuntu/coinrisqlab/coinrisqlab
-git pull
-sudo systemctl restart coinrisqlab-back
+cd /home/ubuntu/coinrisqlab/coinrisqlab/coinrisqlab-back
+pm2 restart coinrisqlab-back
 ```
 
 ## Both
 
 ```bash
-cd /home/ubuntu/coinrisqlab/coinrisqlab
-git pull
-cd coinrisqlab-front
+cd /home/ubuntu/coinrisqlab/coinrisqlab/coinrisqlab-front
 npm run build
-pm2 restart coinrisqlab-front
-sudo systemctl restart coinrisqlab-back
+
+cd /home/ubuntu/coinrisqlab/coinrisqlab/coinrisqlab-back
+pm2 restart coinrisqlab-back
+
+pm2 stop coinrisqlab-front
+sleep 1
+sudo fuser -k 3000/tcp 2>/dev/null
+sleep 1
+pm2 start coinrisqlab-front
 ```
 
 ## Verify
 
 ```bash
 pm2 status
-sudo systemctl status coinrisqlab-back
+curl -s http://localhost:3001/ | head -1
+curl -s -o /dev/null -w "%{http_code}" http://localhost:3000/
 ```
 
 Check logs if something goes wrong:
 
 ```bash
-pm2 logs coinrisqlab-front --lines 50
-sudo journalctl -u coinrisqlab-back -n 50 --no-pager
+pm2 logs coinrisqlab-front --lines 50 --nostream
+pm2 logs coinrisqlab-back --lines 50 --nostream
 ```
 
 ## Important
 
-- The frontend runs via **pm2** (`ecosystem.config.js`). Use `pm2 restart` / `pm2 stop` / `pm2 start` to manage it.
+- **Both frontend and backend run via pm2.** The old `systemctl` service for the backend is disabled.
 - The frontend **must be built** (`npm run build`) before restarting. `pm2 restart` only restarts the server, it does not rebuild.
-- The backend runs via **systemctl** — `sudo systemctl restart coinrisqlab-back` is sufficient (no build step).
-- If the port is stuck, check with `ss -tlnp | grep 3000` and kill the orphan PID before restarting.
+- The backend has **no build step** — `pm2 restart coinrisqlab-back` is sufficient.
+- **Port 3000 stuck fix:** Always stop pm2 first, then kill the orphan process with `sudo fuser -k 3000/tcp`, then start pm2. Never just `pm2 restart coinrisqlab-front` — this can leave orphan Node processes holding the port.
+- If the frontend shows `EADDRINUSE` errors in logs, run: `pm2 stop coinrisqlab-front && sudo fuser -k 3000/tcp && pm2 start coinrisqlab-front`

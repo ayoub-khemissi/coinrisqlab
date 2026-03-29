@@ -9,7 +9,13 @@ const { COINRISQLAB_FRONT_HOSTNAME, COINRISQLAB_FRONT_HTTPSECURE, COINRISQLAB_FR
 const { version, description } = JSON.parse(readFileSync('package.json'));
 
 const api = express();
-api.use(express.json());
+// Stripe webhook needs raw body — skip JSON parsing for that path
+api.use((req, res, next) => {
+  if (req.originalUrl === '/user/stripe/webhook') {
+    return next();
+  }
+  express.json()(req, res, next);
+});
 api.use(express.urlencoded({ extended: true }));
 api.use(cookieParser());
 api.use(

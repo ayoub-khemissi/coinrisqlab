@@ -2,6 +2,14 @@ import api from './lib/api.js';
 import log from './lib/log.js';
 import config from './utils/config.js';
 
+import './routes/userStripe.js';
+import './routes/userAuth.js';
+import './routes/userPortfolio.js';
+import './routes/userTransactions.js';
+import './routes/userAlerts.js';
+import './routes/userAnalytics.js';
+import './routes/userExports.js';
+
 import './routes/cryptocurrencies.js';
 import './routes/metrics.js';
 import './routes/indexDetails.js';
