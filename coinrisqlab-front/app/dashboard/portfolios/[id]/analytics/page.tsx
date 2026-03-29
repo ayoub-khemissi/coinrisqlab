@@ -185,42 +185,108 @@ export default function PortfolioAnalyticsPage() {
             </div>
           </CardHeader>
           <CardBody>
-            <div className="h-72">
+            <div className="h-80">
               <ResponsiveContainer height="100%" width="100%">
-                <LineChart>
-                  <CartesianGrid strokeDasharray="3 3" />
+                <LineChart
+                  data={performance.portfolio.map((p: any, i: number) => ({
+                    date: p.date,
+                    portfolio: p.value,
+                    benchmark: performance.benchmark[i]?.value ?? null,
+                  }))}
+                >
+                  <CartesianGrid opacity={0.1} strokeDasharray="3 3" />
                   <XAxis
                     dataKey="date"
-                    tick={{ fontSize: 10 }}
+                    fontSize={12}
+                    stroke="#6b7280"
                     tickFormatter={(d) =>
-                      new Date(d).toLocaleDateString("en", {
+                      new Date(d).toLocaleDateString("en-US", {
                         month: "short",
                         day: "numeric",
                       })
                     }
+                    tickLine={false}
                   />
-                  <YAxis tick={{ fontSize: 10 }} />
-                  <Tooltip />
+                  <YAxis
+                    domain={["auto", "auto"]}
+                    fontSize={12}
+                    stroke="#6b7280"
+                    tickFormatter={(v) => `${v.toFixed(0)}`}
+                    tickLine={false}
+                    width={45}
+                  />
+                  <Tooltip
+                    content={({ active, payload }) => {
+                      if (active && payload && payload.length > 0) {
+                        const d = payload[0].payload;
+
+                        return (
+                          <div className="bg-content1 border border-default-200 rounded-lg p-3 shadow-lg">
+                            <p className="text-sm text-default-500 mb-2">
+                              {new Date(d.date).toLocaleDateString("en-US", {
+                                year: "numeric",
+                                month: "long",
+                                day: "numeric",
+                              })}
+                            </p>
+                            <div className="space-y-1">
+                              <div className="flex items-center gap-2">
+                                <div
+                                  className="w-2 h-2 rounded-full"
+                                  style={{ backgroundColor: "#FF6B35" }}
+                                />
+                                <span className="text-sm">Portfolio:</span>
+                                <span className="text-sm font-semibold" style={{ color: "#FF6B35" }}>
+                                  {d.portfolio?.toFixed(2)}
+                                </span>
+                              </div>
+                              {d.benchmark != null && (
+                                <div className="flex items-center gap-2">
+                                  <div
+                                    className="w-2 h-2 rounded-full"
+                                    style={{ backgroundColor: "#3B82F6" }}
+                                  />
+                                  <span className="text-sm">CoinRisqLab 80:</span>
+                                  <span className="text-sm font-semibold" style={{ color: "#3B82F6" }}>
+                                    {d.benchmark?.toFixed(2)}
+                                  </span>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      }
+
+                      return null;
+                    }}
+                  />
                   <Legend />
                   <Line
-                    data={performance.portfolio}
-                    dataKey="value"
+                    activeDot={false}
+                    dataKey="portfolio"
                     dot={false}
+                    isAnimationActive
                     name="Portfolio"
                     stroke="#FF6B35"
                     strokeWidth={2}
+                    type="monotone"
                   />
                   <Line
-                    data={performance.benchmark}
-                    dataKey="value"
+                    activeDot={false}
+                    dataKey="benchmark"
                     dot={false}
+                    isAnimationActive
                     name="CoinRisqLab 80"
                     stroke="#3B82F6"
                     strokeWidth={2}
+                    type="monotone"
                   />
                 </LineChart>
               </ResponsiveContainer>
             </div>
+            <p className="text-xs text-default-400 mt-2 text-right">
+              Normalized to 100 at start of period
+            </p>
           </CardBody>
         </Card>
       )}
