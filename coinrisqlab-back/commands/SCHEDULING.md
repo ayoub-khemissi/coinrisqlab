@@ -125,6 +125,14 @@ The `fetchOHLC.js` script uses CoinGecko's `/coins/{id}/market_chart` endpoint t
 
 # Risk Metrics (02:00, after daily backfill)
 0 2 * * * cd /home/ubuntu/coinrisqlab/coinrisqlab/coinrisqlab-back && node commands/updateVolatility.js
+
+# === User Space (0 credits) ===
+
+# Portfolio value snapshots (02:30, after risk metrics)
+30 2 * * * cd /home/ubuntu/coinrisqlab/coinrisqlab/coinrisqlab-back && node commands/snapshotPortfolios.js
+
+# Clean expired user sessions (weekly, Sunday 04:00)
+0 4 * * 0 cd /home/ubuntu/coinrisqlab/coinrisqlab/coinrisqlab-back && node commands/cleanExpiredSessions.js
 ```
 
 ### Crontab Notes:
