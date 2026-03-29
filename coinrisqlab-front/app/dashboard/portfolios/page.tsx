@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { Card, CardBody, CardHeader } from "@heroui/card";
 import { Button } from "@heroui/button";
 import { Input } from "@heroui/input";
-import { Spinner } from "@heroui/spinner";
+import { Skeleton } from "@heroui/skeleton";
 import {
   Modal,
   ModalContent,
@@ -72,8 +72,24 @@ export default function PortfoliosPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-20">
-        <Spinner color="primary" size="lg" />
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <Skeleton className="w-32 h-8 rounded-lg" />
+          <Skeleton className="w-36 h-9 rounded-lg" />
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {[1, 2, 3].map((i) => (
+            <Card key={i}>
+              <CardHeader className="pb-1">
+                <Skeleton className="w-32 h-5 rounded-lg" />
+              </CardHeader>
+              <CardBody className="gap-2 pt-0">
+                <Skeleton className="w-40 h-8 rounded-lg" />
+                <Skeleton className="w-full h-4 rounded-lg" />
+              </CardBody>
+            </Card>
+          ))}
+        </div>
       </div>
     );
   }

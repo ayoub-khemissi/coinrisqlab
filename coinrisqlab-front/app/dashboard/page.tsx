@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { Card, CardBody, CardHeader } from "@heroui/card";
 import { Button } from "@heroui/button";
 import { Chip } from "@heroui/chip";
-import { Spinner } from "@heroui/spinner";
+import { Skeleton } from "@heroui/skeleton";
 import NextLink from "next/link";
 import {
   TrendingUp,
@@ -78,8 +78,42 @@ export default function DashboardPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-20">
-        <Spinner color="primary" size="lg" />
+      <div className="space-y-6">
+        <Skeleton className="w-64 h-8 rounded-lg" />
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {[1, 2, 3, 4].map((i) => (
+            <Card key={i}>
+              <CardBody className="gap-2">
+                <Skeleton className="w-24 h-3 rounded-lg" />
+                <Skeleton className="w-32 h-8 rounded-lg" />
+              </CardBody>
+            </Card>
+          ))}
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {[1, 2].map((i) => (
+            <Card key={i}>
+              <CardHeader>
+                <Skeleton className="w-40 h-4 rounded-lg" />
+              </CardHeader>
+              <CardBody className="gap-3">
+                {[1, 2, 3].map((j) => (
+                  <Skeleton key={j} className="w-full h-5 rounded-lg" />
+                ))}
+              </CardBody>
+            </Card>
+          ))}
+        </div>
+        <Card>
+          <CardHeader>
+            <Skeleton className="w-28 h-4 rounded-lg" />
+          </CardHeader>
+          <CardBody className="flex flex-row gap-3">
+            {[1, 2, 3].map((i) => (
+              <Skeleton key={i} className="w-32 h-8 rounded-lg" />
+            ))}
+          </CardBody>
+        </Card>
       </div>
     );
   }
