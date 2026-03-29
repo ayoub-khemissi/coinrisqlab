@@ -9,7 +9,6 @@ import { Link } from "@heroui/link";
 import NextLink from "next/link";
 
 import { API_BASE_URL } from "@/config/constants";
-import { useUserAuth } from "@/lib/user-auth-context";
 
 export default function RegisterPage() {
   const [email, setEmail] = useState("");
@@ -19,7 +18,6 @@ export default function RegisterPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const router = useRouter();
-  const { refresh } = useUserAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -55,7 +53,6 @@ export default function RegisterPage() {
         return;
       }
 
-      await refresh();
       router.push("/dashboard");
     } catch {
       setError("Connection error. Please try again.");

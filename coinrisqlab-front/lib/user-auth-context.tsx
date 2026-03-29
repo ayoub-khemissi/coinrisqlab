@@ -6,6 +6,8 @@ import {
   useEffect,
   useState,
   useCallback,
+  useMemo,
+  useRef,
 } from "react";
 
 import { API_BASE_URL } from "@/config/constants";
@@ -31,6 +33,7 @@ export const useUserAuth = () => useContext(UserAuthContext);
 export function UserAuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const lastUserJsonRef = useRef<string>("");
 
   const refresh = useCallback(async () => {
     try {
@@ -38,10 +41,19 @@ export function UserAuthProvider({ children }: { children: React.ReactNode }) {
         credentials: "include",
       });
       const json = await res.json();
+      const newUser = json.data || null;
+      const newUserJson = JSON.stringify(newUser);
 
-      setUser(json.data || null);
+      // Only update state if user data actually changed — avoids re-renders
+      if (newUserJson !== lastUserJsonRef.current) {
+        lastUserJsonRef.current = newUserJson;
+        setUser(newUser);
+      }
     } catch {
-      setUser(null);
+      if (lastUserJsonRef.current !== "null") {
+        lastUserJsonRef.current = "null";
+        setUser(null);
+      }
     } finally {
       setLoading(false);
     }
@@ -56,6 +68,7 @@ export function UserAuthProvider({ children }: { children: React.ReactNode }) {
     } catch {
       // ignore
     }
+    lastUserJsonRef.current = "null";
     setUser(null);
   }, []);
 
@@ -70,8 +83,13 @@ export function UserAuthProvider({ children }: { children: React.ReactNode }) {
     return () => window.removeEventListener("focus", onFocus);
   }, [refresh]);
 
+  const value = useMemo(
+    () => ({ user, loading, refresh, logout }),
+    [user, loading, refresh, logout],
+  );
+
   return (
-    <UserAuthContext.Provider value={{ user, loading, refresh, logout }}>
+    <UserAuthContext.Provider value={value}>
       {children}
     </UserAuthContext.Provider>
   );

@@ -1,25 +1,17 @@
 import { useEffect, useState, useRef, useCallback } from "react";
 
-interface BinanceTicker {
-  s: string;
-  c: string;
-}
-
 interface BinanceMiniTicker {
   e: string;
   s: string;
   c: string;
 }
 
-const SINGLE_SYMBOL_THRESHOLD = 3;
 const RECONNECT_BASE_DELAY = 1000;
 const MAX_RECONNECT_ATTEMPTS = 5;
-const MULTI_SYMBOL_THROTTLE = 5000;
 
 /**
  * Hook to subscribe to crypto prices from Binance WebSocket.
- * - For 1-3 symbols: uses individual miniTicker streams (real-time updates)
- * - For 4+ symbols: uses combined ticker stream with 5s throttle
+ * Uses combined miniTicker streams for all symbols (up to 1024).
  *
  * @param symbols - Array of crypto symbols (e.g., ["BTC", "ETH"])
  * @returns Record of symbol -> price (as number)
@@ -28,7 +20,6 @@ export function useBinancePrices(symbols: string[]): Record<string, number> {
   const [prices, setPrices] = useState<Record<string, number>>({});
   const wsRef = useRef<WebSocket | null>(null);
   const isMountedRef = useRef(true);
-  const lastUpdateTimeRef = useRef<number>(0);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const reconnectAttemptsRef = useRef(0);
 
@@ -37,21 +28,12 @@ export function useBinancePrices(symbols: string[]): Record<string, number> {
   const connect = useCallback(() => {
     if (symbols.length === 0) return;
 
-    const useIndividualStreams = symbols.length <= SINGLE_SYMBOL_THRESHOLD;
+    // Always use combined individual streams (Binance supports up to 1024)
+    const streams = symbols
+      .map((s) => `${s.toLowerCase()}usdt@miniTicker`)
+      .join("/");
 
-    let wsUrl: string;
-
-    if (useIndividualStreams) {
-      // Use combined stream URL for individual symbols
-      const streams = symbols
-        .map((s) => `${s.toLowerCase()}usdt@miniTicker`)
-        .join("/");
-
-      wsUrl = `wss://stream.binance.com:9443/stream?streams=${streams}`;
-    } else {
-      // Use all tickers stream for many symbols
-      wsUrl = "wss://stream.binance.com:9443/ws/!ticker@arr";
-    }
+    const wsUrl = `wss://stream.binance.com:9443/stream?streams=${streams}`;
 
     const ws = new WebSocket(wsUrl);
 
@@ -69,42 +51,21 @@ export function useBinancePrices(symbols: string[]): Record<string, number> {
       try {
         const message = JSON.parse(event.data);
 
-        if (useIndividualStreams) {
-          // Combined stream format: { stream: "btcusdt@miniTicker", data: {...} }
-          const data: BinanceMiniTicker = message.data;
+        // Combined stream format: { stream: "btcusdt@miniTicker", data: {...} }
+        const data: BinanceMiniTicker = message.data;
 
-          if (data?.c && data?.s) {
-            const symbol = data.s.replace("USDT", "");
+        if (data?.c && data?.s) {
+          const symbol = data.s.replace("USDT", "");
 
-            setPrices((prev) => ({
-              ...prev,
-              [symbol]: parseFloat(data.c),
-            }));
-          }
-        } else {
-          // All tickers format: [{s: "BTCUSDT", c: "..."}, ...]
-          const now = Date.now();
+          setPrices((prev) => {
+            const prevPrice = prev[symbol];
+            const newPrice = parseFloat(data.c);
 
-          if (now - lastUpdateTimeRef.current < MULTI_SYMBOL_THROTTLE) {
-            return;
-          }
+            // Only update if price actually changed
+            if (prevPrice === newPrice) return prev;
 
-          const tickers: BinanceTicker[] = message;
-          const updates: Record<string, number> = {};
-
-          symbols.forEach((symbol) => {
-            const binanceSymbol = `${symbol.toUpperCase()}USDT`;
-            const ticker = tickers.find((t) => t.s === binanceSymbol);
-
-            if (ticker) {
-              updates[symbol.toUpperCase()] = parseFloat(ticker.c);
-            }
+            return { ...prev, [symbol]: newPrice };
           });
-
-          if (Object.keys(updates).length > 0) {
-            setPrices((prev) => ({ ...prev, ...updates }));
-            lastUpdateTimeRef.current = now;
-          }
         }
       } catch {
         // Ignore parse errors

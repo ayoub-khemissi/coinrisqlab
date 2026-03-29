@@ -4,7 +4,7 @@ import { useEffect } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { Spinner } from "@heroui/spinner";
 
-import { useUserAuth } from "@/lib/user-auth-context";
+import { UserAuthProvider, useUserAuth } from "@/lib/user-auth-context";
 import { DashboardSidebar } from "@/components/dashboard/dashboard-sidebar";
 import { DashboardHeader } from "@/components/dashboard/dashboard-header";
 
@@ -53,5 +53,9 @@ export default function DashboardLayoutClient({
 }: {
   children: React.ReactNode;
 }) {
-  return <DashboardLayoutInner>{children}</DashboardLayoutInner>;
+  return (
+    <UserAuthProvider>
+      <DashboardLayoutInner>{children}</DashboardLayoutInner>
+    </UserAuthProvider>
+  );
 }

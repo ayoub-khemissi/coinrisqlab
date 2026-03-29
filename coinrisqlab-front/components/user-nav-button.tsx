@@ -1,85 +1,51 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { Button } from "@heroui/button";
-import {
-  Dropdown,
-  DropdownTrigger,
-  DropdownMenu,
-  DropdownItem,
-} from "@heroui/dropdown";
-import { Chip } from "@heroui/chip";
 import NextLink from "next/link";
-import { useRouter } from "next/navigation";
-import { User, LogOut, LayoutDashboard, Settings } from "lucide-react";
+import { User } from "lucide-react";
 
-import { useUserAuth } from "@/lib/user-auth-context";
-
+/**
+ * Simple navbar button — checks for user cookie existence only (no context dependency).
+ * This avoids wrapping the entire app in UserAuthProvider which causes
+ * re-renders that break the Binance WebSocket on the home page.
+ */
 export function UserNavButton() {
-  const { user, loading, logout } = useUserAuth();
-  const router = useRouter();
+  const [hasSession, setHasSession] = useState(false);
 
-  if (loading) return null;
+  useEffect(() => {
+    // Check if the user session cookie exists
+    const hasCookie = document.cookie
+      .split(";")
+      .some((c) => c.trim().startsWith("coinrisqlab_user_session="));
 
-  if (!user) {
+    setHasSession(hasCookie);
+  }, []);
+
+  if (hasSession) {
     return (
       <Button
         as={NextLink}
-        color="primary"
-        href="/login"
+        href="/dashboard"
+        isIconOnly
+        radius="full"
         size="sm"
         variant="flat"
       >
-        Sign In
+        <User size={18} />
       </Button>
     );
   }
 
   return (
-    <Dropdown placement="bottom-end">
-      <DropdownTrigger>
-        <Button isIconOnly radius="full" size="sm" variant="flat">
-          <User size={18} />
-        </Button>
-      </DropdownTrigger>
-      <DropdownMenu aria-label="User menu">
-        <DropdownItem
-          key="profile"
-          className="h-14 gap-2"
-          isReadOnly
-          textValue="profile"
-        >
-          <p className="font-semibold">{user.displayName || user.email}</p>
-          <Chip color={user.plan === "pro" ? "warning" : "default"} size="sm" variant="flat">
-            {user.plan === "pro" ? "Pro" : "Free"}
-          </Chip>
-        </DropdownItem>
-        <DropdownItem
-          key="dashboard"
-          startContent={<LayoutDashboard size={16} />}
-          onPress={() => router.push("/dashboard")}
-        >
-          Dashboard
-        </DropdownItem>
-        <DropdownItem
-          key="settings"
-          startContent={<Settings size={16} />}
-          onPress={() => router.push("/dashboard/settings")}
-        >
-          Settings
-        </DropdownItem>
-        <DropdownItem
-          key="logout"
-          className="text-danger"
-          color="danger"
-          startContent={<LogOut size={16} />}
-          onPress={async () => {
-            await logout();
-            router.push("/");
-          }}
-        >
-          Logout
-        </DropdownItem>
-      </DropdownMenu>
-    </Dropdown>
+    <Button
+      as={NextLink}
+      color="primary"
+      href="/login"
+      size="sm"
+      variant="flat"
+    >
+      Sign In
+    </Button>
   );
 }
