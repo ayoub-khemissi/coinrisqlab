@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { Card, CardBody, CardHeader } from "@heroui/card";
 import { Chip } from "@heroui/chip";
-import { Spinner } from "@heroui/spinner";
+import { Skeleton } from "@heroui/skeleton";
 import { Button } from "@heroui/button";
 import { TrendingDown } from "lucide-react";
 import {
@@ -111,8 +111,41 @@ export default function PortfolioAnalyticsPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-20">
-        <Spinner color="primary" size="lg" />
+      <div className="space-y-6">
+        <h1 className="text-2xl font-bold">Portfolio Analytics</h1>
+        <Card>
+          <CardHeader>
+            <Skeleton className="w-48 h-4 rounded-lg" />
+          </CardHeader>
+          <CardBody>
+            <Skeleton className="w-full h-72 rounded-lg" />
+          </CardBody>
+        </Card>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {[1, 2, 3].map((i) => (
+            <Card key={i}>
+              <CardBody className="gap-2">
+                <Skeleton className="w-32 h-3 rounded-lg" />
+                <Skeleton className="w-20 h-8 rounded-lg" />
+              </CardBody>
+            </Card>
+          ))}
+        </div>
+        <Card>
+          <CardHeader>
+            <Skeleton className="w-32 h-4 rounded-lg" />
+          </CardHeader>
+          <CardBody>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              {[1, 2, 3, 4].map((i) => (
+                <div key={i}>
+                  <Skeleton className="w-16 h-3 rounded-lg mb-2" />
+                  <Skeleton className="w-24 h-6 rounded-lg" />
+                </div>
+              ))}
+            </div>
+          </CardBody>
+        </Card>
       </div>
     );
   }

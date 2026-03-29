@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Key } from "react";
 import { Input } from "@heroui/input";
 import { Button } from "@heroui/button";
 import {
@@ -34,28 +34,24 @@ export function AddHoldingModal({
   onClose,
   onAdded,
 }: AddHoldingModalProps) {
-  const [search, setSearch] = useState("");
-  const [cryptos, setCryptos] = useState<CryptoOption[]>([]);
-  const [selectedCryptoId, setSelectedCryptoId] = useState<number | null>(null);
+  const [allCryptos, setAllCryptos] = useState<CryptoOption[]>([]);
+  const [selectedKey, setSelectedKey] = useState<Key | null>(null);
   const [quantity, setQuantity] = useState("");
   const [avgBuyPrice, setAvgBuyPrice] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
+  // Load all cryptos once on first open
   useEffect(() => {
-    if (search.length < 1) {
-      setCryptos([]);
-
-      return;
-    }
-    const timeout = setTimeout(async () => {
+    if (!isOpen || allCryptos.length > 0) return;
+    const fetchAll = async () => {
       try {
         const res = await fetch(
-          `${API_BASE_URL}/cryptocurrencies?search=${encodeURIComponent(search)}&limit=20`,
+          `${API_BASE_URL}/cryptocurrencies?limit=500&sortBy=market_cap_usd&sortOrder=desc`,
         );
         const data = await res.json();
 
-        setCryptos(
+        setAllCryptos(
           (data.data || []).map((c: any) => ({
             id: c.id,
             symbol: c.symbol,
@@ -66,14 +62,14 @@ export function AddHoldingModal({
       } catch {
         // ignore
       }
-    }, 300);
+    };
 
-    return () => clearTimeout(timeout);
-  }, [search]);
+    fetchAll();
+  }, [isOpen, allCryptos.length]);
 
   const handleSubmit = async () => {
-    if (!selectedCryptoId || !quantity) {
-      setError("Select a crypto and enter a quantity");
+    if (!selectedKey || !quantity || !avgBuyPrice) {
+      setError("All fields are required");
 
       return;
     }
@@ -89,9 +85,9 @@ export function AddHoldingModal({
           headers: { "Content-Type": "application/json" },
           credentials: "include",
           body: JSON.stringify({
-            crypto_id: selectedCryptoId,
+            crypto_id: Number(selectedKey),
             quantity: parseFloat(quantity),
-            avg_buy_price: avgBuyPrice ? parseFloat(avgBuyPrice) : 0,
+            avg_buy_price: parseFloat(avgBuyPrice),
           }),
         },
       );
@@ -104,11 +100,10 @@ export function AddHoldingModal({
         return;
       }
 
-      // Reset and close
-      setSearch("");
-      setSelectedCryptoId(null);
+      setSelectedKey(null);
       setQuantity("");
       setAvgBuyPrice("");
+      setError("");
       onClose();
       onAdded();
     } catch {
@@ -129,43 +124,32 @@ export function AddHoldingModal({
             </div>
           )}
           <Autocomplete
+            isRequired
+            defaultItems={allCryptos}
             label="Cryptocurrency"
             placeholder="Search for a crypto..."
-            inputValue={search}
-            onInputChange={(value) => {
-              setSearch(value);
-              if (!value) setSelectedCryptoId(null);
-            }}
-            onSelectionChange={(key) => {
-              if (key) {
-                setSelectedCryptoId(Number(key));
-                const selected = cryptos.find((c) => c.id === Number(key));
-
-                if (selected) {
-                  setSearch(`${selected.symbol} - ${selected.name}`);
-                }
-              }
-            }}
+            selectedKey={selectedKey != null ? String(selectedKey) : null}
+            onSelectionChange={(key) => setSelectedKey(key)}
           >
-            {cryptos.map((c) => (
+            {(item) => (
               <AutocompleteItem
-                key={c.id}
-                textValue={`${c.symbol} - ${c.name}`}
+                key={String(item.id)}
+                textValue={`${item.symbol} ${item.name}`}
               >
                 <div className="flex items-center gap-2">
-                  {c.image_url && (
+                  {item.image_url && (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img
-                      alt={c.symbol}
+                      alt={item.symbol}
                       className="w-5 h-5 rounded-full"
-                      src={c.image_url}
+                      src={item.image_url}
                     />
                   )}
-                  <span className="font-medium">{c.symbol}</span>
-                  <span className="text-default-400 text-sm">{c.name}</span>
+                  <span className="font-medium">{item.symbol}</span>
+                  <span className="text-default-400 text-sm">{item.name}</span>
                 </div>
               </AutocompleteItem>
-            ))}
+            )}
           </Autocomplete>
           <Input
             isRequired
@@ -176,6 +160,7 @@ export function AddHoldingModal({
             onValueChange={setQuantity}
           />
           <Input
+            isRequired
             label="Average Buy Price (USD)"
             placeholder="0.00"
             type="number"
@@ -187,7 +172,12 @@ export function AddHoldingModal({
           <Button variant="flat" onPress={onClose}>
             Cancel
           </Button>
-          <Button color="primary" isLoading={loading} onPress={handleSubmit}>
+          <Button
+            color="primary"
+            isDisabled={!selectedKey || !quantity || !avgBuyPrice}
+            isLoading={loading}
+            onPress={handleSubmit}
+          >
             Add
           </Button>
         </ModalFooter>

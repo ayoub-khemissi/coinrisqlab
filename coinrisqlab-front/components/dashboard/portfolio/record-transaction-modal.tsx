@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Key } from "react";
 import { Input } from "@heroui/input";
 import { Button } from "@heroui/button";
 import { Select, SelectItem } from "@heroui/select";
@@ -15,6 +15,13 @@ import { Autocomplete, AutocompleteItem } from "@heroui/autocomplete";
 
 import { API_BASE_URL } from "@/config/constants";
 
+interface CryptoOption {
+  id: number;
+  symbol: string;
+  name: string;
+  image_url: string | null;
+}
+
 interface RecordTransactionModalProps {
   portfolioId: number;
   isOpen: boolean;
@@ -28,9 +35,8 @@ export function RecordTransactionModal({
   onClose,
   onRecorded,
 }: RecordTransactionModalProps) {
-  const [search, setSearch] = useState("");
-  const [cryptos, setCryptos] = useState<any[]>([]);
-  const [selectedCryptoId, setSelectedCryptoId] = useState<number | null>(null);
+  const [allCryptos, setAllCryptos] = useState<CryptoOption[]>([]);
+  const [selectedKey, setSelectedKey] = useState<Key | null>(null);
   const [type, setType] = useState<string>("buy");
   const [quantity, setQuantity] = useState("");
   const [priceUsd, setPriceUsd] = useState("");
@@ -40,25 +46,32 @@ export function RecordTransactionModal({
   const [error, setError] = useState("");
 
   useEffect(() => {
-    if (search.length < 1) return;
-    const timeout = setTimeout(async () => {
+    if (!isOpen || allCryptos.length > 0) return;
+    const fetchAll = async () => {
       try {
         const res = await fetch(
-          `${API_BASE_URL}/cryptocurrencies?search=${encodeURIComponent(search)}&limit=20`,
+          `${API_BASE_URL}/cryptocurrencies?limit=500&sortBy=market_cap_usd&sortOrder=desc`,
         );
         const data = await res.json();
 
-        setCryptos(data.data || []);
+        setAllCryptos(
+          (data.data || []).map((c: any) => ({
+            id: c.id,
+            symbol: c.symbol,
+            name: c.name,
+            image_url: c.image_url,
+          })),
+        );
       } catch {
         // ignore
       }
-    }, 300);
+    };
 
-    return () => clearTimeout(timeout);
-  }, [search]);
+    fetchAll();
+  }, [isOpen, allCryptos.length]);
 
   const handleSubmit = async () => {
-    if (!selectedCryptoId || !quantity || !priceUsd) {
+    if (!selectedKey || !quantity || !priceUsd) {
       setError("Crypto, quantity, and price are required");
 
       return;
@@ -75,7 +88,7 @@ export function RecordTransactionModal({
           headers: { "Content-Type": "application/json" },
           credentials: "include",
           body: JSON.stringify({
-            crypto_id: selectedCryptoId,
+            crypto_id: Number(selectedKey),
             type,
             quantity: parseFloat(quantity),
             price_usd: parseFloat(priceUsd),
@@ -94,12 +107,12 @@ export function RecordTransactionModal({
         return;
       }
 
-      setSearch("");
-      setSelectedCryptoId(null);
+      setSelectedKey(null);
       setQuantity("");
       setPriceUsd("");
       setFeeUsd("");
       setNotes("");
+      setError("");
       onClose();
       onRecorded();
     } catch {
@@ -120,43 +133,32 @@ export function RecordTransactionModal({
             </div>
           )}
           <Autocomplete
+            isRequired
+            defaultItems={allCryptos}
             label="Cryptocurrency"
             placeholder="Search..."
-            inputValue={search}
-            onInputChange={(value) => {
-              setSearch(value);
-              if (!value) setSelectedCryptoId(null);
-            }}
-            onSelectionChange={(key) => {
-              if (key) {
-                setSelectedCryptoId(Number(key));
-                const selected = cryptos.find((c: any) => c.id === Number(key));
-
-                if (selected) {
-                  setSearch(`${selected.symbol} - ${selected.name}`);
-                }
-              }
-            }}
+            selectedKey={selectedKey != null ? String(selectedKey) : null}
+            onSelectionChange={(key) => setSelectedKey(key)}
           >
-            {cryptos.map((c: any) => (
+            {(item) => (
               <AutocompleteItem
-                key={c.id}
-                textValue={`${c.symbol} - ${c.name}`}
+                key={String(item.id)}
+                textValue={`${item.symbol} ${item.name}`}
               >
                 <div className="flex items-center gap-2">
-                  {c.image_url && (
+                  {item.image_url && (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img
-                      alt={c.symbol}
+                      alt={item.symbol}
                       className="w-5 h-5 rounded-full"
-                      src={c.image_url}
+                      src={item.image_url}
                     />
                   )}
-                  <span className="font-medium">{c.symbol}</span>
-                  <span className="text-default-400 text-sm">{c.name}</span>
+                  <span className="font-medium">{item.symbol}</span>
+                  <span className="text-default-400 text-sm">{item.name}</span>
                 </div>
               </AutocompleteItem>
-            ))}
+            )}
           </Autocomplete>
           <Select
             label="Type"
@@ -207,7 +209,12 @@ export function RecordTransactionModal({
           <Button variant="flat" onPress={onClose}>
             Cancel
           </Button>
-          <Button color="primary" isLoading={loading} onPress={handleSubmit}>
+          <Button
+            color="primary"
+            isDisabled={!selectedKey || !quantity || !priceUsd}
+            isLoading={loading}
+            onPress={handleSubmit}
+          >
             Record
           </Button>
         </ModalFooter>
