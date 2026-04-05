@@ -35,26 +35,20 @@ export function UserNavButton() {
   const router = useRouter();
 
   useEffect(() => {
-    const hasCookie = document.cookie
-      .split(";")
-      .some((c) => c.trim().startsWith("coinrisqlab_user_session="));
-
-    setHasSession(hasCookie);
-
-    if (hasCookie) {
-      fetch(`${API_BASE_URL}/user/auth/me`, { credentials: "include" })
-        .then((res) => res.json())
-        .then((data) => {
-          if (data.data) {
-            setUser({
-              displayName: data.data.displayName,
-              email: data.data.email,
-              plan: data.data.plan,
-            });
-          }
-        })
-        .catch(() => {});
-    }
+    // Cookie is httpOnly so we can't check document.cookie — call the API directly
+    fetch(`${API_BASE_URL}/user/auth/me`, { credentials: "include" })
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.data) {
+          setHasSession(true);
+          setUser({
+            displayName: data.data.displayName,
+            email: data.data.email,
+            plan: data.data.plan,
+          });
+        }
+      })
+      .catch(() => {});
   }, []);
 
   const handleLogout = useCallback(async () => {
