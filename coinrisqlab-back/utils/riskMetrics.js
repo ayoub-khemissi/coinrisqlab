@@ -349,15 +349,15 @@ export function calculateSML(cryptoBeta, cryptoActualReturn, marketReturn, riskF
     const expectedReturn = riskFreeRate + beta * (marketReturn - riskFreeRate);
     smlLine.push({
       beta: Number(beta.toFixed(1)),
-      expectedReturn: Number((expectedReturn * 100).toFixed(2))
+      expectedReturn: Number((expectedReturn * 100).toFixed(4))
     });
   }
 
   return {
     cryptoBeta: Number(cryptoBeta.toFixed(4)),
-    cryptoExpectedReturn: Number((cryptoExpectedReturn * 100).toFixed(2)),
-    cryptoActualReturn: Number((cryptoActualReturn * 100).toFixed(2)),
-    alpha: Number((alpha * 100).toFixed(2)),
+    cryptoExpectedReturn: Number((cryptoExpectedReturn * 100).toFixed(4)),
+    cryptoActualReturn: Number((cryptoActualReturn * 100).toFixed(4)),
+    alpha: Number((alpha * 100).toFixed(4)),
     isOvervalued,
     smlLine
   };

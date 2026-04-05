@@ -914,15 +914,15 @@ api.get('/risk/crypto/:id/sml', async (req, res) => {
           const expReturn = b * marketReturn;
           smlLine.push({
             beta: Number(b.toFixed(1)),
-            expectedReturn: Number(expReturn.toFixed(2))
+            expectedReturn: Number(expReturn.toFixed(4))
           });
         }
 
         smlData = {
           cryptoBeta: Number(beta.toFixed(4)),
-          cryptoExpectedReturn: Number(expectedReturn.toFixed(2)),
-          cryptoActualReturn: Number(actualReturn.toFixed(2)),
-          alpha: Number(alpha.toFixed(2)),
+          cryptoExpectedReturn: Number(expectedReturn.toFixed(4)),
+          cryptoActualReturn: Number(actualReturn.toFixed(4)),
+          alpha: Number(alpha.toFixed(4)),
           isOvervalued: historizedStats.is_overvalued === 1,
           smlLine
         };
@@ -984,7 +984,7 @@ api.get('/risk/crypto/:id/sml', async (req, res) => {
 
       // Calculate SML data (Rf = 0)
       smlData = calculateSML(beta, cryptoAnnualReturn, marketAnnualReturn, 0);
-      marketReturn = Number((marketAnnualReturn * 100).toFixed(2));
+      marketReturn = Number((marketAnnualReturn * 100).toFixed(4));
       dataPoints = alignedCrypto.length;
       log.debug(`Calculated SML on-the-fly for ${coingeckoId}`);
     }
