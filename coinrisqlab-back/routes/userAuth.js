@@ -209,7 +209,6 @@ api.post('/user/auth/logout', async (req, res) => {
 // ─── Me ─────────────────────────────────────────────────────────────────────
 
 api.get('/user/auth/me', authenticateUser, async (req, res) => {
-  log.info(`/me called for user ${req.user.id} — plan: ${req.user.plan}`);
   res.json({
     data: {
       id: req.user.id,

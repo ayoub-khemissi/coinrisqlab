@@ -97,50 +97,20 @@ export default function PortfolioAnalyticsPage() {
 
   useEffect(() => {
     async function fetchAll() {
-      const opts = { credentials: "include" as const };
-
       try {
-        const [volRes, perfRes] = await Promise.all([
-          fetch(
-            `${API_BASE_URL}/user/portfolios/${portfolioId}/volatility?period=90d`,
-            opts,
-          ),
-          fetch(
-            `${API_BASE_URL}/user/portfolios/${portfolioId}/performance?period=30d`,
-            opts,
-          ),
-        ]);
+        const res = await fetch(
+          `${API_BASE_URL}/user/portfolios/${portfolioId}/analytics-bundle`,
+          { credentials: "include" },
+        );
+        const json = await res.json();
+        const d = json.data;
 
-        const volData = await volRes.json();
-        const perfData = await perfRes.json();
-
-        setVolatility(volData.data);
-        setPerformance(perfData.data);
-
-        // Pro metrics
-        if (isPro) {
-          const [riskRes, corrRes, stressRes] = await Promise.all([
-            fetch(
-              `${API_BASE_URL}/user/portfolios/${portfolioId}/risk-metrics`,
-              opts,
-            ),
-            fetch(
-              `${API_BASE_URL}/user/portfolios/${portfolioId}/correlation`,
-              opts,
-            ),
-            fetch(
-              `${API_BASE_URL}/user/portfolios/${portfolioId}/stress-test`,
-              opts,
-            ),
-          ]);
-
-          const riskData = await riskRes.json();
-          const corrData = await corrRes.json();
-          const stressData = await stressRes.json();
-
-          setRiskMetrics(riskData.data);
-          setCorrelation(corrData.data);
-          setStressTest(stressData.data);
+        if (d) {
+          setVolatility(d.volatility);
+          setPerformance(d.performance);
+          setRiskMetrics(d.riskMetrics);
+          setCorrelation(d.correlation);
+          setStressTest(d.stressTest);
         }
       } catch {
         // ignore
