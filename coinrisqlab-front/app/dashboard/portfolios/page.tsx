@@ -1,5 +1,7 @@
 "use client";
 
+import type { Portfolio } from "@/types/user";
+
 import { useEffect, useState } from "react";
 import { Card, CardBody, CardHeader } from "@heroui/card";
 import { Button } from "@heroui/button";
@@ -14,11 +16,16 @@ import {
   useDisclosure,
 } from "@heroui/modal";
 import NextLink from "next/link";
-import { Plus, Briefcase, TrendingUp, TrendingDown, Trash2 } from "lucide-react";
+import {
+  Plus,
+  Briefcase,
+  TrendingUp,
+  TrendingDown,
+  Trash2,
+} from "lucide-react";
 
 import { API_BASE_URL } from "@/config/constants";
 import { useUserAuth } from "@/lib/user-auth-context";
-import type { Portfolio } from "@/types/user";
 
 export default function PortfoliosPage() {
   const { user } = useUserAuth();
@@ -84,8 +91,7 @@ export default function PortfoliosPage() {
     }
   };
 
-  const canCreate =
-    user?.plan === "pro" || portfolios.length < 1;
+  const canCreate = user?.plan === "pro" || portfolios.length < 1;
 
   if (loading) {
     return (

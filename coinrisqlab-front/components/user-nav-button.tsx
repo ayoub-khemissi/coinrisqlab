@@ -96,8 +96,8 @@ export function UserNavButton() {
           <DropdownSection showDivider>
             <DropdownItem
               key="profile"
-              className="h-14 gap-2"
               isReadOnly
+              className="h-14 gap-2"
               textValue="User info"
             >
               <p className="font-semibold">{user?.displayName || "User"}</p>

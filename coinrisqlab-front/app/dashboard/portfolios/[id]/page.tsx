@@ -1,5 +1,7 @@
 "use client";
 
+import type { Holding, Transaction } from "@/types/user";
+
 import { useEffect, useState, useCallback, useMemo } from "react";
 import { useParams } from "next/navigation";
 import { Card, CardBody, CardHeader } from "@heroui/card";
@@ -25,30 +27,19 @@ import {
 } from "@heroui/modal";
 import { Input } from "@heroui/input";
 import NextLink from "next/link";
-import {
-  Plus,
-  BarChart3,
-  Download,
-  Trash2,
-  Lock,
-  Pencil,
-} from "lucide-react";
-import {
-  PieChart,
-  Pie,
-  Cell,
-  Tooltip,
-  ResponsiveContainer,
-} from "recharts";
+import { Plus, BarChart3, Download, Trash2, Lock, Pencil } from "lucide-react";
+import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from "recharts";
 
 import { API_BASE_URL } from "@/config/constants";
 import { useUserAuth } from "@/lib/user-auth-context";
 import { formatCryptoPrice } from "@/lib/formatters";
-import { BinancePricesProvider, useBinancePricesContext } from "@/contexts/BinancePricesContext";
+import {
+  BinancePricesProvider,
+  useBinancePricesContext,
+} from "@/contexts/BinancePricesContext";
 import { PriceCell } from "@/components/PriceCell";
 import { AddHoldingModal } from "@/components/dashboard/portfolio/add-holding-modal";
 import { RecordTransactionModal } from "@/components/dashboard/portfolio/record-transaction-modal";
-import type { Holding, Transaction } from "@/types/user";
 
 const COLORS = [
   "#FF6B35", // Orange
@@ -126,14 +117,14 @@ export default function PortfolioDetailPage() {
   return (
     <BinancePricesProvider symbols={binanceSymbols}>
       <PortfolioDetailContent
+        addModal={addModal}
+        fetchHoldings={fetchHoldings}
+        fetchTransactions={fetchTransactions}
         holdings={holdings}
         portfolioId={portfolioId}
         transactions={transactions}
-        user={user}
-        addModal={addModal}
         txModal={txModal}
-        fetchHoldings={fetchHoldings}
-        fetchTransactions={fetchTransactions}
+        user={user}
       />
     </BinancePricesProvider>
   );
@@ -194,10 +185,12 @@ function PortfolioDetailContent({
     return holdings.map((h) => {
       const livePrice = prices[h.symbol.toUpperCase()] ?? h.current_price;
       const currentValue = Number(h.quantity) * livePrice;
-      const unrealizedPnl = currentValue - Number(h.quantity) * Number(h.avg_buy_price);
+      const unrealizedPnl =
+        currentValue - Number(h.quantity) * Number(h.avg_buy_price);
       const pnlPercent =
         Number(h.avg_buy_price) > 0
-          ? ((livePrice - Number(h.avg_buy_price)) / Number(h.avg_buy_price)) * 100
+          ? ((livePrice - Number(h.avg_buy_price)) / Number(h.avg_buy_price)) *
+            100
           : 0;
 
       return {
@@ -225,7 +218,10 @@ function PortfolioDetailContent({
     }));
   }, [dynamicHoldings, totalValue]);
 
-  const totalPnl = dynamicHoldingsWithAlloc.reduce((s, h) => s + h.unrealized_pnl, 0);
+  const totalPnl = dynamicHoldingsWithAlloc.reduce(
+    (s, h) => s + h.unrealized_pnl,
+    0,
+  );
   const totalCost = dynamicHoldingsWithAlloc.reduce(
     (s, h) => s + Number(h.quantity) * Number(h.avg_buy_price),
     0,
@@ -319,10 +315,12 @@ function PortfolioDetailContent({
 
     const THRESHOLD = 2;
     const aboveThreshold = sorted.filter(
-      (h) => totalValue > 0 && (h.current_value / totalValue) * 100 >= THRESHOLD,
+      (h) =>
+        totalValue > 0 && (h.current_value / totalValue) * 100 >= THRESHOLD,
     );
     const belowThreshold = sorted.filter(
-      (h) => totalValue <= 0 || (h.current_value / totalValue) * 100 < THRESHOLD,
+      (h) =>
+        totalValue <= 0 || (h.current_value / totalValue) * 100 < THRESHOLD,
     );
 
     const data = aboveThreshold.map((h) => ({
@@ -366,8 +364,7 @@ function PortfolioDetailContent({
               size="sm"
               variant="flat"
             >
-              {totalPnl >= 0 ? "+" : ""}$
-              {Math.abs(totalPnl).toFixed(2)} (
+              {totalPnl >= 0 ? "+" : ""}${Math.abs(totalPnl).toFixed(2)} (
               {totalCost > 0
                 ? ((totalPnl / totalCost) * 100).toFixed(2)
                 : "0.00"}
@@ -386,7 +383,11 @@ function PortfolioDetailContent({
           </Button>
           <Button
             as={NextLink}
-            href={user?.plan === "pro" ? `/dashboard/portfolios/${portfolioId}/analytics` : "/dashboard/pricing"}
+            href={
+              user?.plan === "pro"
+                ? `/dashboard/portfolios/${portfolioId}/analytics`
+                : "/dashboard/pricing"
+            }
             size="sm"
             startContent={<BarChart3 size={16} />}
             variant="flat"
@@ -438,8 +439,10 @@ function PortfolioDetailContent({
                       }: any) => {
                         const RADIAN = Math.PI / 180;
                         const dist = isMobile ? 15 : 25;
-                        const x = cx + (r + dist) * Math.cos(-midAngle * RADIAN);
-                        const y = cy + (r + dist) * Math.sin(-midAngle * RADIAN);
+                        const x =
+                          cx + (r + dist) * Math.cos(-midAngle * RADIAN);
+                        const y =
+                          cy + (r + dist) * Math.sin(-midAngle * RADIAN);
 
                         return (
                           <text
@@ -542,12 +545,9 @@ function PortfolioDetailContent({
       )}
 
       {/* Tabs */}
-      <Tabs
-        selectedKey={tab}
-        onSelectionChange={(key) => setTab(String(key))}
-      >
+      <Tabs selectedKey={tab} onSelectionChange={(key) => setTab(String(key))}>
         <Tab key="holdings" title={`Holdings (${holdings.length})`}>
-          <Table aria-label="Holdings" removeWrapper>
+          <Table removeWrapper aria-label="Holdings">
             <TableHeader>
               <TableColumn>Asset</TableColumn>
               <TableColumn>Quantity</TableColumn>
@@ -652,7 +652,7 @@ function PortfolioDetailContent({
           </Table>
         </Tab>
         <Tab key="transactions" title="Transactions">
-          <Table aria-label="Transactions" removeWrapper>
+          <Table removeWrapper aria-label="Transactions">
             <TableHeader>
               <TableColumn>Date</TableColumn>
               <TableColumn>Asset</TableColumn>
@@ -759,7 +759,10 @@ function PortfolioDetailContent({
       />
 
       {/* Edit Holding Modal */}
-      <Modal isOpen={editHoldingModal.isOpen} onClose={editHoldingModal.onClose}>
+      <Modal
+        isOpen={editHoldingModal.isOpen}
+        onClose={editHoldingModal.onClose}
+      >
         <ModalContent>
           <ModalHeader>Edit Holding — {editingHolding?.symbol}</ModalHeader>
           <ModalBody className="gap-4">
