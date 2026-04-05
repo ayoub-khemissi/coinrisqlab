@@ -193,7 +193,12 @@ api.post('/user/auth/logout', async (req, res) => {
       );
     }
 
-    res.clearCookie(COOKIE_NAME, { path: '/' });
+    res.clearCookie(COOKIE_NAME, {
+      httpOnly: true,
+      secure: Config.COINRISQLAB_FRONT_HTTPSECURE,
+      sameSite: 'lax',
+      path: '/',
+    });
     res.json({ data: null, msg: 'Logged out' });
   } catch (error) {
     log.error(`Logout error: ${error.message}`);

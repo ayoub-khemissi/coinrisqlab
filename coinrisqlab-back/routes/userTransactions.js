@@ -39,8 +39,8 @@ api.get('/user/portfolios/:id/transactions', authenticateUser, async (req, res) 
       JOIN cryptocurrencies c ON c.id = t.crypto_id
       WHERE t.portfolio_id = ?
       ORDER BY t.timestamp DESC
-      LIMIT ? OFFSET ?`,
-      [portfolioId, effectiveLimit, effectiveOffset]
+      LIMIT ${Number(effectiveLimit)} OFFSET ${Number(effectiveOffset)}`,
+      [portfolioId]
     );
 
     const [countResult] = await Database.execute(

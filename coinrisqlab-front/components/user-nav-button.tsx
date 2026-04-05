@@ -11,7 +11,7 @@ import {
   DropdownSection,
 } from "@heroui/dropdown";
 import NextLink from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import {
   LayoutDashboard,
   Briefcase,
@@ -33,9 +33,9 @@ export function UserNavButton() {
   const [hasSession, setHasSession] = useState(false);
   const [user, setUser] = useState<NavUser | null>(null);
   const router = useRouter();
+  const pathname = usePathname();
 
   useEffect(() => {
-    // Cookie is httpOnly so we can't check document.cookie — call the API directly
     fetch(`${API_BASE_URL}/user/auth/me`, { credentials: "include" })
       .then((res) => res.json())
       .then((data) => {
@@ -46,10 +46,16 @@ export function UserNavButton() {
             email: data.data.email,
             plan: data.data.plan,
           });
+        } else {
+          setHasSession(false);
+          setUser(null);
         }
       })
-      .catch(() => {});
-  }, []);
+      .catch(() => {
+        setHasSession(false);
+        setUser(null);
+      });
+  }, [pathname]);
 
   const handleLogout = useCallback(async () => {
     try {
@@ -63,26 +69,20 @@ export function UserNavButton() {
     setHasSession(false);
     setUser(null);
     router.push("/");
+    router.refresh();
   }, [router]);
 
   if (hasSession) {
-    const initials = user?.displayName
-      ? user.displayName
-          .split(" ")
-          .map((n) => n[0])
-          .join("")
-          .toUpperCase()
-          .slice(0, 2)
-      : "U";
-
     return (
       <Dropdown placement="bottom-end">
         <DropdownTrigger>
           <Avatar
+            isBordered
             as="button"
-            className="transition-transform"
+            className="transition-transform cursor-pointer"
             color="primary"
-            name={initials}
+            name={user?.displayName || user?.email || "User"}
+            showFallback
             size="sm"
           />
         </DropdownTrigger>
