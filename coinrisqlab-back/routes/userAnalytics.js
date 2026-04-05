@@ -17,6 +17,8 @@ import {
   calculateSharpeRatio,
   calculateStressTest,
   calculateBetaAlpha,
+  calculateSkewness,
+  calculateKurtosis,
 } from '../utils/riskMetrics.js';
 import { getDateFilter } from '../utils/queryHelpers.js';
 
@@ -182,19 +184,21 @@ api.get('/user/portfolios/:id/volatility', authenticateUser, async (req, res) =>
       return res.status(404).json({ data: null, msg: 'Portfolio not found' });
     }
 
+    const { period = '90d' } = req.query;
+
     const holdings = await getPortfolioHoldings(portfolioId);
     if (holdings.length === 0) {
-      return res.json({ data: { dailyVolatility: 0, annualizedVolatility: 0, beta: 0, holdingCount: 0 } });
+      return res.json({ data: { dailyVolatility: 0, annualizedVolatility: 0, beta: 0, holdingCount: 0, constituents: [] } });
     }
 
     const cryptoIds = holdings.map(h => h.crypto_id);
     const weights = holdings.map(h => h.weight);
 
-    const { returnsByCrypto, alignedDates } = await getAlignedReturns(cryptoIds, '90d');
+    const { returnsByCrypto, alignedDates } = await getAlignedReturns(cryptoIds, period);
 
     if (alignedDates.length < 10) {
       return res.json({
-        data: { dailyVolatility: 0, annualizedVolatility: 0, beta: 0, holdingCount: holdings.length, msg: 'Not enough data points' },
+        data: { dailyVolatility: 0, annualizedVolatility: 0, beta: 0, holdingCount: holdings.length, constituents: [], msg: 'Not enough data points' },
       });
     }
 
@@ -203,6 +207,24 @@ api.get('/user/portfolios/:id/volatility', authenticateUser, async (req, res) =>
     const covMatrix = buildCovarianceMatrix(assets);
     const dailyVol = calcPortfolioVol(weights, covMatrix);
     const annualVol = annualizeVolatility(dailyVol);
+
+    // Individual constituent volatility
+    const constituents = holdings.map((h, i) => {
+      const returns = returnsByCrypto[h.crypto_id] || [];
+      const indivDailyVol = standardDeviation(returns);
+      const indivAnnualVol = annualizeVolatility(indivDailyVol);
+
+      return {
+        crypto_id: h.crypto_id,
+        symbol: h.symbol,
+        name: h.crypto_name,
+        image_url: h.image_url,
+        weight: Number(h.weight.toFixed(4)),
+        daily_volatility: Number(indivDailyVol.toFixed(6)),
+        annualized_volatility: Number((indivAnnualVol * 100).toFixed(2)),
+        current_value: Number((h.current_value || 0).toFixed(2)),
+      };
+    });
 
     // Portfolio beta: weighted sum of individual betas
     const [betaRows] = await Database.execute(
@@ -222,6 +244,15 @@ api.get('/user/portfolios/:id/volatility', authenticateUser, async (req, res) =>
       portfolioBeta += weights[i] * (betaMap[cryptoIds[i]] || 1);
     }
 
+    // Weighted average volatility (for diversification benefit)
+    const weightedAvgVol = weights.reduce((sum, w, i) => {
+      return sum + w * standardDeviation(assets[i].returns);
+    }, 0);
+
+    const diversificationBenefit = weightedAvgVol > 0
+      ? Number((((weightedAvgVol - dailyVol) / weightedAvgVol) * 100).toFixed(2))
+      : 0;
+
     res.json({
       data: {
         dailyVolatility: Number(dailyVol.toFixed(6)),
@@ -229,6 +260,8 @@ api.get('/user/portfolios/:id/volatility', authenticateUser, async (req, res) =>
         beta: Number(portfolioBeta.toFixed(4)),
         holdingCount: holdings.length,
         dataPoints: alignedDates.length,
+        diversificationBenefit,
+        constituents,
       },
     });
   } catch (error) {
@@ -276,6 +309,45 @@ api.get('/user/portfolios/:id/performance', authenticateUser, async (req, res) =
       []
     );
 
+    // 24h rolling performance — weighted sum of each holding's percent_change_24h
+    const holdings = await getPortfolioHoldings(portfolioId);
+    let portfolio24hReturn = 0;
+    if (holdings.length > 0) {
+      const cryptoIds = holdings.map(h => h.crypto_id);
+      const [marketRows] = await Database.execute(
+        `SELECT crypto_id, percent_change_24h
+         FROM market_data md
+         WHERE md.crypto_id IN (${cryptoIds.map(() => '?').join(',')})
+           AND md.timestamp = (SELECT MAX(timestamp) FROM market_data WHERE crypto_id = md.crypto_id)`,
+        cryptoIds
+      );
+
+      const changeMap = {};
+      for (const row of marketRows) {
+        changeMap[row.crypto_id] = parseFloat(row.percent_change_24h) || 0;
+      }
+
+      for (const h of holdings) {
+        portfolio24hReturn += h.weight * (changeMap[h.crypto_id] || 0);
+      }
+    }
+
+    // Benchmark 24h return from latest two index snapshots
+    const [benchmarkRows] = await Database.execute(
+      `SELECT index_level FROM index_history
+       WHERE index_config_id = 1
+       ORDER BY snapshot_date DESC, timestamp DESC
+       LIMIT 2`,
+      []
+    );
+
+    let benchmark24hReturn = 0;
+    if (benchmarkRows.length >= 2) {
+      const latest = parseFloat(benchmarkRows[0].index_level);
+      const prev = parseFloat(benchmarkRows[1].index_level);
+      benchmark24hReturn = prev > 0 ? ((latest - prev) / prev) * 100 : 0;
+    }
+
     // Normalize both to 100 at start
     const portfolioNormalized = snapshots.length > 0
       ? snapshots.map(s => ({
@@ -301,6 +373,8 @@ api.get('/user/portfolios/:id/performance', authenticateUser, async (req, res) =
         benchmarkReturn: indexHistory.length >= 2
           ? Number((((indexHistory[indexHistory.length - 1].index_level / indexHistory[0].index_level) - 1) * 100).toFixed(2))
           : 0,
+        portfolio24hReturn: Number(portfolio24hReturn.toFixed(2)),
+        benchmark24hReturn: Number(benchmark24hReturn.toFixed(2)),
       },
     });
   } catch (error) {
@@ -349,6 +423,57 @@ api.get('/user/portfolios/:id/risk-metrics', authenticateUser, requirePro, async
     // Sharpe
     const sharpe = calculateSharpeRatio(portfolioReturns);
 
+    // Alpha + Beta (portfolio vs market index)
+    // Compute index log returns on-the-fly from index_history
+    const [indexReturns] = await Database.execute(`
+      SELECT date, log_return FROM (
+        SELECT
+          date,
+          LN(index_level / LAG(index_level) OVER (ORDER BY date)) as log_return
+        FROM (
+          SELECT
+            DATE(snapshot_date) as date,
+            SUBSTRING_INDEX(GROUP_CONCAT(index_level ORDER BY snapshot_date DESC), ',', 1) + 0 as index_level
+          FROM index_history ih
+          INNER JOIN index_config ic ON ih.index_config_id = ic.id
+          WHERE ic.index_name = 'CoinRisqLab 80'
+            AND DATE(snapshot_date) < CURDATE()
+          GROUP BY DATE(snapshot_date)
+        ) daily
+      ) with_returns
+      WHERE log_return IS NOT NULL
+      ORDER BY date ASC
+    `);
+
+    const indexReturnMap = {};
+    for (const row of indexReturns) {
+      const dateStr = row.date instanceof Date ? row.date.toISOString().slice(0, 10) : String(row.date);
+      indexReturnMap[dateStr] = parseFloat(row.log_return);
+    }
+
+    // Align portfolio returns with market returns
+    const alignedPortfolioReturns = [];
+    const alignedMarketReturns = [];
+    for (let i = 0; i < alignedDates.length; i++) {
+      if (indexReturnMap[alignedDates[i]] !== undefined) {
+        alignedPortfolioReturns.push(portfolioReturns[i]);
+        alignedMarketReturns.push(indexReturnMap[alignedDates[i]]);
+      }
+    }
+
+    const betaAlpha = calculateBetaAlpha(alignedPortfolioReturns, alignedMarketReturns);
+
+    // Skewness & Kurtosis
+    const skewness = calculateSkewness(portfolioReturns);
+    const kurtosis = calculateKurtosis(portfolioReturns);
+
+    // Return statistics
+    const meanReturn = mean(portfolioReturns);
+    const dailyStd = standardDeviation(portfolioReturns);
+    const minReturn = Math.min(...portfolioReturns);
+    const maxReturn = Math.max(...portfolioReturns);
+    const annualizedReturn = meanReturn * 365;
+
     // Diversification benefit
     const assets = cryptoIds.map(id => ({ id, returns: returnsByCrypto[id] }));
     const covMatrix = buildCovarianceMatrix(assets);
@@ -369,11 +494,21 @@ api.get('/user/portfolios/:id/risk-metrics', authenticateUser, requirePro, async
         cvar95: Number((cvar95 * 100).toFixed(4)),
         cvar99: Number((cvar99 * 100).toFixed(4)),
         sharpe: Number(sharpe.toFixed(4)),
+        beta: betaAlpha.beta,
+        alpha: Number((betaAlpha.alpha * 36500).toFixed(4)), // annualized alpha in %
+        skewness,
+        kurtosis,
+        returnStats: {
+          meanDaily: Number((meanReturn * 100).toFixed(4)),
+          annualized: Number((annualizedReturn * 100).toFixed(2)),
+          dailyStd: Number((dailyStd * 100).toFixed(4)),
+          min: Number((minReturn * 100).toFixed(4)),
+          max: Number((maxReturn * 100).toFixed(4)),
+        },
         diversificationBenefit,
         dailyVolatility: Number(portfolioDailyVol.toFixed(6)),
         annualizedVolatility: Number((annualizeVolatility(portfolioDailyVol) * 100).toFixed(2)),
         dataPoints: alignedDates.length,
-        portfolioReturns,
       },
     });
   } catch (error) {

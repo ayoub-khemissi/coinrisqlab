@@ -1,39 +1,164 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { Button } from "@heroui/button";
+import { Avatar } from "@heroui/avatar";
+import {
+  Dropdown,
+  DropdownTrigger,
+  DropdownMenu,
+  DropdownItem,
+  DropdownSection,
+} from "@heroui/dropdown";
 import NextLink from "next/link";
-import { User } from "lucide-react";
+import { useRouter } from "next/navigation";
+import {
+  LayoutDashboard,
+  Briefcase,
+  Bell,
+  Settings,
+  CreditCard,
+  LogOut,
+} from "lucide-react";
 
-/**
- * Simple navbar button — checks for user cookie existence only (no context dependency).
- * This avoids wrapping the entire app in UserAuthProvider which causes
- * re-renders that break the Binance WebSocket on the home page.
- */
+import { API_BASE_URL } from "@/config/constants";
+
+interface NavUser {
+  displayName: string;
+  email: string;
+  plan: "free" | "pro";
+}
+
 export function UserNavButton() {
   const [hasSession, setHasSession] = useState(false);
+  const [user, setUser] = useState<NavUser | null>(null);
+  const router = useRouter();
 
   useEffect(() => {
-    // Check if the user session cookie exists
     const hasCookie = document.cookie
       .split(";")
       .some((c) => c.trim().startsWith("coinrisqlab_user_session="));
 
     setHasSession(hasCookie);
+
+    if (hasCookie) {
+      fetch(`${API_BASE_URL}/user/auth/me`, { credentials: "include" })
+        .then((res) => res.json())
+        .then((data) => {
+          if (data.data) {
+            setUser({
+              displayName: data.data.displayName,
+              email: data.data.email,
+              plan: data.data.plan,
+            });
+          }
+        })
+        .catch(() => {});
+    }
   }, []);
 
+  const handleLogout = useCallback(async () => {
+    try {
+      await fetch(`${API_BASE_URL}/user/auth/logout`, {
+        method: "POST",
+        credentials: "include",
+      });
+    } catch {
+      // ignore
+    }
+    setHasSession(false);
+    setUser(null);
+    router.push("/");
+  }, [router]);
+
   if (hasSession) {
+    const initials = user?.displayName
+      ? user.displayName
+          .split(" ")
+          .map((n) => n[0])
+          .join("")
+          .toUpperCase()
+          .slice(0, 2)
+      : "U";
+
     return (
-      <Button
-        as={NextLink}
-        href="/dashboard"
-        isIconOnly
-        radius="full"
-        size="sm"
-        variant="flat"
-      >
-        <User size={18} />
-      </Button>
+      <Dropdown placement="bottom-end">
+        <DropdownTrigger>
+          <Avatar
+            as="button"
+            className="transition-transform"
+            color="primary"
+            name={initials}
+            size="sm"
+          />
+        </DropdownTrigger>
+        <DropdownMenu aria-label="User menu" variant="flat">
+          <DropdownSection showDivider>
+            <DropdownItem
+              key="profile"
+              className="h-14 gap-2"
+              isReadOnly
+              textValue="User info"
+            >
+              <p className="font-semibold">{user?.displayName || "User"}</p>
+              <p className="text-xs text-default-500">{user?.email || ""}</p>
+            </DropdownItem>
+          </DropdownSection>
+          <DropdownSection showDivider>
+            <DropdownItem
+              key="dashboard"
+              as={NextLink}
+              href="/dashboard"
+              startContent={<LayoutDashboard size={16} />}
+            >
+              Dashboard
+            </DropdownItem>
+            <DropdownItem
+              key="portfolios"
+              as={NextLink}
+              href="/dashboard/portfolios"
+              startContent={<Briefcase size={16} />}
+            >
+              Portfolios
+            </DropdownItem>
+            <DropdownItem
+              key="alerts"
+              as={NextLink}
+              href="/dashboard/alerts"
+              startContent={<Bell size={16} />}
+            >
+              Alerts
+            </DropdownItem>
+            <DropdownItem
+              key="settings"
+              as={NextLink}
+              href="/dashboard/settings"
+              startContent={<Settings size={16} />}
+            >
+              Settings
+            </DropdownItem>
+            <DropdownItem
+              key="pricing"
+              as={NextLink}
+              href="/dashboard/pricing"
+              startContent={<CreditCard size={16} />}
+            >
+              Pricing
+            </DropdownItem>
+          </DropdownSection>
+          <DropdownSection>
+            <DropdownItem
+              key="logout"
+              className="text-danger"
+              color="danger"
+              startContent={<LogOut size={16} />}
+              onPress={handleLogout}
+            >
+              Log Out
+            </DropdownItem>
+          </DropdownSection>
+        </DropdownMenu>
+      </Dropdown>
     );
   }
 

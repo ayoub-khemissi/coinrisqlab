@@ -14,7 +14,7 @@ import {
   useDisclosure,
 } from "@heroui/modal";
 import NextLink from "next/link";
-import { Plus, Briefcase, TrendingUp, TrendingDown } from "lucide-react";
+import { Plus, Briefcase, TrendingUp, TrendingDown, Trash2 } from "lucide-react";
 
 import { API_BASE_URL } from "@/config/constants";
 import { useUserAuth } from "@/lib/user-auth-context";
@@ -26,7 +26,9 @@ export default function PortfoliosPage() {
   const [loading, setLoading] = useState(true);
   const [newName, setNewName] = useState("");
   const [creating, setCreating] = useState(false);
+  const [deletingId, setDeletingId] = useState<number | null>(null);
   const { isOpen, onOpen, onClose } = useDisclosure();
+  const deleteModal = useDisclosure();
 
   const fetchPortfolios = async () => {
     try {
@@ -64,6 +66,21 @@ export default function PortfoliosPage() {
       // ignore
     } finally {
       setCreating(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!deletingId) return;
+    try {
+      await fetch(`${API_BASE_URL}/user/portfolios/${deletingId}`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+      deleteModal.onClose();
+      setDeletingId(null);
+      fetchPortfolios();
+    } catch {
+      // ignore
     }
   };
 
@@ -134,15 +151,30 @@ export default function PortfoliosPage() {
           {portfolios.map((p) => (
             <Card
               key={p.id}
-              as={NextLink}
-              className="cursor-pointer hover:border-primary transition-colors"
-              href={`/dashboard/portfolios/${p.id}`}
-              isPressable
+              className="cursor-pointer hover:border-primary transition-colors relative"
             >
-              <CardHeader className="pb-1">
-                <h3 className="font-semibold">{p.name}</h3>
+              <CardHeader className="pb-1 flex items-center justify-between">
+                <NextLink href={`/dashboard/portfolios/${p.id}`}>
+                  <h3 className="font-semibold">{p.name}</h3>
+                </NextLink>
+                <Button
+                  isIconOnly
+                  color="danger"
+                  size="sm"
+                  variant="light"
+                  onPress={() => {
+                    setDeletingId(p.id);
+                    deleteModal.onOpen();
+                  }}
+                >
+                  <Trash2 size={14} />
+                </Button>
               </CardHeader>
-              <CardBody className="gap-2 pt-0">
+              <CardBody
+                as={NextLink}
+                className="gap-2 pt-0"
+                href={`/dashboard/portfolios/${p.id}`}
+              >
                 <p className="text-2xl font-bold">
                   $
                   {(p.latest_value || 0).toLocaleString("en-US", {
@@ -199,6 +231,27 @@ export default function PortfoliosPage() {
               onPress={handleCreate}
             >
               Create
+            </Button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
+
+      {/* Delete Confirmation Modal */}
+      <Modal isOpen={deleteModal.isOpen} onClose={deleteModal.onClose}>
+        <ModalContent>
+          <ModalHeader>Delete Portfolio</ModalHeader>
+          <ModalBody>
+            <p>
+              Are you sure you want to delete this portfolio? All holdings and
+              transactions will be permanently removed.
+            </p>
+          </ModalBody>
+          <ModalFooter>
+            <Button variant="flat" onPress={deleteModal.onClose}>
+              Cancel
+            </Button>
+            <Button color="danger" onPress={handleDelete}>
+              Delete
             </Button>
           </ModalFooter>
         </ModalContent>

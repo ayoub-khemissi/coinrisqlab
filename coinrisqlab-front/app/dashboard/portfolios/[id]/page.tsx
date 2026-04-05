@@ -16,14 +16,22 @@ import {
   TableCell,
 } from "@heroui/table";
 import { useDisclosure } from "@heroui/modal";
+import {
+  Modal,
+  ModalContent,
+  ModalHeader,
+  ModalBody,
+  ModalFooter,
+} from "@heroui/modal";
+import { Input } from "@heroui/input";
 import NextLink from "next/link";
 import {
   Plus,
-  Receipt,
   BarChart3,
   Download,
   Trash2,
   Lock,
+  Pencil,
 } from "lucide-react";
 import {
   PieChart,
@@ -36,7 +44,7 @@ import {
 import { API_BASE_URL } from "@/config/constants";
 import { useUserAuth } from "@/lib/user-auth-context";
 import { formatCryptoPrice } from "@/lib/formatters";
-import { BinancePricesProvider } from "@/contexts/BinancePricesContext";
+import { BinancePricesProvider, useBinancePricesContext } from "@/contexts/BinancePricesContext";
 import { PriceCell } from "@/components/PriceCell";
 import { AddHoldingModal } from "@/components/dashboard/portfolio/add-holding-modal";
 import { RecordTransactionModal } from "@/components/dashboard/portfolio/record-transaction-modal";
@@ -63,22 +71,10 @@ export default function PortfolioDetailPage() {
 
   const [holdings, setHoldings] = useState<Holding[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
-  const [totalValue, setTotalValue] = useState(0);
   const [loading, setLoading] = useState(true);
-  const [tab, setTab] = useState("holdings");
-  const [isMobile, setIsMobile] = useState(false);
 
   const addModal = useDisclosure();
   const txModal = useDisclosure();
-
-  useEffect(() => {
-    const checkMobile = () => setIsMobile(window.innerWidth < 768);
-
-    checkMobile();
-    window.addEventListener("resize", checkMobile);
-
-    return () => window.removeEventListener("resize", checkMobile);
-  }, []);
 
   const fetchHoldings = useCallback(async () => {
     try {
@@ -89,7 +85,6 @@ export default function PortfolioDetailPage() {
       const data = await res.json();
 
       setHoldings(data.data || []);
-      setTotalValue(data.totalValue || 0);
     } catch {
       // ignore
     }
@@ -115,64 +110,6 @@ export default function PortfolioDetailPage() {
     );
   }, [fetchHoldings, fetchTransactions]);
 
-  const handleDeleteHolding = async (holdingId: number) => {
-    await fetch(
-      `${API_BASE_URL}/user/portfolios/${portfolioId}/holdings/${holdingId}`,
-      { method: "DELETE", credentials: "include" },
-    );
-    fetchHoldings();
-  };
-
-  const handleExportCSV = () => {
-    window.open(
-      `${API_BASE_URL}/user/portfolios/${portfolioId}/export/positions-csv`,
-      "_blank",
-    );
-  };
-
-  const totalPnl = holdings.reduce((s, h) => s + (h.unrealized_pnl || 0), 0);
-  const totalCost = holdings.reduce(
-    (s, h) => s + h.quantity * h.avg_buy_price,
-    0,
-  );
-
-  const chartData = useMemo(() => {
-    if (holdings.length === 0) return [];
-
-    const sorted = [...holdings].sort(
-      (a, b) => (b.current_value || 0) - (a.current_value || 0),
-    );
-
-    const THRESHOLD = 2; // group allocations < 2% into "Others"
-    const aboveThreshold = sorted.filter(
-      (h) => totalValue > 0 && ((h.current_value || 0) / totalValue) * 100 >= THRESHOLD,
-    );
-    const belowThreshold = sorted.filter(
-      (h) => totalValue <= 0 || ((h.current_value || 0) / totalValue) * 100 < THRESHOLD,
-    );
-
-    const data = aboveThreshold.map((h) => ({
-      name: h.symbol,
-      value: h.current_value || 0,
-      displayValue: `${totalValue > 0 ? (((h.current_value || 0) / totalValue) * 100).toFixed(2) : "0.00"}%`,
-    }));
-
-    if (belowThreshold.length > 0) {
-      const othersValue = belowThreshold.reduce(
-        (sum, h) => sum + (h.current_value || 0),
-        0,
-      );
-
-      data.push({
-        name: "Others",
-        value: othersValue,
-        displayValue: `${totalValue > 0 ? ((othersValue / totalValue) * 100).toFixed(2) : "0.00"}%`,
-      });
-    }
-
-    return data;
-  }, [holdings, totalValue]);
-
   const binanceSymbols = useMemo(
     () => holdings.map((h) => h.symbol.toUpperCase()),
     [holdings],
@@ -188,6 +125,229 @@ export default function PortfolioDetailPage() {
 
   return (
     <BinancePricesProvider symbols={binanceSymbols}>
+      <PortfolioDetailContent
+        holdings={holdings}
+        portfolioId={portfolioId}
+        transactions={transactions}
+        user={user}
+        addModal={addModal}
+        txModal={txModal}
+        fetchHoldings={fetchHoldings}
+        fetchTransactions={fetchTransactions}
+      />
+    </BinancePricesProvider>
+  );
+}
+
+interface PortfolioDetailContentProps {
+  holdings: Holding[];
+  transactions: Transaction[];
+  portfolioId: number;
+  user: any;
+  addModal: ReturnType<typeof useDisclosure>;
+  txModal: ReturnType<typeof useDisclosure>;
+  fetchHoldings: () => Promise<void>;
+  fetchTransactions: () => Promise<void>;
+}
+
+function PortfolioDetailContent({
+  holdings,
+  transactions,
+  portfolioId,
+  user,
+  addModal,
+  txModal,
+  fetchHoldings,
+  fetchTransactions,
+}: PortfolioDetailContentProps) {
+  const { prices } = useBinancePricesContext();
+  const [tab, setTab] = useState("holdings");
+  const [isMobile, setIsMobile] = useState(false);
+
+  // Edit holding modal state
+  const editHoldingModal = useDisclosure();
+  const [editingHolding, setEditingHolding] = useState<Holding | null>(null);
+  const [editQty, setEditQty] = useState("");
+  const [editAvgPrice, setEditAvgPrice] = useState("");
+  const [editLoading, setEditLoading] = useState(false);
+
+  // Edit transaction modal state
+  const editTxModal = useDisclosure();
+  const [editingTx, setEditingTx] = useState<Transaction | null>(null);
+  const [editTxQty, setEditTxQty] = useState("");
+  const [editTxPrice, setEditTxPrice] = useState("");
+  const [editTxFee, setEditTxFee] = useState("");
+  const [editTxNotes, setEditTxNotes] = useState("");
+  const [editTxLoading, setEditTxLoading] = useState(false);
+
+  useEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth < 768);
+
+    checkMobile();
+    window.addEventListener("resize", checkMobile);
+
+    return () => window.removeEventListener("resize", checkMobile);
+  }, []);
+
+  // Dynamically recompute holdings values using Binance live prices
+  const dynamicHoldings = useMemo(() => {
+    return holdings.map((h) => {
+      const livePrice = prices[h.symbol.toUpperCase()] ?? h.current_price;
+      const currentValue = Number(h.quantity) * livePrice;
+      const unrealizedPnl = currentValue - Number(h.quantity) * Number(h.avg_buy_price);
+      const pnlPercent =
+        Number(h.avg_buy_price) > 0
+          ? ((livePrice - Number(h.avg_buy_price)) / Number(h.avg_buy_price)) * 100
+          : 0;
+
+      return {
+        ...h,
+        current_price: livePrice,
+        current_value: currentValue,
+        unrealized_pnl: unrealizedPnl,
+        pnl_percent: pnlPercent,
+      };
+    });
+  }, [holdings, prices]);
+
+  const totalValue = useMemo(
+    () => dynamicHoldings.reduce((s, h) => s + h.current_value, 0),
+    [dynamicHoldings],
+  );
+
+  const dynamicHoldingsWithAlloc = useMemo(() => {
+    return dynamicHoldings.map((h) => ({
+      ...h,
+      allocation_pct:
+        totalValue > 0
+          ? Number(((h.current_value / totalValue) * 100).toFixed(2))
+          : 0,
+    }));
+  }, [dynamicHoldings, totalValue]);
+
+  const totalPnl = dynamicHoldingsWithAlloc.reduce((s, h) => s + h.unrealized_pnl, 0);
+  const totalCost = dynamicHoldingsWithAlloc.reduce(
+    (s, h) => s + Number(h.quantity) * Number(h.avg_buy_price),
+    0,
+  );
+
+  const handleDeleteHolding = async (holdingId: number) => {
+    await fetch(
+      `${API_BASE_URL}/user/portfolios/${portfolioId}/holdings/${holdingId}`,
+      { method: "DELETE", credentials: "include" },
+    );
+    fetchHoldings();
+  };
+
+  const handleEditHolding = async () => {
+    if (!editingHolding) return;
+    setEditLoading(true);
+    try {
+      await fetch(
+        `${API_BASE_URL}/user/portfolios/${portfolioId}/holdings/${editingHolding.id}`,
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({
+            quantity: parseFloat(editQty),
+            avg_buy_price: parseFloat(editAvgPrice),
+          }),
+        },
+      );
+      editHoldingModal.onClose();
+      setEditingHolding(null);
+      fetchHoldings();
+    } catch {
+      // ignore
+    } finally {
+      setEditLoading(false);
+    }
+  };
+
+  const handleDeleteTx = async (txId: number) => {
+    await fetch(
+      `${API_BASE_URL}/user/portfolios/${portfolioId}/transactions/${txId}`,
+      { method: "DELETE", credentials: "include" },
+    );
+    fetchTransactions();
+    fetchHoldings();
+  };
+
+  const handleEditTx = async () => {
+    if (!editingTx) return;
+    setEditTxLoading(true);
+    try {
+      await fetch(
+        `${API_BASE_URL}/user/portfolios/${portfolioId}/transactions/${editingTx.id}`,
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({
+            quantity: parseFloat(editTxQty),
+            price_usd: parseFloat(editTxPrice),
+            fee_usd: editTxFee ? parseFloat(editTxFee) : 0,
+            notes: editTxNotes || null,
+          }),
+        },
+      );
+      editTxModal.onClose();
+      setEditingTx(null);
+      fetchTransactions();
+      fetchHoldings();
+    } catch {
+      // ignore
+    } finally {
+      setEditTxLoading(false);
+    }
+  };
+
+  const handleExportCSV = () => {
+    window.open(
+      `${API_BASE_URL}/user/portfolios/${portfolioId}/export/positions-csv`,
+      "_blank",
+    );
+  };
+
+  const chartData = useMemo(() => {
+    if (dynamicHoldingsWithAlloc.length === 0) return [];
+
+    const sorted = [...dynamicHoldingsWithAlloc].sort(
+      (a, b) => b.current_value - a.current_value,
+    );
+
+    const THRESHOLD = 2;
+    const aboveThreshold = sorted.filter(
+      (h) => totalValue > 0 && (h.current_value / totalValue) * 100 >= THRESHOLD,
+    );
+    const belowThreshold = sorted.filter(
+      (h) => totalValue <= 0 || (h.current_value / totalValue) * 100 < THRESHOLD,
+    );
+
+    const data = aboveThreshold.map((h) => ({
+      name: h.symbol,
+      value: h.current_value,
+      displayValue: `${totalValue > 0 ? ((h.current_value / totalValue) * 100).toFixed(2) : "0.00"}%`,
+    }));
+
+    if (belowThreshold.length > 0) {
+      const othersValue = belowThreshold.reduce(
+        (sum, h) => sum + h.current_value,
+        0,
+      );
+
+      data.push({
+        name: "Others",
+        value: othersValue,
+        displayValue: `${totalValue > 0 ? ((othersValue / totalValue) * 100).toFixed(2) : "0.00"}%`,
+      });
+    }
+
+    return data;
+  }, [dynamicHoldingsWithAlloc, totalValue]);
+
+  return (
     <div className="space-y-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
@@ -225,14 +385,6 @@ export default function PortfolioDetailPage() {
             Add Holding
           </Button>
           <Button
-            size="sm"
-            startContent={<Receipt size={16} />}
-            variant="flat"
-            onPress={txModal.onOpen}
-          >
-            Record Tx
-          </Button>
-          <Button
             as={NextLink}
             href={user?.plan === "pro" ? `/dashboard/portfolios/${portfolioId}/analytics` : "/dashboard/pricing"}
             size="sm"
@@ -253,7 +405,7 @@ export default function PortfolioDetailPage() {
         </div>
       </div>
 
-      {/* Allocation chart — same style as TopConstituentsChart */}
+      {/* Allocation chart */}
       {chartData.length > 0 && (
         <Card>
           <CardHeader>
@@ -404,10 +556,10 @@ export default function PortfolioDetailPage() {
               <TableColumn>Value</TableColumn>
               <TableColumn>PnL</TableColumn>
               <TableColumn>Alloc.</TableColumn>
-              <TableColumn>{""}</TableColumn>
+              <TableColumn>Actions</TableColumn>
             </TableHeader>
             <TableBody emptyContent="No holdings yet. Add one!">
-              {holdings.map((h) => (
+              {dynamicHoldingsWithAlloc.map((h) => (
                 <TableRow key={h.id}>
                   <TableCell>
                     <div className="flex items-center gap-2">
@@ -459,15 +611,40 @@ export default function PortfolioDetailPage() {
                   </TableCell>
                   <TableCell>{h.allocation_pct}%</TableCell>
                   <TableCell>
-                    <Button
-                      isIconOnly
-                      color="danger"
-                      size="sm"
-                      variant="light"
-                      onPress={() => handleDeleteHolding(h.id)}
-                    >
-                      <Trash2 size={14} />
-                    </Button>
+                    <div className="flex items-center gap-1">
+                      <Button
+                        isIconOnly
+                        size="sm"
+                        variant="light"
+                        onPress={() => {
+                          txModal.onOpen();
+                        }}
+                      >
+                        <Plus size={14} />
+                      </Button>
+                      <Button
+                        isIconOnly
+                        size="sm"
+                        variant="light"
+                        onPress={() => {
+                          setEditingHolding(h);
+                          setEditQty(String(h.quantity));
+                          setEditAvgPrice(String(h.avg_buy_price));
+                          editHoldingModal.onOpen();
+                        }}
+                      >
+                        <Pencil size={14} />
+                      </Button>
+                      <Button
+                        isIconOnly
+                        color="danger"
+                        size="sm"
+                        variant="light"
+                        onPress={() => handleDeleteHolding(h.id)}
+                      >
+                        <Trash2 size={14} />
+                      </Button>
+                    </div>
                   </TableCell>
                 </TableRow>
               ))}
@@ -484,6 +661,7 @@ export default function PortfolioDetailPage() {
               <TableColumn>Price</TableColumn>
               <TableColumn>Total</TableColumn>
               <TableColumn>Notes</TableColumn>
+              <TableColumn>Actions</TableColumn>
             </TableHeader>
             <TableBody emptyContent="No transactions recorded yet.">
               {transactions.map((t) => (
@@ -524,7 +702,35 @@ export default function PortfolioDetailPage() {
                     ${(t.quantity * t.price_usd).toFixed(2)}
                   </TableCell>
                   <TableCell className="text-xs text-default-400 max-w-32 truncate">
-                    {t.notes || "—"}
+                    {t.notes || "\u2014"}
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-1">
+                      <Button
+                        isIconOnly
+                        size="sm"
+                        variant="light"
+                        onPress={() => {
+                          setEditingTx(t);
+                          setEditTxQty(String(t.quantity));
+                          setEditTxPrice(String(t.price_usd));
+                          setEditTxFee(String(t.fee_usd || 0));
+                          setEditTxNotes(t.notes || "");
+                          editTxModal.onOpen();
+                        }}
+                      >
+                        <Pencil size={14} />
+                      </Button>
+                      <Button
+                        isIconOnly
+                        color="danger"
+                        size="sm"
+                        variant="light"
+                        onPress={() => handleDeleteTx(t.id)}
+                      >
+                        <Trash2 size={14} />
+                      </Button>
+                    </div>
                   </TableCell>
                 </TableRow>
               ))}
@@ -551,7 +757,93 @@ export default function PortfolioDetailPage() {
           fetchTransactions();
         }}
       />
+
+      {/* Edit Holding Modal */}
+      <Modal isOpen={editHoldingModal.isOpen} onClose={editHoldingModal.onClose}>
+        <ModalContent>
+          <ModalHeader>Edit Holding — {editingHolding?.symbol}</ModalHeader>
+          <ModalBody className="gap-4">
+            <Input
+              label="Quantity"
+              placeholder="0.00"
+              type="number"
+              value={editQty}
+              onValueChange={setEditQty}
+            />
+            <Input
+              label="Average Buy Price (USD)"
+              placeholder="0.00"
+              type="number"
+              value={editAvgPrice}
+              onValueChange={setEditAvgPrice}
+            />
+          </ModalBody>
+          <ModalFooter>
+            <Button variant="flat" onPress={editHoldingModal.onClose}>
+              Cancel
+            </Button>
+            <Button
+              color="primary"
+              isDisabled={!editQty || !editAvgPrice}
+              isLoading={editLoading}
+              onPress={handleEditHolding}
+            >
+              Save
+            </Button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
+
+      {/* Edit Transaction Modal */}
+      <Modal isOpen={editTxModal.isOpen} onClose={editTxModal.onClose}>
+        <ModalContent>
+          <ModalHeader>Edit Transaction — {editingTx?.symbol}</ModalHeader>
+          <ModalBody className="gap-4">
+            <div className="grid grid-cols-2 gap-4">
+              <Input
+                label="Quantity"
+                placeholder="0.00"
+                type="number"
+                value={editTxQty}
+                onValueChange={setEditTxQty}
+              />
+              <Input
+                label="Price (USD)"
+                placeholder="0.00"
+                type="number"
+                value={editTxPrice}
+                onValueChange={setEditTxPrice}
+              />
+            </div>
+            <Input
+              label="Fee (USD)"
+              placeholder="0.00"
+              type="number"
+              value={editTxFee}
+              onValueChange={setEditTxFee}
+            />
+            <Input
+              label="Notes"
+              placeholder="Optional notes..."
+              value={editTxNotes}
+              onValueChange={setEditTxNotes}
+            />
+          </ModalBody>
+          <ModalFooter>
+            <Button variant="flat" onPress={editTxModal.onClose}>
+              Cancel
+            </Button>
+            <Button
+              color="primary"
+              isDisabled={!editTxQty || !editTxPrice}
+              isLoading={editTxLoading}
+              onPress={handleEditTx}
+            >
+              Save
+            </Button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
     </div>
-    </BinancePricesProvider>
   );
 }

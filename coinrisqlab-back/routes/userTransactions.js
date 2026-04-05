@@ -162,6 +162,46 @@ api.post('/user/portfolios/:id/transactions', authenticateUser, async (req, res)
   }
 });
 
+// ─── Update Transaction ─────────────────────────────────────────────────────
+
+api.put('/user/portfolios/:id/transactions/:txId', authenticateUser, async (req, res) => {
+  try {
+    const portfolioId = parseInt(req.params.id);
+    if (!(await verifyPortfolioOwnership(portfolioId, req.user.id))) {
+      return res.status(404).json({ data: null, msg: 'Portfolio not found' });
+    }
+
+    const txId = parseInt(req.params.txId);
+    const { quantity, price_usd, fee_usd, notes } = req.body;
+
+    const [result] = await Database.execute(
+      `UPDATE user_transactions
+       SET quantity = COALESCE(?, quantity),
+           price_usd = COALESCE(?, price_usd),
+           fee_usd = COALESCE(?, fee_usd),
+           notes = COALESCE(?, notes)
+       WHERE id = ? AND portfolio_id = ?`,
+      [
+        quantity !== undefined ? quantity : null,
+        price_usd !== undefined ? price_usd : null,
+        fee_usd !== undefined ? fee_usd : null,
+        notes !== undefined ? notes : null,
+        txId,
+        portfolioId,
+      ]
+    );
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ data: null, msg: 'Transaction not found' });
+    }
+
+    res.json({ data: { id: txId } });
+  } catch (error) {
+    log.error(`Update transaction error: ${error.message}`);
+    res.status(500).json({ data: null, msg: 'Failed to update transaction' });
+  }
+});
+
 // ─── Delete Transaction ─────────────────────────────────────────────────────
 
 api.delete('/user/portfolios/:id/transactions/:txId', authenticateUser, async (req, res) => {

@@ -31,6 +31,10 @@ const menuItems = [
     href: "/market-volatility",
   },
   {
+    label: "Portfolio",
+    href: "/dashboard/portfolios",
+  },
+  {
     label: "Methodology",
     href: "/methodology",
   },
@@ -82,6 +86,11 @@ export const Navbar = () => {
         <NavbarItem>
           <Link as={NextLink} color="foreground" href="/market-volatility">
             Market Volatility
+          </Link>
+        </NavbarItem>
+        <NavbarItem>
+          <Link as={NextLink} color="foreground" href="/dashboard/portfolios">
+            Portfolio
           </Link>
         </NavbarItem>
         <NavbarItem>
