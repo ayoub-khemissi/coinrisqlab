@@ -35,13 +35,47 @@ export function BetaPanel({
       ? getBetaInterpretation(data.beta)
       : null;
 
-  // Generate regression line points
-  const regressionLineData = data?.regressionLine
-    ? [
-        { x: data.regressionLine.x1, y: data.regressionLine.y1 },
-        { x: data.regressionLine.x2, y: data.regressionLine.y2 },
-      ]
-    : [];
+  // Compute axis domains from scatter data so the chart fits tightly
+  const scatterDomain = (() => {
+    if (!data?.scatterData || data.scatterData.length === 0) return null;
+    const xs = data.scatterData.map((d) => d.marketReturn);
+    const ys = data.scatterData.map((d) => d.cryptoReturn);
+    const xMin = Math.min(...xs);
+    const xMax = Math.max(...xs);
+    const yMin = Math.min(...ys);
+    const yMax = Math.max(...ys);
+    const xSpan = xMax - xMin;
+    const ySpan = yMax - yMin;
+    // Use the larger span so both axes have the same scale (symmetric feel)
+    const span = Math.max(xSpan, ySpan);
+    const pad = span * 0.15;
+    const xCenter = (xMin + xMax) / 2;
+    const yCenter = (yMin + yMax) / 2;
+
+    return {
+      x: [
+        Math.floor((xCenter - span / 2 - pad) * 10) / 10,
+        Math.ceil((xCenter + span / 2 + pad) * 10) / 10,
+      ] as [number, number],
+      y: [
+        Math.floor((yCenter - span / 2 - pad) * 10) / 10,
+        Math.ceil((yCenter + span / 2 + pad) * 10) / 10,
+      ] as [number, number],
+    };
+  })();
+
+  // Generate regression line points extended to fill the visible domain
+  const regressionLineData = (() => {
+    if (!data?.regressionLine || !scatterDomain) return [];
+    const { slope, intercept } = data.regressionLine;
+    const x1 = scatterDomain.x[0];
+    const x2 = scatterDomain.x[1];
+
+    return [
+      { x: x1, y: intercept + slope * x1 },
+      { x: x2, y: intercept + slope * x2 },
+    ];
+  })();
 
   const sharpeColor =
     data?.sharpeRatio != null
@@ -183,8 +217,9 @@ export function BetaPanel({
                 <ComposedChart margin={{ bottom: 20 }}>
                   <CartesianGrid opacity={0.1} strokeDasharray="3 3" />
                   <XAxis
+                    allowDataOverflow
                     dataKey="x"
-                    domain={["auto", "auto"]}
+                    domain={scatterDomain?.x ?? ["auto", "auto"]}
                     fontSize={12}
                     label={{
                       value: "Market Return (%)",
@@ -197,8 +232,9 @@ export function BetaPanel({
                     type="number"
                   />
                   <YAxis
+                    allowDataOverflow
                     dataKey="y"
-                    domain={["auto", "auto"]}
+                    domain={scatterDomain?.y ?? ["auto", "auto"]}
                     fontSize={12}
                     label={{
                       value: `${symbol.toUpperCase()} Return (%)`,

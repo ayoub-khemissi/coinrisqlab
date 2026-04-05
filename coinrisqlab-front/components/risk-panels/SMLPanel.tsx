@@ -103,12 +103,19 @@ export function SMLPanel({ cryptoId, symbol }: SMLPanelProps) {
       })()
     : undefined;
 
-  // SML line points clipped to visible X range
-  const visibleSmlLine =
-    data?.smlLine?.filter(
-      (p: { beta: number }) =>
-        xDomain && p.beta >= xDomain[0] && p.beta <= xDomain[1],
-    ) || [];
+  // SML line: only 2 endpoints to ensure the dashed stroke is unbroken
+  const visibleSmlLine = (() => {
+    if (!data?.smlLine || !xDomain) return [];
+    const riskFreeRate = 0;
+    const marketReturn = data.marketReturn / 100; // convert back to decimal
+    const calcExpected = (beta: number) =>
+      Number(((riskFreeRate + beta * (marketReturn - riskFreeRate)) * 100).toFixed(2));
+
+    return [
+      { beta: xDomain[0], expectedReturn: calcExpected(xDomain[0]) },
+      { beta: xDomain[1], expectedReturn: calcExpected(xDomain[1]) },
+    ];
+  })();
 
   return (
     <div className="flex flex-col gap-4">
@@ -139,7 +146,7 @@ export function SMLPanel({ cryptoId, symbol }: SMLPanelProps) {
                 className={`text-3xl font-bold ${data?.alpha && data.alpha >= 0 ? "text-success" : "text-danger"}`}
               >
                 {data?.alpha !== undefined
-                  ? `${data.alpha >= 0 ? "+" : ""}${data.alpha.toFixed(2)}%`
+                  ? `${data.alpha >= 0 ? "+" : ""}${data.alpha.toFixed(4)}%`
                   : "N/A"}
               </p>
               <p className="text-xs text-default-400">Excess return</p>
@@ -150,17 +157,17 @@ export function SMLPanel({ cryptoId, symbol }: SMLPanelProps) {
                 className={`text-2xl font-bold ${data?.cryptoActualReturn && data.cryptoActualReturn >= 0 ? "text-success" : "text-danger"}`}
               >
                 {data?.cryptoActualReturn !== undefined
-                  ? `${data.cryptoActualReturn >= 0 ? "+" : ""}${data.cryptoActualReturn.toFixed(2)}%`
+                  ? `${data.cryptoActualReturn >= 0 ? "+" : ""}${data.cryptoActualReturn.toFixed(4)}%`
                   : "N/A"}
               </p>
             </div>
             <div>
               <p className="text-sm text-default-500 mb-1">
-                Expected Market Mean Return
+                Expected Return
               </p>
               <p className="text-2xl font-bold">
                 {data?.cryptoExpectedReturn !== undefined
-                  ? `${data.cryptoExpectedReturn >= 0 ? "+" : ""}${data.cryptoExpectedReturn.toFixed(2)}%`
+                  ? `${data.cryptoExpectedReturn >= 0 ? "+" : ""}${data.cryptoExpectedReturn.toFixed(4)}%`
                   : "N/A"}
               </p>
               <p className="text-xs text-default-400">Per CAPM (Rf = 0%)</p>
@@ -247,7 +254,7 @@ export function SMLPanel({ cryptoId, symbol }: SMLPanelProps) {
                     domain={yDomain}
                     fontSize={12}
                     label={{
-                      value: "Expected Market Mean Return (%)",
+                      value: "Expected Return (%)",
                       angle: -90,
                       position: "insideLeft",
                       style: { textAnchor: "middle" },
@@ -389,8 +396,8 @@ export function SMLPanel({ cryptoId, symbol }: SMLPanelProps) {
               </div>
               <p className="text-sm text-default-600">
                 {data?.isOvervalued
-                  ? `${symbol.toUpperCase()} is generating ${Math.abs(data?.alpha || 0).toFixed(2)}% less return than expected for its level of systematic risk (beta = ${data?.cryptoBeta?.toFixed(2)}). This suggests the asset may be overvalued or experiencing negative alpha.`
-                  : `${symbol.toUpperCase()} is generating ${Math.abs(data?.alpha || 0).toFixed(2)}% more return than expected for its level of systematic risk (beta = ${data?.cryptoBeta?.toFixed(2)}). This suggests the asset may be undervalued or the strategy is generating positive alpha.`}
+                  ? `${symbol.toUpperCase()} is generating ${Math.abs(data?.alpha || 0).toFixed(4)}% less return than expected for its level of systematic risk (beta = ${data?.cryptoBeta?.toFixed(2)}). This suggests the asset may be overvalued or experiencing negative alpha.`
+                  : `${symbol.toUpperCase()} is generating ${Math.abs(data?.alpha || 0).toFixed(4)}% more return than expected for its level of systematic risk (beta = ${data?.cryptoBeta?.toFixed(2)}). This suggests the asset may be undervalued or the strategy is generating positive alpha.`}
               </p>
             </div>
 
