@@ -2,7 +2,7 @@
 
 import type { Holding, Transaction } from "@/types/user";
 
-import { useEffect, useState, useCallback, useMemo } from "react";
+import { useEffect, useState, useCallback, useMemo, memo } from "react";
 import { useParams } from "next/navigation";
 import { Card, CardBody, CardHeader } from "@heroui/card";
 import { Button } from "@heroui/button";
@@ -41,7 +41,154 @@ import { PriceCell } from "@/components/PriceCell";
 import { AddHoldingModal } from "@/components/dashboard/portfolio/add-holding-modal";
 import { RecordTransactionModal } from "@/components/dashboard/portfolio/record-transaction-modal";
 
-const COLORS = [
+// Memoized allocation chart — prevents re-render when Binance prices update
+const AllocationChart = memo(function AllocationChart({
+  chartData,
+  holdingCount,
+  isMobile,
+}: {
+  chartData: { name: string; value: number; displayValue: string }[];
+  holdingCount: number;
+  isMobile: boolean;
+}) {
+  if (chartData.length === 0) return null;
+
+  return (
+    <Card>
+      <CardHeader>
+        <h3 className="text-sm font-semibold">Allocation</h3>
+      </CardHeader>
+      <CardBody>
+        <div className="flex flex-col lg:flex-row items-center gap-8 w-full">
+          <div
+            className="w-full lg:w-1/2"
+            style={{ height: isMobile ? "275px" : "400px" }}
+          >
+            <ResponsiveContainer
+              height="100%"
+              minHeight={isMobile ? 275 : 400}
+              width="100%"
+            >
+              <PieChart>
+                <Pie
+                  cx="50%"
+                  cy="50%"
+                  data={chartData}
+                  dataKey="value"
+                  innerRadius={isMobile ? 60 : 80}
+                  label={({
+                    cx,
+                    cy,
+                    midAngle,
+                    outerRadius: r,
+                    percent,
+                  }: any) => {
+                    const RADIAN = Math.PI / 180;
+                    const dist = isMobile ? 15 : 25;
+                    const x = cx + (r + dist) * Math.cos(-midAngle * RADIAN);
+                    const y = cy + (r + dist) * Math.sin(-midAngle * RADIAN);
+
+                    return (
+                      <text
+                        className="fill-gray-900 dark:fill-white"
+                        dominantBaseline="central"
+                        fontSize={isMobile ? 10 : 12}
+                        fontWeight={600}
+                        textAnchor={x > cx ? "start" : "end"}
+                        x={x}
+                        y={y}
+                      >
+                        {`${(percent * 100).toFixed(1)}%`}
+                      </text>
+                    );
+                  }}
+                  labelLine={false}
+                  outerRadius={isMobile ? 100 : 140}
+                  stroke="none"
+                >
+                  {chartData.map((_, index) => (
+                    <Cell
+                      key={`cell-${index}`}
+                      fill={ALLOC_COLORS[index % ALLOC_COLORS.length]}
+                    />
+                  ))}
+                </Pie>
+                <Tooltip
+                  content={({ active, payload }: any) => {
+                    if (active && payload && payload.length) {
+                      return (
+                        <div className="bg-content1 border border-default-200 rounded-lg shadow-lg px-4 py-2">
+                          <p className="text-sm font-semibold">
+                            {payload[0].name}
+                          </p>
+                          <p className="text-sm text-default-500">
+                            {payload[0].payload.displayValue}
+                          </p>
+                        </div>
+                      );
+                    }
+
+                    return null;
+                  }}
+                />
+                <text
+                  dominantBaseline="central"
+                  textAnchor="middle"
+                  x="50%"
+                  y="50%"
+                >
+                  <tspan
+                    className="fill-gray-900 dark:fill-white"
+                    dy="-0.5em"
+                    fontSize={isMobile ? 24 : 32}
+                    fontWeight={700}
+                    x="50%"
+                  >
+                    {holdingCount}
+                  </tspan>
+                  <tspan
+                    className="fill-gray-600 dark:fill-gray-400"
+                    dy="1.5em"
+                    fontSize={isMobile ? 12 : 14}
+                    x="50%"
+                  >
+                    Assets
+                  </tspan>
+                </text>
+              </PieChart>
+            </ResponsiveContainer>
+          </div>
+
+          <div className="w-full lg:w-1/2">
+            <ul className="flex flex-col gap-3">
+              {chartData.map((entry, index) => (
+                <li key={`legend-${index}`}>
+                  <div className="flex items-center justify-between gap-4 p-2">
+                    <div className="flex items-center gap-2">
+                      <span
+                        className="w-3 h-3 rounded-full flex-shrink-0"
+                        style={{
+                          backgroundColor:
+                            ALLOC_COLORS[index % ALLOC_COLORS.length],
+                        }}
+                      />
+                      <span className="text-sm font-medium">{entry.name}</span>
+                    </div>
+                    <span className="text-sm text-default-500">
+                      {entry.displayValue}
+                    </span>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+      </CardBody>
+    </Card>
+  );
+});
+
+const ALLOC_COLORS = [
   "#FF6B35", // Orange
   "#3B82F6", // Blue
   "#10B981", // Green
@@ -306,44 +453,52 @@ function PortfolioDetailContent({
     );
   };
 
+  // Chart data based on INITIAL holdings (not live prices) to avoid re-render saccade
   const chartData = useMemo(() => {
-    if (dynamicHoldingsWithAlloc.length === 0) return [];
+    if (holdings.length === 0) return [];
 
-    const sorted = [...dynamicHoldingsWithAlloc].sort(
-      (a, b) => b.current_value - a.current_value,
+    const staticTotal = holdings.reduce(
+      (s, h) => s + (Number(h.current_value) || 0),
+      0,
+    );
+
+    const sorted = [...holdings].sort(
+      (a, b) => (Number(b.current_value) || 0) - (Number(a.current_value) || 0),
     );
 
     const THRESHOLD = 2;
     const aboveThreshold = sorted.filter(
       (h) =>
-        totalValue > 0 && (h.current_value / totalValue) * 100 >= THRESHOLD,
+        staticTotal > 0 &&
+        ((Number(h.current_value) || 0) / staticTotal) * 100 >= THRESHOLD,
     );
     const belowThreshold = sorted.filter(
       (h) =>
-        totalValue <= 0 || (h.current_value / totalValue) * 100 < THRESHOLD,
+        staticTotal <= 0 ||
+        ((Number(h.current_value) || 0) / staticTotal) * 100 < THRESHOLD,
     );
 
     const data = aboveThreshold.map((h) => ({
       name: h.symbol,
-      value: h.current_value,
-      displayValue: `${totalValue > 0 ? ((h.current_value / totalValue) * 100).toFixed(2) : "0.00"}%`,
+      value: Number(h.current_value) || 0,
+      displayValue: `${staticTotal > 0 ? (((Number(h.current_value) || 0) / staticTotal) * 100).toFixed(2) : "0.00"}%`,
     }));
 
     if (belowThreshold.length > 0) {
       const othersValue = belowThreshold.reduce(
-        (sum, h) => sum + h.current_value,
+        (sum, h) => sum + (Number(h.current_value) || 0),
         0,
       );
 
       data.push({
         name: "Others",
         value: othersValue,
-        displayValue: `${totalValue > 0 ? ((othersValue / totalValue) * 100).toFixed(2) : "0.00"}%`,
+        displayValue: `${staticTotal > 0 ? ((othersValue / staticTotal) * 100).toFixed(2) : "0.00"}%`,
       });
     }
 
     return data;
-  }, [dynamicHoldingsWithAlloc, totalValue]);
+  }, [holdings]);
 
   return (
     <div className="space-y-6">
@@ -406,143 +561,12 @@ function PortfolioDetailContent({
         </div>
       </div>
 
-      {/* Allocation chart */}
-      {chartData.length > 0 && (
-        <Card>
-          <CardHeader>
-            <h3 className="text-sm font-semibold">Allocation</h3>
-          </CardHeader>
-          <CardBody>
-            <div className="flex flex-col lg:flex-row items-center gap-8 w-full">
-              <div
-                className="w-full lg:w-1/2"
-                style={{ height: isMobile ? "275px" : "400px" }}
-              >
-                <ResponsiveContainer
-                  height="100%"
-                  minHeight={isMobile ? 275 : 400}
-                  width="100%"
-                >
-                  <PieChart>
-                    <Pie
-                      cx="50%"
-                      cy="50%"
-                      data={chartData}
-                      dataKey="value"
-                      innerRadius={isMobile ? 60 : 80}
-                      label={({
-                        cx,
-                        cy,
-                        midAngle,
-                        outerRadius: r,
-                        percent,
-                      }: any) => {
-                        const RADIAN = Math.PI / 180;
-                        const dist = isMobile ? 15 : 25;
-                        const x =
-                          cx + (r + dist) * Math.cos(-midAngle * RADIAN);
-                        const y =
-                          cy + (r + dist) * Math.sin(-midAngle * RADIAN);
-
-                        return (
-                          <text
-                            className="fill-gray-900 dark:fill-white"
-                            dominantBaseline="central"
-                            fontSize={isMobile ? 10 : 12}
-                            fontWeight={600}
-                            textAnchor={x > cx ? "start" : "end"}
-                            x={x}
-                            y={y}
-                          >
-                            {`${(percent * 100).toFixed(1)}%`}
-                          </text>
-                        );
-                      }}
-                      labelLine={false}
-                      outerRadius={isMobile ? 100 : 140}
-                      stroke="none"
-                    >
-                      {chartData.map((_, index) => (
-                        <Cell
-                          key={`cell-${index}`}
-                          fill={COLORS[index % COLORS.length]}
-                        />
-                      ))}
-                    </Pie>
-                    <Tooltip
-                      content={({ active, payload }: any) => {
-                        if (active && payload && payload.length) {
-                          return (
-                            <div className="bg-content1 border border-default-200 rounded-lg shadow-lg px-4 py-2">
-                              <p className="text-sm font-semibold">
-                                {payload[0].name}
-                              </p>
-                              <p className="text-sm text-default-500">
-                                {payload[0].payload.displayValue}
-                              </p>
-                            </div>
-                          );
-                        }
-
-                        return null;
-                      }}
-                    />
-                    <text
-                      dominantBaseline="central"
-                      textAnchor="middle"
-                      x="50%"
-                      y="50%"
-                    >
-                      <tspan
-                        className="fill-gray-900 dark:fill-white"
-                        dy="-0.5em"
-                        fontSize={isMobile ? 24 : 32}
-                        fontWeight={700}
-                        x="50%"
-                      >
-                        {holdings.length}
-                      </tspan>
-                      <tspan
-                        className="fill-gray-600 dark:fill-gray-400"
-                        dy="1.5em"
-                        fontSize={isMobile ? 12 : 14}
-                        x="50%"
-                      >
-                        Assets
-                      </tspan>
-                    </text>
-                  </PieChart>
-                </ResponsiveContainer>
-              </div>
-
-              <div className="w-full lg:w-1/2">
-                <ul className="flex flex-col gap-3">
-                  {chartData.map((entry, index) => (
-                    <li key={`legend-${index}`}>
-                      <div className="flex items-center justify-between gap-4 p-2">
-                        <div className="flex items-center gap-2">
-                          <span
-                            className="w-3 h-3 rounded-full flex-shrink-0"
-                            style={{
-                              backgroundColor: COLORS[index % COLORS.length],
-                            }}
-                          />
-                          <span className="text-sm font-medium">
-                            {entry.name}
-                          </span>
-                        </div>
-                        <span className="text-sm text-default-500">
-                          {entry.displayValue}
-                        </span>
-                      </div>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            </div>
-          </CardBody>
-        </Card>
-      )}
+      {/* Allocation chart — memoized to prevent re-render on Binance price updates */}
+      <AllocationChart
+        chartData={chartData}
+        holdingCount={holdings.length}
+        isMobile={isMobile}
+      />
 
       {/* Tabs */}
       <Tabs selectedKey={tab} onSelectionChange={(key) => setTab(String(key))}>
