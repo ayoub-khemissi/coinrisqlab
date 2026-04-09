@@ -21,6 +21,11 @@ import {
   calculateKurtosis,
 } from '../utils/riskMetrics.js';
 import { getDateFilter } from '../utils/queryHelpers.js';
+import {
+  computeAnalyticsBundle,
+  getLatestBetaMap,
+  getIndexLogReturnsMap,
+} from '../utils/userPortfolioAnalytics.js';
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -669,156 +674,32 @@ api.get('/user/portfolios/:id/analytics-bundle', authenticateUser, async (req, r
     }
 
     const cryptoIds = holdings.map(h => h.crypto_id);
-    const weights = holdings.map(h => h.weight);
-    const totalValue = holdings[0].totalValue;
 
-    // ── Shared data: aligned returns (fetched once) ──────────────────────
-    const { returnsByCrypto, alignedDates } = await getAlignedReturns(cryptoIds, '90d');
-    const hasEnoughData = alignedDates.length >= 10;
+    // ── Shared data: aligned returns + beta map (fetched once) ───────────
+    // Pro-only: fetch the index returns in parallel (needed for beta/alpha regression).
+    const [{ returnsByCrypto, alignedDates }, betaMap, indexReturnMap] = await Promise.all([
+      getAlignedReturns(cryptoIds, '90d'),
+      getLatestBetaMap(cryptoIds),
+      isPro ? getIndexLogReturnsMap() : Promise.resolve({}),
+    ]);
 
-    // ── Shared: beta map (fetched once) ─────────────────────────────────
-    const [betaRows] = await Database.execute(
-      `SELECT cb.crypto_id, cb.beta FROM crypto_beta cb
-       INNER JOIN (
-         SELECT crypto_id, MAX(date) AS max_date FROM crypto_beta
-         WHERE crypto_id IN (${cryptoIds.map(() => '?').join(',')})
-         GROUP BY crypto_id
-       ) latest ON cb.crypto_id = latest.crypto_id AND cb.date = latest.max_date`,
-      cryptoIds
-    );
-    const betaMap = {};
-    for (const row of betaRows) betaMap[row.crypto_id] = parseFloat(row.beta);
+    // ── Compute everything via the shared pure function ──────────────────
+    // This is the single source of truth shared with
+    // commands/calculateUserPortfolioAnalytics.js (historization) and
+    // commands/exportUserPortfolioAnalyticsValidation.js (business validation CSV).
+    const { bundle } = computeAnalyticsBundle({
+      holdings,
+      returnsByCrypto,
+      alignedDates,
+      betaMap,
+      indexReturnMap,
+      computeProMetrics: isPro,
+    });
 
-    let portfolioBeta = 0;
-    for (let i = 0; i < holdings.length; i++) {
-      portfolioBeta += weights[i] * (betaMap[cryptoIds[i]] || 1);
-    }
-
-    // ── Volatility ──────────────────────────────────────────────────────
-    if (hasEnoughData) {
-      const assets = cryptoIds.map(id => ({ id, returns: returnsByCrypto[id] }));
-      const covMatrix = buildCovarianceMatrix(assets);
-      const dailyVol = calcPortfolioVol(weights, covMatrix);
-      const annualVol = annualizeVolatility(dailyVol);
-
-      const constituents = holdings.map((h, i) => {
-        const returns = returnsByCrypto[h.crypto_id] || [];
-        const indivDailyVol = standardDeviation(returns);
-        const indivAnnualVol = annualizeVolatility(indivDailyVol);
-        return {
-          crypto_id: h.crypto_id, symbol: h.symbol, name: h.crypto_name, image_url: h.image_url,
-          weight: Number(h.weight.toFixed(4)),
-          daily_volatility: Number(indivDailyVol.toFixed(6)),
-          annualized_volatility: Number((indivAnnualVol * 100).toFixed(2)),
-          current_value: Number((h.current_value || 0).toFixed(2)),
-        };
-      });
-
-      const weightedAvgVol = weights.reduce((sum, w, i) => sum + w * standardDeviation(assets[i].returns), 0);
-      const diversificationBenefit = weightedAvgVol > 0 ? Number((((weightedAvgVol - dailyVol) / weightedAvgVol) * 100).toFixed(2)) : 0;
-
-      result.volatility = {
-        dailyVolatility: Number(dailyVol.toFixed(6)),
-        annualizedVolatility: Number((annualVol * 100).toFixed(2)),
-        beta: Number(portfolioBeta.toFixed(4)),
-        holdingCount: holdings.length,
-        dataPoints: alignedDates.length,
-        diversificationBenefit,
-        constituents,
-      };
-
-
-      // ── Pro: Risk Metrics (reuse assets, covMatrix, portfolioReturns) ──
-      if (isPro) {
-        const portfolioReturns = alignedDates.map((_, dayIdx) => {
-          let dayReturn = 0;
-          for (let i = 0; i < cryptoIds.length; i++) {
-            dayReturn += weights[i] * returnsByCrypto[cryptoIds[i]][dayIdx];
-          }
-          return dayReturn;
-        });
-
-        const var95 = calculateVaR(portfolioReturns, 95);
-        const var99 = calculateVaR(portfolioReturns, 99);
-        const cvar95 = calculateCVaR(portfolioReturns, 95);
-        const cvar99 = calculateCVaR(portfolioReturns, 99);
-        const sharpe = calculateSharpeRatio(portfolioReturns);
-        const skewness = calculateSkewness(portfolioReturns);
-        const kurtosis = calculateKurtosis(portfolioReturns);
-        const meanReturn = mean(portfolioReturns);
-        const dailyStd = standardDeviation(portfolioReturns);
-
-
-        // Alpha/Beta vs index
-        const [indexReturns] = await Database.execute(`
-          SELECT date, log_return FROM (
-            SELECT date, LN(index_level / LAG(index_level) OVER (ORDER BY date)) as log_return
-            FROM (
-              SELECT DATE(snapshot_date) as date,
-                SUBSTRING_INDEX(GROUP_CONCAT(index_level ORDER BY snapshot_date DESC), ',', 1) + 0 as index_level
-              FROM index_history ih INNER JOIN index_config ic ON ih.index_config_id = ic.id
-              WHERE ic.index_name = 'CoinRisqLab 80' AND DATE(snapshot_date) < CURDATE()
-              GROUP BY DATE(snapshot_date)
-            ) daily
-          ) with_returns WHERE log_return IS NOT NULL ORDER BY date ASC
-        `);
-
-        const indexReturnMap = {};
-        for (const row of indexReturns) {
-          const dateStr = row.date instanceof Date ? row.date.toISOString().slice(0, 10) : String(row.date);
-          indexReturnMap[dateStr] = parseFloat(row.log_return);
-        }
-
-        const alignedP = [], alignedM = [];
-        for (let i = 0; i < alignedDates.length; i++) {
-          if (indexReturnMap[alignedDates[i]] !== undefined) {
-            alignedP.push(portfolioReturns[i]);
-            alignedM.push(indexReturnMap[alignedDates[i]]);
-          }
-        }
-        const betaAlpha = calculateBetaAlpha(alignedP, alignedM);
-
-        result.riskMetrics = {
-          var95: Number((var95 * 100).toFixed(4)),
-          var99: Number((var99 * 100).toFixed(4)),
-          cvar95: Number((cvar95 * 100).toFixed(4)),
-          cvar99: Number((cvar99 * 100).toFixed(4)),
-          sharpe: Number(sharpe.toFixed(4)),
-          beta: betaAlpha.beta,
-          alpha: Number((betaAlpha.alpha * 36500).toFixed(4)),
-          skewness, kurtosis,
-          returnStats: {
-            meanDaily: Number((meanReturn * 100).toFixed(4)),
-            annualized: Number((meanReturn * 36500).toFixed(2)),
-            dailyStd: Number((dailyStd * 100).toFixed(4)),
-            min: Number((Math.min(...portfolioReturns) * 100).toFixed(4)),
-            max: Number((Math.max(...portfolioReturns) * 100).toFixed(4)),
-          },
-          diversificationBenefit,
-          dailyVolatility: Number(dailyVol.toFixed(6)),
-          annualizedVolatility: Number((annualVol * 100).toFixed(2)),
-          dataPoints: alignedDates.length,
-        };
-
-        // ── Pro: Correlation ────────────────────────────────────────────
-        if (cryptoIds.length >= 2) {
-          const n = cryptoIds.length;
-          const matrix = Array(n).fill(null).map(() => Array(n).fill(0));
-          for (let i = 0; i < n; i++) {
-            for (let j = 0; j < n; j++) {
-              if (i === j) { matrix[i][j] = 1; }
-              else {
-                const cov = calcCovariance(returnsByCrypto[cryptoIds[i]], returnsByCrypto[cryptoIds[j]]);
-                const std1 = standardDeviation(returnsByCrypto[cryptoIds[i]]);
-                const std2 = standardDeviation(returnsByCrypto[cryptoIds[j]]);
-                matrix[i][j] = std1 > 0 && std2 > 0 ? Number((cov / (std1 * std2)).toFixed(4)) : 0;
-              }
-            }
-          }
-          result.correlation = { symbols: holdings.map(h => h.symbol), matrix, dataPoints: alignedDates.length };
-        }
-      }
-    }
+    result.volatility = bundle.volatility;
+    result.riskMetrics = bundle.riskMetrics;
+    result.correlation = bundle.correlation;
+    result.stressTest = bundle.stressTest;
 
     // ── Performance (snapshots — lightweight) ───────────────────────────
     let period = '30d';
@@ -869,16 +750,6 @@ api.get('/user/portfolios/:id/analytics-bundle', authenticateUser, async (req, r
       portfolio24hReturn: Number(portfolio24hReturn.toFixed(2)),
       benchmark24hReturn: Number(benchmark24hReturn.toFixed(2)),
     };
-
-    // ── Stress Test (lightweight — just uses betas) ─────────────────────
-    if (isPro) {
-      const stressResults = calculateStressTest(portfolioBeta, totalValue);
-      const holdingImpacts = holdings.map(h => {
-        const beta = betaMap[h.crypto_id] || 1;
-        return { crypto_id: h.crypto_id, symbol: h.symbol, name: h.crypto_name, value: h.current_value, beta, scenarios: calculateStressTest(beta, h.current_value) };
-      });
-      result.stressTest = { portfolioBeta: Number(portfolioBeta.toFixed(4)), totalValue: Number(totalValue.toFixed(2)), portfolioScenarios: stressResults, holdingImpacts };
-    }
 
     res.json({ data: result });
     log.debug(`Analytics bundle: ${Date.now() - startTime}ms, ${alignedDates.length} points, pro=${isPro}`);

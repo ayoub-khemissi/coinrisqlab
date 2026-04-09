@@ -131,9 +131,39 @@ The `fetchOHLC.js` script uses CoinGecko's `/coins/{id}/market_chart` endpoint t
 # Portfolio value snapshots (02:30, after risk metrics)
 30 2 * * * cd /home/ubuntu/coinrisqlab/coinrisqlab/coinrisqlab-back && node commands/snapshotPortfolios.js
 
+# User portfolio analytics historization (02:45, after snapshots)
+# Historizes all metrics displayed on /dashboard/portfolios/[id]/analytics so the
+# business team can verify calculations against the UI. Uses the same shared module
+# (utils/userPortfolioAnalytics.js) as the /analytics-bundle API route → values in DB
+# are guaranteed to match what the user sees on the page.
+45 2 * * * cd /home/ubuntu/coinrisqlab/coinrisqlab/coinrisqlab-back && node commands/calculateUserPortfolioAnalytics.js
+
 # Clean expired user sessions (weekly, Sunday 04:00)
 0 4 * * 0 cd /home/ubuntu/coinrisqlab/coinrisqlab/coinrisqlab-back && node commands/cleanExpiredSessions.js
 ```
+
+## User Portfolio Analytics Validation Export
+
+`commands/exportUserPortfolioAnalyticsValidation.js` is an on-demand CLI tool for
+the business team. It re-runs the shared calculation module for a given portfolio
+and produces a CSV with raw inputs, intermediate steps and final metrics, plus a
+cross-check against the row persisted by the nightly job.
+
+```bash
+node commands/exportUserPortfolioAnalyticsValidation.js <portfolio_id>
+```
+
+The generated CSV includes, for the given portfolio:
+- Portfolio + user metadata
+- Base parameters (window, formulas, annualization)
+- Composition (quantities, prices, weights, betas, individual vols)
+- Aligned log returns matrix (all constituents + synthetic portfolio return per day)
+- Covariance matrix and portfolio volatility derivation
+- Sorted portfolio returns → VaR 95/99, CVaR 95/99
+- Sharpe, Skewness, Kurtosis with formulas
+- Beta/Alpha OLS regression vs CoinRisqLab 80
+- Correlation matrix of constituents
+- DB row cross-check (field-by-field OK/DIFF) against `user_portfolio_analytics`
 
 ### Crontab Notes:
 

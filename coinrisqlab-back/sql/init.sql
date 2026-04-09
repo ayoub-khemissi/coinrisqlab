@@ -514,6 +514,68 @@ CREATE TABLE IF NOT EXISTS `user_portfolio_snapshots` (
     UNIQUE KEY `idx_portfolio_date` (`portfolio_id`, `snapshot_date`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- User portfolio analytics — Daily analytics snapshot per portfolio
+-- Historizes the exact values served by /user/portfolios/:id/analytics-bundle
+-- so the business can verify that what is displayed matches what is stored.
+CREATE TABLE IF NOT EXISTS `user_portfolio_analytics` (
+    `id` BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    `portfolio_id` INT UNSIGNED NOT NULL,
+    `date` DATE NOT NULL COMMENT 'Date for which analytics are calculated',
+    `window_days` INT UNSIGNED NOT NULL DEFAULT 90 COMMENT 'Actual number of aligned data points used (capped at 90)',
+    `total_value_usd` DECIMAL(40, 8) NOT NULL,
+    `num_holdings` INT UNSIGNED NOT NULL,
+    `data_points` INT UNSIGNED NOT NULL,
+    `daily_volatility` DECIMAL(20, 12) NULL COMMENT 'sqrt(w^T * Σ * w)',
+    `annualized_volatility` DECIMAL(20, 12) NULL,
+    `weighted_avg_volatility` DECIMAL(20, 12) NULL,
+    `diversification_benefit` DECIMAL(20, 12) NULL,
+    `mean_daily_return` DECIMAL(20, 12) NULL,
+    `daily_std` DECIMAL(20, 12) NULL,
+    `min_return` DECIMAL(20, 12) NULL,
+    `max_return` DECIMAL(20, 12) NULL,
+    `annualized_return` DECIMAL(20, 12) NULL,
+    `var_95` DECIMAL(20, 12) NULL,
+    `var_99` DECIMAL(20, 12) NULL,
+    `cvar_95` DECIMAL(20, 12) NULL,
+    `cvar_99` DECIMAL(20, 12) NULL,
+    `skewness` DECIMAL(20, 12) NULL,
+    `kurtosis` DECIMAL(20, 12) NULL,
+    `sharpe_ratio` DECIMAL(20, 12) NULL,
+    `portfolio_beta_weighted` DECIMAL(20, 12) NULL COMMENT 'Σ w_i * β_i',
+    `beta_regression` DECIMAL(20, 12) NULL COMMENT 'Beta from OLS(portfolio, index)',
+    `alpha_regression` DECIMAL(20, 12) NULL,
+    `r_squared` DECIMAL(20, 12) NULL,
+    `correlation_with_index` DECIMAL(20, 12) NULL,
+    `beta_alpha_observations` INT UNSIGNED NULL,
+    `correlation_matrix` JSON NULL,
+    `calculation_duration_ms` INT UNSIGNED NULL,
+    `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY `fk_upa_portfolio_idx` (`portfolio_id`) REFERENCES `user_portfolios`(`id`) ON DELETE CASCADE,
+    UNIQUE KEY `idx_portfolio_date_window` (`portfolio_id`, `date`, `window_days`),
+    KEY `idx_date` (`date`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- User portfolio analytics constituents — Per-holding breakdown used by the parent row
+CREATE TABLE IF NOT EXISTS `user_portfolio_analytics_constituents` (
+    `id` BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    `user_portfolio_analytics_id` BIGINT UNSIGNED NOT NULL,
+    `crypto_id` INT UNSIGNED NOT NULL,
+    `weight` DECIMAL(20, 12) NOT NULL,
+    `quantity` DECIMAL(30, 18) NOT NULL,
+    `avg_buy_price` DECIMAL(30, 18) NULL,
+    `current_price` DECIMAL(30, 18) NULL,
+    `current_value_usd` DECIMAL(40, 8) NULL,
+    `daily_volatility` DECIMAL(20, 12) NULL,
+    `annualized_volatility` DECIMAL(20, 12) NULL,
+    `beta` DECIMAL(20, 12) NULL,
+    `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY `fk_upac_analytics_idx` (`user_portfolio_analytics_id`) REFERENCES `user_portfolio_analytics`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY `fk_upac_crypto_idx` (`crypto_id`) REFERENCES `cryptocurrencies`(`id`) ON DELETE CASCADE,
+    UNIQUE KEY `idx_analytics_crypto` (`user_portfolio_analytics_id`, `crypto_id`),
+    KEY `idx_crypto_id` (`crypto_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 COMMIT;
 
 SET FOREIGN_KEY_CHECKS = 1;
