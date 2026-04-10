@@ -44,15 +44,15 @@ async function exportVolatilityValidationData() {
     // ========================================
     log.info('Fetching log returns sample...');
 
-    // Select top 5 cryptos by market cap that have log returns
+    // Select top 5 cryptos by rank in the latest CoinRisqLab 80 index snapshot
+    // (much faster than scanning all of market_data — uses index_constituents)
     const [topCryptos] = await Database.execute(`
-      SELECT DISTINCT c.id, c.name, c.symbol
+      SELECT c.id, c.name, c.symbol
       FROM cryptocurrencies c
-      INNER JOIN crypto_log_returns clr ON c.id = clr.crypto_id
-      INNER JOIN market_data md ON c.id = md.crypto_id
-      WHERE md.price_usd > 0
-      GROUP BY c.id, c.name, c.symbol
-      ORDER BY MAX(md.price_usd * md.circulating_supply) DESC
+      INNER JOIN index_constituents ic ON ic.crypto_id = c.id
+      WHERE ic.index_history_id = (SELECT MAX(id) FROM index_history WHERE index_config_id = 1)
+        AND EXISTS (SELECT 1 FROM crypto_log_returns clr WHERE clr.crypto_id = c.id LIMIT 1)
+      ORDER BY ic.rank_position ASC
       LIMIT 5
     `);
 

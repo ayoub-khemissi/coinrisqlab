@@ -26,26 +26,28 @@ async function exportCryptoPrices(priceDays, coingeckoIds) {
       throw new Error('Usage: node commands/exportCryptoPrices.js <days> <coingecko_id1> <coingecko_id2> ...');
     }
 
-    log.info(`Starting crypto prices export for: ${coingeckoIds.join(', ')} (${priceDays} days)`);
+    // To compute N daily log returns we need N+1 consecutive prices
+    const expectedPrices = priceDays + 1;
+    log.info(`Starting crypto prices export for: ${coingeckoIds.join(', ')} (${priceDays} days = ${expectedPrices} prices)`);
 
-    // 1. Get the N most recent dates available in ohlc (D-1 to D-N)
+    // 1. Get the N+1 most recent dates available in ohlc (D-1 to D-(N+1))
     const [allDates] = await Database.execute(`
       SELECT DISTINCT DATE(timestamp) as price_date
       FROM ohlc
       WHERE DATE(timestamp) < CURDATE()
       ORDER BY price_date DESC
-      LIMIT ${priceDays}
+      LIMIT ${expectedPrices}
     `);
 
     const expectedDateCount = allDates.length;
-    log.info(`Found ${expectedDateCount} distinct dates in ohlc (last ${priceDays} days up to D-1)`);
+    log.info(`Found ${expectedDateCount} distinct dates in ohlc (last ${expectedPrices} days up to D-1)`);
 
     if (expectedDateCount === 0) {
       throw new Error('No price data found in ohlc');
     }
 
-    if (expectedDateCount < priceDays) {
-      log.warn(`Only ${expectedDateCount} days available, expected ${priceDays}`);
+    if (expectedDateCount < expectedPrices) {
+      log.warn(`Only ${expectedDateCount} days available, expected ${expectedPrices}`);
     }
 
     // Get the date range for filtering

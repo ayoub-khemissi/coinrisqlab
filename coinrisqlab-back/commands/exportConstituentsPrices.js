@@ -39,7 +39,9 @@ async function exportConstituentsPrices() {
       ? pvDate.toISOString().split('T')[0]
       : new Date(pvDate).toISOString().split('T')[0];
 
-    log.info(`Using portfolio volatility from ${pvDateStr} (${windowDays} days window)`);
+    // To compute N daily log returns we need N+1 consecutive prices
+    const expectedPrices = windowDays + 1;
+    log.info(`Using portfolio volatility from ${pvDateStr} (${windowDays} days window = ${expectedPrices} prices)`);
 
     // 2. Get constituents from portfolio_volatility_constituents (same source as frontend)
     const [constituents] = await Database.execute(`
@@ -64,7 +66,27 @@ async function exportConstituentsPrices() {
 
     const cryptoIds = constituents.map(c => c.crypto_id);
 
-    // 3. Get historical closing prices for constituents from ohlc (D-1 to D-1-window, excludes today)
+    // 3. Get the N+1 most recent dates available in ohlc (excludes today)
+    //    Use a LIMIT-based approach so the export is robust even if the most
+    //    recent days are not yet present in ohlc.
+    const [recentDates] = await Database.execute(`
+      SELECT DISTINCT DATE(timestamp) as price_date
+      FROM ohlc
+      WHERE DATE(timestamp) < CURDATE()
+      ORDER BY price_date DESC
+      LIMIT ${expectedPrices}
+    `);
+
+    if (recentDates.length === 0) {
+      throw new Error('No price data found in ohlc');
+    }
+    if (recentDates.length < expectedPrices) {
+      log.warn(`Only ${recentDates.length} days available, expected ${expectedPrices}`);
+    }
+
+    const minDate = recentDates[recentDates.length - 1].price_date;
+    const maxDate = recentDates[0].price_date;
+
     const [pricesData] = await Database.execute(`
       SELECT
         o.crypto_id,
@@ -72,10 +94,10 @@ async function exportConstituentsPrices() {
         o.close as price_usd
       FROM ohlc o
       WHERE o.crypto_id IN (${cryptoIds.join(',')})
-        AND DATE(o.timestamp) >= DATE_SUB(DATE_SUB(CURDATE(), INTERVAL 1 DAY), INTERVAL ${windowDays} DAY)
-        AND DATE(o.timestamp) <= DATE_SUB(CURDATE(), INTERVAL 1 DAY)
+        AND DATE(o.timestamp) >= ?
+        AND DATE(o.timestamp) <= ?
       ORDER BY o.timestamp ASC
-    `);
+    `, [minDate, maxDate]);
 
     log.info(`Retrieved ${pricesData.length} price records`);
 
