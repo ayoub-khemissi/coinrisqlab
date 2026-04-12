@@ -10,6 +10,7 @@ import {
   TrendingUp,
   BarChart2,
   GitBranch,
+  GitCompare,
   ArrowLeft,
   BookOpen,
   AlertTriangle,
@@ -28,6 +29,7 @@ const RISK_METRICS_SECTIONS = [
   "cvar",
   "beta",
   "alpha",
+  "correlation",
   "sharpe",
   "sml",
   "skewness",
@@ -135,6 +137,14 @@ export default function RiskMetricsMethodologyPage() {
                   onPress={() => scrollToSection("alpha")}
                 >
                   Alpha
+                </Button>
+                <Button
+                  className="justify-start pl-6"
+                  size="sm"
+                  variant={activeSection === "correlation" ? "flat" : "light"}
+                  onPress={() => scrollToSection("correlation")}
+                >
+                  Correlation
                 </Button>
                 <Button
                   className="justify-start pl-6"
@@ -822,6 +832,122 @@ export default function RiskMetricsMethodologyPage() {
                       market exposure
                     </li>
                   </ul>
+                </div>
+              </div>
+            </CardBody>
+          </Card>
+
+          {/* Correlation Section */}
+          <Card id="correlation">
+            <CardBody className="p-8">
+              <div className="flex items-center justify-center sm:justify-start gap-3 mb-4">
+                <GitCompare className="w-6 h-6 text-primary" />
+                <h2 className="text-2xl font-bold text-center sm:text-left">
+                  Pairwise Correlation
+                </h2>
+              </div>
+              <p className="text-default-600 mb-6">
+                Correlation measures the strength and direction of the linear
+                relationship between the returns of two assets. It is the
+                standardized version of covariance and ranges from{" "}
+                <strong>-1</strong> (perfect inverse) to <strong>+1</strong>{" "}
+                (perfect co-movement).
+              </p>
+
+              <div className="space-y-6">
+                <div>
+                  <h3 className="font-semibold mb-2">
+                    Pearson Correlation Coefficient
+                  </h3>
+                  <p className="text-default-600 text-sm mb-3">
+                    Given two series of daily log returns{" "}
+                    <Math>{"R_A"}</Math> and <Math>{"R_B"}</Math>:
+                  </p>
+                  <Math display>
+                    {
+                      "\\rho_{A,B} = \\frac{\\text{Cov}(R_A, R_B)}{\\sigma_A \\times \\sigma_B} = \\frac{\\sum_{t=1}^{n}(R_{A,t} - \\bar{R}_A)(R_{B,t} - \\bar{R}_B)}{\\sqrt{\\sum_{t=1}^{n}(R_{A,t} - \\bar{R}_A)^2} \\times \\sqrt{\\sum_{t=1}^{n}(R_{B,t} - \\bar{R}_B)^2}}"
+                    }
+                  </Math>
+                </div>
+
+                <div>
+                  <h3 className="font-semibold mb-2">Interpretation</h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div className="border-l-4 border-danger pl-4">
+                      <h4 className="font-bold">
+                        <Math>{"\\rho \\to +1"}</Math>
+                      </h4>
+                      <p className="text-default-600 text-sm">
+                        Strong positive correlation. The two assets tend to move
+                        in the same direction. Holding both provides limited
+                        diversification.
+                      </p>
+                    </div>
+                    <div className="border-l-4 border-default-300 pl-4">
+                      <h4 className="font-bold">
+                        <Math>{"\\rho \\approx 0"}</Math>
+                      </h4>
+                      <p className="text-default-600 text-sm">
+                        No linear relationship. Movements are independent. Good
+                        diversification potential.
+                      </p>
+                    </div>
+                    <div className="border-l-4 border-success pl-4">
+                      <h4 className="font-bold">
+                        <Math>{"\\rho \\to -1"}</Math>
+                      </h4>
+                      <p className="text-default-600 text-sm">
+                        Strong negative correlation. The assets move in opposite
+                        directions. Excellent diversification — rare in crypto.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div>
+                  <h3 className="font-semibold mb-2">Key Details</h3>
+                  <ul className="list-disc pl-5 space-y-1 text-default-600 text-sm">
+                    <li>
+                      Computed from <strong>aligned daily log returns</strong>{" "}
+                      — only dates where both assets have data are used.
+                    </li>
+                    <li>
+                      Uses <strong>sample covariance</strong> (n-1 denominator)
+                      for an unbiased estimate.
+                    </li>
+                    <li>
+                      The correlation matrix on the portfolio analytics page
+                      applies this formula to every pair of holdings.
+                    </li>
+                    <li>
+                      Correlation does not imply causation — two assets can be
+                      highly correlated due to shared market exposure without
+                      directly influencing each other.
+                    </li>
+                    <li>
+                      In crypto markets, most major assets are positively
+                      correlated (typically <Math>{"0.4 < \\rho < 0.9"}</Math>)
+                      because they share the overall market sentiment.
+                    </li>
+                  </ul>
+                </div>
+
+                <div className="bg-default-100 p-4 rounded-lg">
+                  <h4 className="font-semibold mb-2">
+                    Relation to Covariance & Volatility
+                  </h4>
+                  <p className="text-default-600 text-sm mb-2">
+                    Covariance, correlation, and volatility are related:
+                  </p>
+                  <Math display>
+                    {"\\text{Cov}(R_A, R_B) = \\rho_{A,B} \\times \\sigma_A \\times \\sigma_B"}
+                  </Math>
+                  <p className="text-default-600 text-sm mt-2">
+                    This relationship is at the heart of{" "}
+                    <strong>portfolio volatility</strong> calculation: the
+                    off-diagonal entries of the covariance matrix equal{" "}
+                    <Math>{"\\rho_{i,j} \\sigma_i \\sigma_j"}</Math>.
+                  </p>
                 </div>
               </div>
             </CardBody>
