@@ -16,7 +16,7 @@ import {
   TableRow,
   TableCell,
 } from "@heroui/table";
-import { Activity, TrendingDown } from "lucide-react";
+import { Activity, TrendingDown, Shield } from "lucide-react";
 import clsx from "clsx";
 import {
   LineChart,
@@ -610,224 +610,151 @@ export default function PortfolioAnalyticsPage() {
         />
       ) : (
         <>
-          {/* Risk Metrics — grouped by category */}
+          {/* Risk Metrics — clean layout */}
           {riskMetrics && (
             <>
-              {/* Category A: VaR + CVaR + Return Statistics */}
+              {/* Value at Risk */}
               <Card>
-                <CardHeader>
-                  <h3 className="text-sm font-semibold">
-                    Value at Risk & Return Statistics
-                  </h3>
-                </CardHeader>
-                <CardBody>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-                    <div className="p-3 rounded-lg bg-default-50">
-                      <p className="text-xs text-default-500">VaR 95%</p>
-                      <p className="text-lg font-bold text-danger">
-                        -{riskMetrics.var95}%
-                      </p>
-                    </div>
-                    <div className="p-3 rounded-lg bg-default-50">
-                      <p className="text-xs text-default-500">VaR 99%</p>
-                      <p className="text-lg font-bold text-danger">
-                        -{riskMetrics.var99}%
-                      </p>
-                    </div>
-                    <div className="p-3 rounded-lg bg-default-50">
-                      <p className="text-xs text-default-500">CVaR 95%</p>
-                      <p className="text-lg font-bold text-danger">
-                        -{riskMetrics.cvar95}%
-                      </p>
-                    </div>
-                    <div className="p-3 rounded-lg bg-default-50">
-                      <p className="text-xs text-default-500">CVaR 99%</p>
-                      <p className="text-lg font-bold text-danger">
-                        -{riskMetrics.cvar99}%
-                      </p>
-                    </div>
-                  </div>
-                  {riskMetrics.returnStats && (
-                    <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mt-4 pt-4 border-t border-default-100">
-                      <div>
-                        <p className="text-xs text-default-500">
-                          Mean Daily Return
-                        </p>
-                        <p
-                          className={clsx(
-                            "text-sm font-bold",
-                            riskMetrics.returnStats.meanDaily >= 0
-                              ? "text-success"
-                              : "text-danger",
-                          )}
-                        >
-                          {riskMetrics.returnStats.meanDaily >= 0 ? "+" : ""}
-                          {riskMetrics.returnStats.meanDaily}%
-                        </p>
-                      </div>
-                      <div>
-                        <p className="text-xs text-default-500">
-                          Annualized Return
-                        </p>
-                        <p
-                          className={clsx(
-                            "text-sm font-bold",
-                            riskMetrics.returnStats.annualized >= 0
-                              ? "text-success"
-                              : "text-danger",
-                          )}
-                        >
-                          {riskMetrics.returnStats.annualized >= 0 ? "+" : ""}
-                          {riskMetrics.returnStats.annualized}%
-                        </p>
-                      </div>
-                      <div>
-                        <p className="text-xs text-default-500">
-                          Daily Std Dev
-                        </p>
-                        <p className="text-sm font-bold">
-                          {riskMetrics.returnStats.dailyStd}%
-                        </p>
-                      </div>
-                      <div>
-                        <p className="text-xs text-default-500">
-                          Min Daily Return
-                        </p>
-                        <p className="text-sm font-bold text-danger">
-                          {riskMetrics.returnStats.min}%
-                        </p>
-                      </div>
-                      <div>
-                        <p className="text-xs text-default-500">
-                          Max Daily Return
-                        </p>
-                        <p className="text-sm font-bold text-success">
-                          {riskMetrics.returnStats.max}%
-                        </p>
-                      </div>
-                    </div>
-                  )}
-                </CardBody>
-              </Card>
-
-              {/* Category B: Beta + Sharpe + Alpha */}
-              <Card>
-                <CardHeader>
-                  <h3 className="text-sm font-semibold">
-                    Risk-Adjusted Performance
-                  </h3>
-                </CardHeader>
-                <CardBody>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <div className="p-4 rounded-lg bg-default-50">
-                      <p className="text-xs text-default-500">Beta</p>
-                      <p className="text-2xl font-bold">
-                        {riskMetrics.beta ?? volatility?.beta ?? "—"}
-                      </p>
-                      <p className="text-xs text-default-400 mt-1">
-                        {(riskMetrics.beta ?? volatility?.beta ?? 1) > 1
-                          ? "More volatile than market"
-                          : "Less volatile than market"}
-                      </p>
-                    </div>
-                    <div className="p-4 rounded-lg bg-default-50">
-                      <p className="text-xs text-default-500">Sharpe Ratio</p>
-                      <p className="text-2xl font-bold">{riskMetrics.sharpe}</p>
-                      <p className="text-xs text-default-400 mt-1">
-                        {riskMetrics.sharpe > 1
-                          ? "Good risk-adjusted return"
-                          : riskMetrics.sharpe > 0
-                            ? "Positive risk-adjusted return"
-                            : "Negative risk-adjusted return"}
-                      </p>
-                    </div>
-                    <div className="p-4 rounded-lg bg-default-50">
-                      <p className="text-xs text-default-500">
-                        Alpha (annualized)
-                      </p>
-                      <p
-                        className={clsx(
-                          "text-2xl font-bold",
-                          (riskMetrics.alpha || 0) >= 0
-                            ? "text-success"
-                            : "text-danger",
-                        )}
-                      >
-                        {(riskMetrics.alpha || 0) >= 0 ? "+" : ""}
-                        {riskMetrics.alpha || 0}%
-                      </p>
-                      <p className="text-xs text-default-400 mt-1">
-                        {(riskMetrics.alpha || 0) > 0
-                          ? "Outperforming benchmark"
-                          : "Underperforming benchmark"}
-                      </p>
-                    </div>
-                  </div>
-                </CardBody>
-              </Card>
-
-              {/* Category D: Kurtosis + Skewness */}
-              <Card>
-                <CardHeader>
-                  <h3 className="text-sm font-semibold">Distribution Shape</h3>
-                </CardHeader>
-                <CardBody>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="p-4 rounded-lg bg-default-50">
-                      <p className="text-xs text-default-500">Skewness</p>
-                      <p className="text-2xl font-bold">
-                        {riskMetrics.skewness ?? "—"}
-                      </p>
-                      <p className="text-xs text-default-400 mt-1">
-                        {(riskMetrics.skewness || 0) < -0.5
-                          ? "Negatively skewed — heavier left tail (more extreme losses)"
-                          : (riskMetrics.skewness || 0) > 0.5
-                            ? "Positively skewed — heavier right tail"
-                            : "Approximately symmetric"}
-                      </p>
-                    </div>
-                    <div className="p-4 rounded-lg bg-default-50">
-                      <p className="text-xs text-default-500">
-                        Excess Kurtosis
-                      </p>
-                      <p className="text-2xl font-bold">
-                        {riskMetrics.kurtosis ?? "—"}
-                      </p>
-                      <p className="text-xs text-default-400 mt-1">
-                        {(riskMetrics.kurtosis || 0) > 3
-                          ? "Leptokurtic — fat tails, higher risk of extreme events"
-                          : (riskMetrics.kurtosis || 0) > 0
-                            ? "Slightly fat-tailed"
-                            : "Platykurtic — thin tails"}
-                      </p>
-                    </div>
-                  </div>
-                </CardBody>
-              </Card>
-
-              {/* Diversification Benefit */}
-              <Card>
-                <CardHeader>
-                  <h3 className="text-sm font-semibold">
-                    Diversification Benefit
-                  </h3>
-                </CardHeader>
-                <CardBody>
-                  <div className="flex items-center gap-3">
-                    <div className="flex-1 bg-default-100 rounded-full h-3">
-                      <div
-                        className="bg-success rounded-full h-3 transition-all"
-                        style={{
-                          width: `${Math.min(riskMetrics.diversificationBenefit, 100)}%`,
-                        }}
-                      />
-                    </div>
-                    <span className="text-lg font-bold">
-                      {riskMetrics.diversificationBenefit}%
+                <CardBody className="p-6">
+                  <div className="flex items-center gap-2 mb-5">
+                    <Shield className="text-danger" size={20} />
+                    <h3 className="font-semibold">Value at Risk</h3>
+                    <span className="text-xs text-default-400 ml-auto">
+                      {riskMetrics.dataPoints} observations
                     </span>
                   </div>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    {[
+                      { label: "VaR 95%", value: riskMetrics.var95, desc: "Max daily loss with 95% confidence" },
+                      { label: "VaR 99%", value: riskMetrics.var99, desc: "Max daily loss with 99% confidence" },
+                      { label: "CVaR 95%", value: riskMetrics.cvar95, desc: "Expected loss beyond VaR 95%" },
+                      { label: "CVaR 99%", value: riskMetrics.cvar99, desc: "Expected loss beyond VaR 99%" },
+                    ].map((item) => (
+                      <div key={item.label} className="text-center p-4 rounded-xl bg-danger/5 border border-danger/10">
+                        <p className="text-xs text-default-500 mb-1">{item.label}</p>
+                        <p className="text-2xl font-bold text-danger">-{item.value}%</p>
+                        <p className="text-[10px] text-default-400 mt-1">{item.desc}</p>
+                      </div>
+                    ))}
+                  </div>
                 </CardBody>
               </Card>
+
+              {/* Performance Summary — 3 key metrics */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <Card>
+                  <CardBody className="p-6 text-center">
+                    <p className="text-xs text-default-500 mb-2">Sharpe Ratio</p>
+                    <p className="text-4xl font-bold">{riskMetrics.sharpe}</p>
+                    <Chip
+                      className="mt-2 mx-auto"
+                      color={riskMetrics.sharpe > 1 ? "success" : riskMetrics.sharpe > 0 ? "warning" : "danger"}
+                      size="sm"
+                      variant="flat"
+                    >
+                      {riskMetrics.sharpe > 1 ? "Good" : riskMetrics.sharpe > 0 ? "Moderate" : "Poor"}
+                    </Chip>
+                  </CardBody>
+                </Card>
+                <Card>
+                  <CardBody className="p-6 text-center">
+                    <p className="text-xs text-default-500 mb-2">Regression Beta</p>
+                    <p className="text-4xl font-bold">{riskMetrics.beta ?? volatility?.beta ?? "—"}</p>
+                    <p className="text-xs text-default-400 mt-2">
+                      {(riskMetrics.beta ?? volatility?.beta ?? 1) > 1 ? "Amplifies market moves" : "Dampens market moves"}
+                    </p>
+                  </CardBody>
+                </Card>
+                <Card>
+                  <CardBody className="p-6 text-center">
+                    <p className="text-xs text-default-500 mb-2">Alpha (annualized)</p>
+                    <p className={clsx("text-4xl font-bold", (riskMetrics.alpha || 0) >= 0 ? "text-success" : "text-danger")}>
+                      {(riskMetrics.alpha || 0) >= 0 ? "+" : ""}{riskMetrics.alpha || 0}%
+                    </p>
+                    <p className="text-xs text-default-400 mt-2">
+                      {(riskMetrics.alpha || 0) > 0 ? "Outperforming benchmark" : "Underperforming benchmark"}
+                    </p>
+                  </CardBody>
+                </Card>
+              </div>
+
+              {/* Return Statistics + Distribution — side by side */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Return Stats */}
+                {riskMetrics.returnStats && (
+                  <Card>
+                    <CardBody className="p-6">
+                      <h3 className="font-semibold mb-4">Return Statistics</h3>
+                      <div className="space-y-3">
+                        {[
+                          { label: "Annualized Return", value: `${riskMetrics.returnStats.annualized >= 0 ? "+" : ""}${riskMetrics.returnStats.annualized}%`, color: riskMetrics.returnStats.annualized >= 0 ? "text-success" : "text-danger" },
+                          { label: "Mean Daily Return", value: `${riskMetrics.returnStats.meanDaily >= 0 ? "+" : ""}${riskMetrics.returnStats.meanDaily}%`, color: riskMetrics.returnStats.meanDaily >= 0 ? "text-success" : "text-danger" },
+                          { label: "Daily Std Dev", value: `${riskMetrics.returnStats.dailyStd}%`, color: "" },
+                          { label: "Best Day", value: `+${riskMetrics.returnStats.max}%`, color: "text-success" },
+                          { label: "Worst Day", value: `${riskMetrics.returnStats.min}%`, color: "text-danger" },
+                        ].map((item) => (
+                          <div key={item.label} className="flex items-center justify-between py-1 border-b border-default-50 last:border-0">
+                            <span className="text-sm text-default-500">{item.label}</span>
+                            <span className={clsx("text-sm font-semibold", item.color)}>{item.value}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </CardBody>
+                  </Card>
+                )}
+
+                {/* Distribution Shape */}
+                <Card>
+                  <CardBody className="p-6">
+                    <h3 className="font-semibold mb-4">Distribution Shape</h3>
+                    <div className="space-y-5">
+                      <div>
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="text-sm text-default-500">Skewness</span>
+                          <span className="text-sm font-semibold">{riskMetrics.skewness ?? "—"}</span>
+                        </div>
+                        <p className="text-xs text-default-400">
+                          {(riskMetrics.skewness || 0) < -0.5
+                            ? "Negatively skewed — heavier left tail (more extreme losses)"
+                            : (riskMetrics.skewness || 0) > 0.5
+                              ? "Positively skewed — heavier right tail"
+                              : "Approximately symmetric distribution"}
+                        </p>
+                      </div>
+                      <div>
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="text-sm text-default-500">Excess Kurtosis</span>
+                          <span className="text-sm font-semibold">{riskMetrics.kurtosis ?? "—"}</span>
+                        </div>
+                        <p className="text-xs text-default-400">
+                          {(riskMetrics.kurtosis || 0) > 3
+                            ? "Leptokurtic — fat tails, higher risk of extreme events"
+                            : (riskMetrics.kurtosis || 0) > 0
+                              ? "Slightly fat-tailed compared to normal distribution"
+                              : "Platykurtic — thin tails, fewer extreme events"}
+                        </p>
+                      </div>
+                      <div>
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="text-sm text-default-500">Diversification</span>
+                          <span className="text-sm font-semibold">{riskMetrics.diversificationBenefit}%</span>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <div className="flex-1 bg-default-100 rounded-full h-2">
+                            <div
+                              className="bg-success rounded-full h-2 transition-all"
+                              style={{ width: `${Math.min(riskMetrics.diversificationBenefit, 100)}%` }}
+                            />
+                          </div>
+                        </div>
+                        <p className="text-xs text-default-400 mt-1">
+                          Volatility reduction from holding multiple assets
+                        </p>
+                      </div>
+                    </div>
+                  </CardBody>
+                </Card>
+              </div>
             </>
           )}
 
