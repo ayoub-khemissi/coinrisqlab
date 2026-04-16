@@ -35,32 +35,21 @@ export function BetaPanel({
       ? getBetaInterpretation(data.beta)
       : null;
 
-  // Compute axis domains from scatter data so the chart fits tightly
+  // Compute axis domains centered on origin (0,0) with symmetric padding
   const scatterDomain = (() => {
     if (!data?.scatterData || data.scatterData.length === 0) return null;
     const xs = data.scatterData.map((d) => d.marketReturn);
     const ys = data.scatterData.map((d) => d.cryptoReturn);
-    const xMin = Math.min(...xs);
-    const xMax = Math.max(...xs);
-    const yMin = Math.min(...ys);
-    const yMax = Math.max(...ys);
-    const xSpan = xMax - xMin;
-    const ySpan = yMax - yMin;
-    // Use the larger span so both axes have the same scale (symmetric feel)
-    const span = Math.max(xSpan, ySpan);
-    const pad = span * 0.15;
-    const xCenter = (xMin + xMax) / 2;
-    const yCenter = (yMin + yMax) / 2;
+    const xAbsMax = Math.max(Math.abs(Math.min(...xs)), Math.abs(Math.max(...xs)));
+    const yAbsMax = Math.max(Math.abs(Math.min(...ys)), Math.abs(Math.max(...ys)));
+    // Use the larger absolute range so origin is centered and both axes match
+    const absMax = Math.max(xAbsMax, yAbsMax);
+    const pad = absMax * 0.3; // generous padding for a dezoom effect
+    const extent = Math.ceil((absMax + pad) * 10) / 10;
 
     return {
-      x: [
-        Math.floor((xCenter - span / 2 - pad) * 10) / 10,
-        Math.ceil((xCenter + span / 2 + pad) * 10) / 10,
-      ] as [number, number],
-      y: [
-        Math.floor((yCenter - span / 2 - pad) * 10) / 10,
-        Math.ceil((yCenter + span / 2 + pad) * 10) / 10,
-      ] as [number, number],
+      x: [-extent, extent] as [number, number],
+      y: [-extent, extent] as [number, number],
     };
   })();
 
@@ -210,44 +199,39 @@ export function BetaPanel({
             </div>
           ) : (
             <div
-              className="transition-opacity"
+              className="transition-opacity relative"
               style={{ opacity: isLoading ? 0.5 : 1 }}
             >
-              <ResponsiveContainer height={350} width="100%">
-                <ComposedChart margin={{ bottom: 20 }}>
-                  <CartesianGrid opacity={0.1} strokeDasharray="3 3" />
+              {/* Beta & Alpha overlay top-right */}
+              {data && (
+                <div className="absolute top-2 right-4 z-10">
+                  <div className="bg-content1/80 backdrop-blur-sm rounded-lg px-2.5 py-1 border border-default-200 flex items-center gap-2 text-[11px]">
+                    <span className="text-default-400">Beta</span>
+                    <span className="font-semibold">{data.beta?.toFixed(2) ?? "—"}</span>
+                    <span className="text-default-200">|</span>
+                    <span className="text-default-400">Alpha</span>
+                    <span className={`font-semibold ${(data.alpha || 0) >= 0 ? "text-success" : "text-danger"}`}>
+                      {data.alpha != null ? `${data.alpha >= 0 ? "+" : ""}${data.alpha.toFixed(4)}%` : "—"}
+                    </span>
+                  </div>
+                </div>
+              )}
+              <ResponsiveContainer height={500} width="100%">
+                <ComposedChart margin={{ top: 10, right: 30, bottom: 10, left: 30 }}>
+                  {/* Hidden external axes — only for domain and data binding */}
                   <XAxis
                     allowDataOverflow
+                    hide
                     dataKey="x"
                     domain={scatterDomain?.x ?? ["auto", "auto"]}
-                    fontSize={12}
-                    label={{
-                      value: "Market Return (%)",
-                      position: "bottom",
-                      offset: 0,
-                    }}
-                    stroke="#888"
-                    tickFormatter={(value) => `${value.toFixed(1)}%`}
-                    tickLine={false}
                     type="number"
                   />
                   <YAxis
                     allowDataOverflow
+                    hide
                     dataKey="y"
                     domain={scatterDomain?.y ?? ["auto", "auto"]}
-                    fontSize={12}
-                    label={{
-                      value: `${symbol.toUpperCase()} Return (%)`,
-                      angle: -90,
-                      position: "insideLeft",
-                      style: { textAnchor: "middle" },
-                      dx: 15,
-                    }}
-                    stroke="#888"
-                    tickFormatter={(value) => `${value.toFixed(1)}%`}
-                    tickLine={false}
                     type="number"
-                    width={80}
                   />
                   <RechartsTooltip
                     content={({ active, payload }) => {
@@ -276,8 +260,19 @@ export function BetaPanel({
                       return null;
                     }}
                   />
-                  <ReferenceLine stroke="#888" strokeOpacity={0.5} x={0} />
-                  <ReferenceLine stroke="#888" strokeOpacity={0.5} y={0} />
+                  {/* Central axes through origin */}
+                  <ReferenceLine
+                    label={{ value: `Market Return (%)`, position: "insideBottomRight", fontSize: 10, fill: "#888" }}
+                    stroke="#888"
+                    strokeOpacity={0.6}
+                    y={0}
+                  />
+                  <ReferenceLine
+                    label={{ value: `${symbol.toUpperCase()} Return (%)`, position: "insideTopLeft", fontSize: 10, fill: "#888" }}
+                    stroke="#888"
+                    strokeOpacity={0.6}
+                    x={0}
+                  />
                   {/* Scatter points */}
                   <Scatter
                     data={data.scatterData.map((d) => ({
