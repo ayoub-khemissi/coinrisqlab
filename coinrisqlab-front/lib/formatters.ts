@@ -19,6 +19,9 @@ export function formatUSD(value: number | string): string {
 export function formatCryptoPrice(value: number | string): string {
   const num = typeof value === "string" ? parseFloat(value) : value;
 
+  // Tiered max precision; min:2 keeps the currency convention (cents always
+  // shown), max strips trailing zeros so the displayed value matches the
+  // source precision (e.g. WBT $54.44 stays $54.44, not $54.4400).
   if (num >= 100) {
     return new Intl.NumberFormat("en-US", {
       style: "currency",
@@ -32,73 +35,62 @@ export function formatCryptoPrice(value: number | string): string {
     return new Intl.NumberFormat("en-US", {
       style: "currency",
       currency: "USD",
-      minimumFractionDigits: 4,
+      minimumFractionDigits: 2,
       maximumFractionDigits: 4,
     }).format(num);
   }
 
-  if (num >= 0.1) {
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: "USD",
-      minimumFractionDigits: 4,
-      maximumFractionDigits: 4,
-    }).format(num);
+  // Below $1: 4+ leading zeros after the decimal → subscript notation
+  // ($0.0₄1234 = 0.00001234). Otherwise show plain decimals capped at 6.
+  let raw = num.toString();
+  if (raw.includes("e")) {
+    // Expand scientific notation without float64 noise (e.g. 6.1e-9 → "0.0000000061")
+    const [mantissa, expStr] = raw.toLowerCase().split("e");
+    const exp = parseInt(expStr, 10);
+    const cleanMantissa = mantissa.replace(".", "");
+    const decimalPosition = mantissa.includes(".")
+      ? mantissa.indexOf(".")
+      : mantissa.length;
+    const totalShift = -exp - decimalPosition;
+
+    raw = "0." + "0".repeat(Math.max(0, totalShift)) + cleanMantissa;
   }
 
-  if (num >= 0.01) {
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: "USD",
-      minimumFractionDigits: 4,
-      maximumFractionDigits: 4,
-    }).format(num);
+  const match = raw.match(/^0\.(0*)(\d+)$/);
+  if (!match) return `$${raw}`;
+
+  const zeros = match[1];
+  const significant = match[2];
+
+  if (zeros.length >= 4) {
+    const subscriptDigits = [
+      "₀",
+      "₁",
+      "₂",
+      "₃",
+      "₄",
+      "₅",
+      "₆",
+      "₇",
+      "₈",
+      "₉",
+    ];
+    const subscript = zeros.length
+      .toString()
+      .split("")
+      .map((d) => subscriptDigits[parseInt(d)])
+      .join("");
+    const significantDigits = significant.substring(0, 4);
+
+    return `$0.0${subscript}${significantDigits}`;
   }
 
-  const str = num.toFixed(20);
-  const match = str.match(/^0\.(0+)([1-9]\d*)/);
-
-  if (match) {
-    const zeros = match[1];
-    const significantPart = match[2];
-
-    if (zeros.length >= 4) {
-      const subscriptDigits = [
-        "₀",
-        "₁",
-        "₂",
-        "₃",
-        "₄",
-        "₅",
-        "₆",
-        "₇",
-        "₈",
-        "₉",
-      ];
-      const subscript = zeros.length
-        .toString()
-        .split("")
-        .map((d) => subscriptDigits[parseInt(d)])
-        .join("");
-      const significantDigits = significantPart.substring(0, 4);
-
-      return `$0.0${subscript}${significantDigits}`;
-    } else {
-      const fullNumber = "0." + zeros + significantPart;
-      const significantDigits = significantPart.substring(0, 8);
-
-      return (
-        "$" +
-        fullNumber.substring(0, 2 + zeros.length + significantDigits.length)
-      );
-    }
-  }
-
+  // 0-5 leading zeros: show real value, capped at 6 decimals total, padded to min 2.
   return new Intl.NumberFormat("en-US", {
     style: "currency",
     currency: "USD",
     minimumFractionDigits: 2,
-    maximumFractionDigits: 8,
+    maximumFractionDigits: 6,
   }).format(num);
 }
 
