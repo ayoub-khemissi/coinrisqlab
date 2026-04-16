@@ -6,7 +6,11 @@ import { Button } from "@heroui/button";
 import { Chip } from "@heroui/chip";
 import { Select, SelectItem } from "@heroui/select";
 import { Autocomplete, AutocompleteItem } from "@heroui/autocomplete";
-import { Search, X } from "lucide-react";
+import { Tooltip } from "@heroui/tooltip";
+import { Search, X, Info } from "lucide-react";
+
+const WINDOW_MIN = 1;
+const WINDOW_MAX = 730;
 
 import { CsvDownloadButton } from "./csv-download-button";
 
@@ -18,7 +22,9 @@ interface DataFiltersProps {
   showDateRange?: boolean;
   showWindowSelector?: boolean;
   showPortfolioSelector?: boolean;
-  windowOptions?: number[];
+  /** Default value for the free-input window field. Per methodology:
+   *  Volatility/Distribution/SML = 90, VaR/Beta/Sharpe = 365. */
+  defaultWindow?: number;
   portfolios?: Array<{ id: number; name: string; email: string }>;
   csvEndpoint: string;
   csvFilename: string;
@@ -40,7 +46,7 @@ export function DataFilters({
   showDateRange = true,
   showWindowSelector = false,
   showPortfolioSelector = false,
-  windowOptions = [90],
+  defaultWindow = 90,
   portfolios,
   csvEndpoint,
   csvFilename,
@@ -55,7 +61,8 @@ export function DataFilters({
   const [crypto2, setCrypto2] = useState<string>("");
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
-  const [windowDays, setWindowDays] = useState(windowOptions[0] || 90);
+  const [windowDays, setWindowDays] = useState<number>(defaultWindow);
+  const [windowInput, setWindowInput] = useState<string>(String(defaultWindow));
   const [portfolioId, setPortfolioId] = useState<number | undefined>(
     portfolios?.[0]?.id,
   );
@@ -116,36 +123,58 @@ export function DataFilters({
       {/* Filter inputs row */}
       <div className="flex flex-wrap items-end gap-3">
         {showCryptoSearch && !showCryptoSearch2 && (
-          <Autocomplete
+          <Select
+            aria-label="Add cryptocurrencies"
             className="w-72"
-            defaultItems={allCryptos}
-            label="Add cryptocurrency"
-            placeholder="Search by name or symbol..."
+            classNames={{ trigger: "cursor-pointer" }}
+            items={allCryptos}
+            label="Add cryptocurrencies"
+            placeholder="Pick one or more..."
+            renderValue={(items) => (
+              <span className="text-xs text-default-500">
+                {items.length} selected
+              </span>
+            )}
+            selectedKeys={
+              new Set(selectedCryptoObjects.map((c) => c.coingecko_id))
+            }
+            selectionMode="multiple"
             size="sm"
-            onSelectionChange={(key) => {
-              if (key) handleAddCrypto(String(key));
+            onSelectionChange={(keys) => {
+              const ids = Array.from(keys as Set<string>);
+
+              setSelectedCryptoObjects(
+                allCryptos.filter((c) => ids.includes(c.coingecko_id)),
+              );
             }}
+            // closeOnSelect is supported at runtime by HeroUI Select but missing
+            // from its TS types — keeps the popover open while picking multiple.
+            {...({ closeOnSelect: false } as Record<string, unknown>)}
           >
             {(item) => (
-              <AutocompleteItem
+              <SelectItem
                 key={item.coingecko_id}
                 textValue={`${item.symbol} ${item.name}`}
               >
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 min-w-0">
                   {item.image_url && (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img
                       alt={item.symbol}
-                      className="w-5 h-5 rounded-full"
+                      className="w-5 h-5 rounded-full flex-shrink-0"
                       src={item.image_url}
                     />
                   )}
-                  <span className="font-medium">{item.symbol}</span>
-                  <span className="text-default-400 text-sm">{item.name}</span>
+                  <span className="font-medium flex-shrink-0">
+                    {item.symbol}
+                  </span>
+                  <span className="text-default-400 text-sm truncate">
+                    {item.name}
+                  </span>
                 </div>
-              </AutocompleteItem>
+              </SelectItem>
             )}
-          </Autocomplete>
+          </Select>
         )}
 
         {showCryptoSearch2 && (
@@ -165,17 +194,19 @@ export function DataFilters({
                   key={item.coingecko_id}
                   textValue={`${item.symbol} ${item.name}`}
                 >
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 min-w-0">
                     {item.image_url && (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img
                         alt={item.symbol}
-                        className="w-5 h-5 rounded-full"
+                        className="w-5 h-5 rounded-full flex-shrink-0"
                         src={item.image_url}
                       />
                     )}
-                    <span className="font-medium">{item.symbol}</span>
-                    <span className="text-default-400 text-sm">
+                    <span className="font-medium flex-shrink-0">
+                      {item.symbol}
+                    </span>
+                    <span className="text-default-400 text-sm truncate">
                       {item.name}
                     </span>
                   </div>
@@ -197,17 +228,19 @@ export function DataFilters({
                   key={item.coingecko_id}
                   textValue={`${item.symbol} ${item.name}`}
                 >
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 min-w-0">
                     {item.image_url && (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img
                         alt={item.symbol}
-                        className="w-5 h-5 rounded-full"
+                        className="w-5 h-5 rounded-full flex-shrink-0"
                         src={item.image_url}
                       />
                     )}
-                    <span className="font-medium">{item.symbol}</span>
-                    <span className="text-default-400 text-sm">
+                    <span className="font-medium flex-shrink-0">
+                      {item.symbol}
+                    </span>
+                    <span className="text-default-400 text-sm truncate">
                       {item.name}
                     </span>
                   </div>
@@ -243,23 +276,33 @@ export function DataFilters({
         )}
 
         {showWindowSelector && (
-          <Select
+          <Input
             aria-label="Window"
-            classNames={{ trigger: "cursor-pointer" }}
             className="w-36"
+            endContent={
+              <div className="flex items-center gap-1 text-default-400">
+                <span className="text-xs">days</span>
+                <Tooltip content={`${windowDays + 1} prices needed`}>
+                  <Info className="cursor-help" size={14} />
+                </Tooltip>
+              </div>
+            }
             label="Window"
-            selectedKeys={[String(windowDays)]}
+            max={WINDOW_MAX}
+            min={WINDOW_MIN}
             size="sm"
-            onChange={(e) => {
-              if (e.target.value) setWindowDays(Number(e.target.value));
+            step={1}
+            type="number"
+            value={windowInput}
+            onValueChange={(v) => {
+              setWindowInput(v);
+              const n = parseInt(v, 10);
+
+              if (!isNaN(n) && n >= WINDOW_MIN && n <= WINDOW_MAX) {
+                setWindowDays(n);
+              }
             }}
-          >
-            {windowOptions.map((w) => (
-              <SelectItem key={String(w)} textValue={`${w} days`}>
-                {w} days
-              </SelectItem>
-            ))}
-          </Select>
+          />
         )}
 
         {showPortfolioSelector && portfolios && (

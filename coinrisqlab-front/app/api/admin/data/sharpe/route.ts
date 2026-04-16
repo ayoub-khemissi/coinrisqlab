@@ -16,11 +16,12 @@ export async function GET(request: NextRequest) {
   const cryptos = sp.get("cryptos")?.split(",").filter(Boolean) || [];
   const from = sp.get("from") || "";
   const to = sp.get("to") || "";
+  const windowDays = parseInt(sp.get("window") || "365");
   const limit = parseInt(sp.get("limit") || "50");
   const offset = parseInt(sp.get("offset") || "0");
   const format = sp.get("format");
 
-  const rows = await getSharpe(cryptos, from, to, format === "csv" ? 0 : limit, format === "csv" ? 0 : offset);
+  const rows = await getSharpe(cryptos, from, to, windowDays, format === "csv" ? 0 : limit, format === "csv" ? 0 : offset);
 
   if (format === "csv") {
     const csv = toCsv(rows as Record<string, unknown>[], ["symbol", "name", "date", "window_days", "sharpe_ratio", "mean_return", "std_return", "num_observations"]);
@@ -33,7 +34,7 @@ export async function GET(request: NextRequest) {
     });
   }
 
-  const total = await getSharpeCount(cryptos, from, to);
+  const total = await getSharpeCount(cryptos, from, to, windowDays);
 
   return NextResponse.json({ rows, total, limit, offset });
 }

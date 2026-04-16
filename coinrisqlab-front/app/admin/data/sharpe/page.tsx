@@ -54,6 +54,7 @@ export default function SharpePage() {
     cryptos: string[];
     from: string;
     to: string;
+    window: number;
   }) => {
     const params: Record<string, string> = {};
 
@@ -61,6 +62,7 @@ export default function SharpePage() {
       params.cryptos = filters.cryptos.join(",");
     if (filters.from) params.from = filters.from;
     if (filters.to) params.to = filters.to;
+    params.window = String(filters.window);
     setCurrentParams(params);
     setPage(1);
     fetchData(params, 1);
@@ -75,8 +77,10 @@ export default function SharpePage() {
     <div className="space-y-6">
       <h1 className="text-xl font-bold">Sharpe Ratio</h1>
       <DataFilters
+        showWindowSelector
         csvEndpoint="/api/admin/data/sharpe"
         csvFilename="sharpe_export.csv"
+        defaultWindow={365}
         loading={loading}
         onSearch={handleSearch}
       />

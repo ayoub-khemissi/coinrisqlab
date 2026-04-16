@@ -84,7 +84,7 @@ export default function DistributionPage() {
         csvEndpoint="/api/admin/data/distribution"
         csvFilename="distribution_export.csv"
         loading={loading}
-        windowOptions={[30, 60, 90]}
+        defaultWindow={90}
         onSearch={handleSearch}
       />
       <DataTable

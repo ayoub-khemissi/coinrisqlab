@@ -81,8 +81,8 @@ export default function BetaSmlPage() {
         showWindowSelector
         csvEndpoint={endpoint}
         csvFilename={`${tab}_export.csv`}
+        defaultWindow={365}
         loading={loading}
-        windowOptions={[30, 46, 90]}
         onSearch={handleSearch}
       />
       <DataTable

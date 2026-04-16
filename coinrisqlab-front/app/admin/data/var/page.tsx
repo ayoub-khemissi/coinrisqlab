@@ -63,7 +63,7 @@ export default function VarPage() {
         csvEndpoint="/api/admin/data/var"
         csvFilename="var_cvar_export.csv"
         loading={loading}
-        windowOptions={[90, 180, 365]}
+        defaultWindow={365}
         onSearch={handleSearch}
       />
       <DataTable

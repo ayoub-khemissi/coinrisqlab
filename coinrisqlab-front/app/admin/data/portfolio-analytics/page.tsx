@@ -69,11 +69,13 @@ export default function PortfolioAnalyticsPage() {
   const handleSearch = (filters: {
     from: string;
     to: string;
+    window: number;
     portfolioId?: number;
   }) => {
     if (!filters.portfolioId) return;
     const params: Record<string, string> = {
       portfolioId: String(filters.portfolioId),
+      window: String(filters.window),
     };
 
     if (filters.from) params.from = filters.from;
@@ -94,8 +96,10 @@ export default function PortfolioAnalyticsPage() {
       <DataFilters
         showCryptoSearch={false}
         showPortfolioSelector
+        showWindowSelector
         csvEndpoint="/api/admin/data/portfolio-analytics"
         csvFilename="portfolio_analytics_export.csv"
+        defaultWindow={90}
         loading={loading}
         portfolios={portfolios}
         onSearch={handleSearch}

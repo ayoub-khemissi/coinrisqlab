@@ -79,7 +79,7 @@ export default function VolatilityPage() {
         csvEndpoint={endpoint}
         csvFilename={`${tab}_volatility_export.csv`}
         loading={loading}
-        windowOptions={[30, 60, 90]}
+        defaultWindow={90}
         onSearch={handleSearch}
       />
       <DataTable

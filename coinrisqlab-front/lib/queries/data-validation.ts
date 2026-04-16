@@ -5,12 +5,18 @@ import { db } from "@/lib/db";
 // ─── Crypto Search ──────────────────────────────────────────────────────────
 
 export async function searchCryptos(search: string) {
+  // Match the public crypto table: only include cryptos present in the latest
+  // global market_data snapshot (excludes stale tokens like KPK that dropped
+  // out of the top 500 weeks ago), and order by computed market cap desc.
   const [rows] = await db.execute<RowDataPacket[]>(
-    `SELECT id, symbol, name, coingecko_id, image_url
-     FROM cryptocurrencies
-     WHERE symbol LIKE CONCAT('%', ?, '%') OR name LIKE CONCAT('%', ?, '%')
-     ORDER BY symbol ASC
-     LIMIT 50`,
+    `SELECT c.id, c.symbol, c.name, c.coingecko_id, c.image_url
+     FROM cryptocurrencies c
+     INNER JOIN market_data md ON md.crypto_id = c.id
+     WHERE md.timestamp = (SELECT MAX(timestamp) FROM market_data)
+       AND (md.price_usd * md.circulating_supply) > 0
+       AND (c.symbol LIKE CONCAT('%', ?, '%') OR c.name LIKE CONCAT('%', ?, '%'))
+     ORDER BY (md.price_usd * md.circulating_supply) DESC
+     LIMIT 500`,
     [search, search],
   );
 
@@ -49,7 +55,7 @@ export async function getOhlcPrices(
     INNER JOIN cryptocurrencies c ON o.crypto_id = c.id
     WHERE DATE(o.timestamp) >= ? AND DATE(o.timestamp) <= ?
       ${clause}
-    ORDER BY o.timestamp DESC, c.symbol ASC
+    ORDER BY c.symbol ASC, o.timestamp DESC
     ${limit > 0 ? `LIMIT ${limit} OFFSET ${offset}` : ""}`;
 
   const [rows] = await db.execute<RowDataPacket[]>(sql, [
@@ -95,7 +101,7 @@ export async function getLogReturns(
      FROM crypto_log_returns clr
      INNER JOIN cryptocurrencies c ON clr.crypto_id = c.id
      WHERE clr.date >= ? AND clr.date <= ? ${clause}
-     ORDER BY clr.date DESC, c.symbol ASC
+     ORDER BY c.symbol ASC, clr.date DESC
      ${limit > 0 ? `LIMIT ${limit} OFFSET ${offset}` : ""}`,
     [...dateParams, ...params],
   );
@@ -139,7 +145,7 @@ export async function getVolatility(
      FROM crypto_volatility cv
      INNER JOIN cryptocurrencies c ON cv.crypto_id = c.id
      WHERE cv.date >= ? AND cv.date <= ? AND cv.window_days = ? ${clause}
-     ORDER BY cv.date DESC, c.symbol ASC
+     ORDER BY c.symbol ASC, cv.date DESC
      ${limit > 0 ? `LIMIT ${limit} OFFSET ${offset}` : ""}`,
     [...dateParams, windowDays, ...params],
   );
@@ -219,7 +225,7 @@ export async function getVarCvar(
      FROM crypto_var cv
      INNER JOIN cryptocurrencies c ON cv.crypto_id = c.id
      WHERE cv.date >= ? AND cv.date <= ? AND cv.window_days = ? ${clause}
-     ORDER BY cv.date DESC, c.symbol ASC
+     ORDER BY c.symbol ASC, cv.date DESC
      ${limit > 0 ? `LIMIT ${limit} OFFSET ${offset}` : ""}`,
     [...dateParams, windowDays, ...params],
   );
@@ -264,7 +270,7 @@ export async function getBetaAlpha(
      FROM crypto_beta cb
      INNER JOIN cryptocurrencies c ON cb.crypto_id = c.id
      WHERE cb.date >= ? AND cb.date <= ? AND cb.window_days = ? ${clause}
-     ORDER BY cb.date DESC, c.symbol ASC
+     ORDER BY c.symbol ASC, cb.date DESC
      ${limit > 0 ? `LIMIT ${limit} OFFSET ${offset}` : ""}`,
     [...dateParams, windowDays, ...params],
   );
@@ -309,7 +315,7 @@ export async function getSml(
      FROM crypto_sml cs
      INNER JOIN cryptocurrencies c ON cs.crypto_id = c.id
      WHERE cs.date >= ? AND cs.date <= ? AND cs.window_days = ? ${clause}
-     ORDER BY cs.date DESC, c.symbol ASC
+     ORDER BY c.symbol ASC, cs.date DESC
      ${limit > 0 ? `LIMIT ${limit} OFFSET ${offset}` : ""}`,
     [...dateParams, windowDays, ...params],
   );
@@ -354,7 +360,7 @@ export async function getDistributionStats(
      FROM crypto_distribution_stats cds
      INNER JOIN cryptocurrencies c ON cds.crypto_id = c.id
      WHERE cds.date >= ? AND cds.date <= ? AND cds.window_days = ? ${clause}
-     ORDER BY cds.date DESC, c.symbol ASC
+     ORDER BY c.symbol ASC, cds.date DESC
      ${limit > 0 ? `LIMIT ${limit} OFFSET ${offset}` : ""}`,
     [...dateParams, windowDays, ...params],
   );
@@ -387,6 +393,7 @@ export async function getSharpe(
   cryptos: string[],
   from: string,
   to: string,
+  windowDays: number,
   limit: number,
   offset: number,
 ) {
@@ -397,10 +404,10 @@ export async function getSharpe(
     `SELECT c.symbol, c.name, cs.date, cs.window_days, cs.sharpe_ratio, cs.mean_return, cs.std_return, cs.num_observations
      FROM crypto_sharpe cs
      INNER JOIN cryptocurrencies c ON cs.crypto_id = c.id
-     WHERE cs.date >= ? AND cs.date <= ? ${clause}
-     ORDER BY cs.date DESC, c.symbol ASC
+     WHERE cs.date >= ? AND cs.date <= ? AND cs.window_days = ? ${clause}
+     ORDER BY c.symbol ASC, cs.date DESC
      ${limit > 0 ? `LIMIT ${limit} OFFSET ${offset}` : ""}`,
-    [...dateParams, ...params],
+    [...dateParams, windowDays, ...params],
   );
 
   return rows;
@@ -410,6 +417,7 @@ export async function getSharpeCount(
   cryptos: string[],
   from: string,
   to: string,
+  windowDays: number,
 ) {
   const { clause, params } = buildCryptoFilter(cryptos, "c");
   const dateParams = [from || "2000-01-01", to || "2099-12-31"];
@@ -417,8 +425,8 @@ export async function getSharpeCount(
   const [rows] = await db.execute<RowDataPacket[]>(
     `SELECT COUNT(*) as total FROM crypto_sharpe cs
      INNER JOIN cryptocurrencies c ON cs.crypto_id = c.id
-     WHERE cs.date >= ? AND cs.date <= ? ${clause}`,
-    [...dateParams, ...params],
+     WHERE cs.date >= ? AND cs.date <= ? AND cs.window_days = ? ${clause}`,
+    [...dateParams, windowDays, ...params],
   );
 
   return rows[0].total as number;
@@ -546,6 +554,7 @@ export async function getPortfolioAnalytics(
   portfolioId: number,
   from: string,
   to: string,
+  windowDays: number,
   limit: number,
   offset: number,
 ) {
@@ -559,10 +568,10 @@ export async function getPortfolioAnalytics(
        upa.portfolio_beta_weighted, upa.beta_regression, upa.alpha_regression,
        upa.r_squared, upa.correlation_with_index
      FROM user_portfolio_analytics upa
-     WHERE upa.portfolio_id = ? AND upa.date >= ? AND upa.date <= ?
+     WHERE upa.portfolio_id = ? AND upa.date >= ? AND upa.date <= ? AND upa.window_days = ?
      ORDER BY upa.date DESC
      ${limit > 0 ? `LIMIT ${limit} OFFSET ${offset}` : ""}`,
-    [portfolioId, ...dateParams],
+    [portfolioId, ...dateParams, windowDays],
   );
 
   return rows;
@@ -572,11 +581,12 @@ export async function getPortfolioAnalyticsCount(
   portfolioId: number,
   from: string,
   to: string,
+  windowDays: number,
 ) {
   const [rows] = await db.execute<RowDataPacket[]>(
     `SELECT COUNT(*) as total FROM user_portfolio_analytics
-     WHERE portfolio_id = ? AND date >= ? AND date <= ?`,
-    [portfolioId, from || "2000-01-01", to || "2099-12-31"],
+     WHERE portfolio_id = ? AND date >= ? AND date <= ? AND window_days = ?`,
+    [portfolioId, from || "2000-01-01", to || "2099-12-31", windowDays],
   );
 
   return rows[0].total as number;
