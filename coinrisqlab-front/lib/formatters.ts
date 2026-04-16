@@ -19,12 +19,21 @@ export function formatUSD(value: number | string): string {
 export function formatCryptoPrice(value: number | string): string {
   const num = typeof value === "string" ? parseFloat(value) : value;
 
-  if (num >= 1) {
+  if (num >= 100) {
     return new Intl.NumberFormat("en-US", {
       style: "currency",
       currency: "USD",
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
+    }).format(num);
+  }
+
+  if (num >= 1) {
+    return new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: "USD",
+      minimumFractionDigits: 4,
+      maximumFractionDigits: 4,
     }).format(num);
   }
 
