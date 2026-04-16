@@ -303,9 +303,11 @@ export function calculateStressTest(beta, currentPrice, scenarios = null) {
   const scenariosToUse = scenarios || defaultScenarios;
 
   return scenariosToUse.map(scenario => {
-    // Floor beta at 0: a negative beta would otherwise produce a fake gain
-    // during a market crash (negative shock × negative beta = positive impact).
-    const effectiveBeta = Math.max(beta, 0);
+    // A negative beta would otherwise produce a fake gain in a crash
+    // (negative × negative = positive). In a catastrophe scenario all betas
+    // tend toward 1 in practice, so we apply the raw market shock instead of
+    // amplifying or dampening it for negative-beta assets.
+    const effectiveBeta = beta < 0 ? 1 : beta;
     const expectedImpact = effectiveBeta * scenario.shock;
     const newPrice = currentPrice * (1 + expectedImpact);
     const priceChange = newPrice - currentPrice;

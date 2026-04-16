@@ -4,7 +4,7 @@ import { useState, useMemo, memo } from "react";
 import { Card, CardBody, CardHeader } from "@heroui/card";
 import { Button } from "@heroui/button";
 import { Chip } from "@heroui/chip";
-import { TrendingDown, ShieldCheck } from "lucide-react";
+import { TrendingDown } from "lucide-react";
 import {
   LineChart,
   Line,
@@ -131,16 +131,11 @@ const LiveImpactDetails = memo(function LiveImpactDetails({
 
   if (!impactSummary) return null;
 
-  // Defensive case: beta floored at 0 → asset preserves capital during the crash
-  const isDefensive = Math.abs(activeScenario.expectedImpact) < 0.005;
-
   return (
     <div
       className="mt-4 p-4 rounded-lg border-2"
       style={{
-        borderColor: isDefensive
-          ? "hsl(var(--heroui-success))"
-          : STRESS_SCENARIO_COLORS[activeScenario.id],
+        borderColor: STRESS_SCENARIO_COLORS[activeScenario.id],
       }}
     >
       {/* Scenario info header */}
@@ -169,7 +164,7 @@ const LiveImpactDetails = memo(function LiveImpactDetails({
       {/* Beta-adjusted impact */}
       <div className="text-center mb-2">
         <p className="text-sm text-default-500">
-          Beta-adjusted impact for this asset:
+          Beta-adjusted loss for this asset:
         </p>
       </div>
       <div className="flex items-center justify-center gap-3 sm:gap-8 py-2">
@@ -179,38 +174,24 @@ const LiveImpactDetails = memo(function LiveImpactDetails({
             {formatCryptoPrice(impactSummary.startPrice)}
           </p>
         </div>
-        {isDefensive ? (
-          <ShieldCheck className="text-success flex-shrink-0" size={24} />
-        ) : (
-          <TrendingDown className="text-danger flex-shrink-0" size={24} />
-        )}
+        <TrendingDown className="text-danger flex-shrink-0" size={24} />
         <div className="text-center min-w-0 flex-shrink">
           <p className="text-xs text-default-500 mb-1">Stressed</p>
           <p
-            className="text-lg sm:text-2xl font-bold truncate text-success"
-            style={
-              isDefensive
-                ? undefined
-                : { color: STRESS_SCENARIO_COLORS[activeScenario.id] }
-            }
+            className="text-lg sm:text-2xl font-bold truncate"
+            style={{ color: STRESS_SCENARIO_COLORS[activeScenario.id] }}
           >
             {formatCryptoPrice(impactSummary.endPrice)}
           </p>
         </div>
       </div>
 
-      {/* Result chip */}
+      {/* Loss chip */}
       <div className="text-center mt-2">
-        {isDefensive ? (
-          <Chip color="success" size="lg" variant="flat">
-            Capital preserved (β ≤ 0 floored to 0)
-          </Chip>
-        ) : (
-          <Chip color="danger" size="lg" variant="flat">
-            {impactSummary.lossPercent.toFixed(2)}% loss (
-            {formatCryptoPrice(impactSummary.loss)})
-          </Chip>
-        )}
+        <Chip color="danger" size="lg" variant="flat">
+          {impactSummary.lossPercent.toFixed(2)}% loss (
+          {formatCryptoPrice(impactSummary.loss)})
+        </Chip>
       </div>
     </div>
   );
@@ -257,10 +238,10 @@ export function StressTestPanel({ cryptoId, symbol }: StressTestPanelProps) {
       };
 
       // Calculate stressed price if a scenario is selected.
-      // Beta floored at 0: a defensive (negative-beta) asset would otherwise
-      // appear to gain during a crash, which is misleading.
+      // Negative beta is treated as 1 so the asset takes the raw market shock
+      // (in a catastrophe scenario all betas tend toward 1 in practice).
       if (activeScenario && data.beta != null) {
-        const effectiveBeta = Math.max(data.beta, 0);
+        const effectiveBeta = data.beta < 0 ? 1 : data.beta;
         const impactMultiplier =
           1 + (activeScenario.marketShock / 100) * effectiveBeta;
 
@@ -484,11 +465,13 @@ export function StressTestPanel({ cryptoId, symbol }: StressTestPanelProps) {
               aggregate crypto market return over that period, and use the
               cumulative decline as the market shock. A beta of{" "}
               {data?.beta?.toFixed(2) || "1.0"} means this crypto
-              {data?.beta && data.beta > 1
-                ? ` amplifies market movements by ${((data.beta - 1) * 100).toFixed(0)}%`
-                : data?.beta && data.beta < 1
-                  ? ` dampens market movements by ${((1 - data.beta) * 100).toFixed(0)}%`
-                  : " moves exactly like the market"}
+              {data?.beta != null && data.beta < 0
+                ? " typically moves opposite to the market — but in a crisis all betas tend toward 1, so we apply the raw market shock here"
+                : data?.beta != null && data.beta > 1
+                  ? ` amplifies market movements by ${((data.beta - 1) * 100).toFixed(0)}%`
+                  : data?.beta != null && data.beta < 1
+                    ? ` dampens market movements by ${((1 - data.beta) * 100).toFixed(0)}%`
+                    : " moves exactly like the market"}
               .
             </p>
             <MethodologyLink section="stress-test" variant="full" />
