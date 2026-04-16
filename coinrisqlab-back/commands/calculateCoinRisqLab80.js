@@ -7,6 +7,13 @@ const BASE_LEVEL = 100;
 const MAX_CONSTITUENTS = 80;
 const MIN_VOLUME_24H = 200_000;
 
+// Safety: how many top constituents we protect from transient API misses
+const PROTECTED_TOP_RANK = 20;
+// Max age allowed for last-known-good market_data fallback
+const MAX_FALLBACK_AGE_MS = 60 * 60 * 1000; // 1 hour
+// Max number of fallbacks per snapshot — beyond this, skip the snapshot entirely
+const MAX_FALLBACKS_PER_SNAPSHOT = 3;
+
 /**
  * Main function to calculate the CoinRisqLab 80 Index
  * Now supports retroactive calculation for all missing timestamps
@@ -90,11 +97,16 @@ async function calculateIndexForTimestamp(indexConfig, timestamp, verbose = fals
   log.info(`Calculating index for timestamp: ${timestamp}`);
 
   // Get market data for this specific timestamp
-  const marketData = await getMarketDataForTimestamp(timestamp);
+  let marketData = await getMarketDataForTimestamp(timestamp);
 
   if (marketData.length === 0) {
     throw new Error(`No market data found for timestamp ${timestamp}`);
   }
+
+  // Safety: backfill missing top constituents from last-known-good market_data.
+  // Without this, a transient API miss for a top crypto (ex: ETH) would silently
+  // demote a small-cap into the top N, drastically distorting the index.
+  marketData = await backfillMissingTopConstituents(indexConfig.id, timestamp, marketData);
 
   // Filter out excluded symbols and select top 80 by market cap
   const constituents = selectConstituents(marketData, verbose);
@@ -206,6 +218,113 @@ async function getOrCreateIndexConfig() {
     max_constituents: MAX_CONSTITUENTS,
     is_active: true,
   };
+}
+
+/**
+ * Detect top constituents that are missing from the current market_data fetch
+ * (typically a transient CoinGecko API issue) and backfill them with their
+ * last-known-good market_data row.
+ *
+ * Why: without this safety net, a missing ETH (rank 2) would silently let a
+ * small-cap token climb into the top 80, drastically dropping the index level
+ * for a few cycles before recovering. See
+ * commands/repairCorruptedIndexSnapshots.js for the retroactive fix script.
+ *
+ * Logging: each fallback is logged via log.warn so it shows up in the audit
+ * `log` table. If the number of fallbacks exceeds MAX_FALLBACKS_PER_SNAPSHOT
+ * we throw — the missing snapshot will be retried by a future cron run once
+ * the API recovers.
+ *
+ * @returns {Promise<Array>} marketData augmented with fallback rows
+ */
+async function backfillMissingTopConstituents(indexConfigId, timestamp, marketData) {
+  // Find the most recent valid snapshot before this one
+  const [prevRows] = await Database.execute(
+    `SELECT id FROM index_history
+     WHERE index_config_id = ? AND timestamp < ?
+     ORDER BY timestamp DESC LIMIT 1`,
+    [indexConfigId, timestamp]
+  );
+
+  if (prevRows.length === 0) return marketData; // First snapshot ever — nothing to compare to
+
+  // Get the top N constituents from the previous snapshot
+  const [topConstituents] = await Database.execute(
+    `SELECT crypto_id FROM index_constituents
+     WHERE index_history_id = ?
+     ORDER BY rank_position ASC
+     LIMIT ?`,
+    [prevRows[0].id, PROTECTED_TOP_RANK]
+  );
+
+  const presentCryptoIds = new Set(marketData.map(d => d.crypto_id));
+  const missing = topConstituents.filter(c => !presentCryptoIds.has(c.crypto_id));
+
+  if (missing.length === 0) return marketData;
+
+  if (missing.length > MAX_FALLBACKS_PER_SNAPSHOT) {
+    throw new Error(
+      `Too many top constituents missing (${missing.length}) for timestamp ${timestamp} — skipping snapshot`
+    );
+  }
+
+  log.warn(
+    `Snapshot ${timestamp instanceof Date ? timestamp.toISOString() : timestamp}: ${missing.length} top-${PROTECTED_TOP_RANK} constituent(s) missing from market_data — backfilling`
+  );
+
+  const augmented = [...marketData];
+
+  for (const m of missing) {
+    const [marketRows] = await Database.execute(
+      `SELECT
+         md.id as market_data_id,
+         md.crypto_id,
+         c.symbol,
+         c.name,
+         md.price_usd,
+         md.circulating_supply,
+         md.volume_24h_usd,
+         (md.price_usd * md.circulating_supply) as market_cap_usd,
+         md.percent_change_24h,
+         md.percent_change_7d,
+         md.timestamp,
+         cm.categories
+       FROM market_data md
+       INNER JOIN cryptocurrencies c ON md.crypto_id = c.id
+       LEFT JOIN cryptocurrency_metadata cm ON c.id = cm.crypto_id
+       WHERE md.crypto_id = ? AND md.timestamp <= ?
+         AND (md.price_usd * md.circulating_supply) > 0
+       ORDER BY md.timestamp DESC LIMIT 1`,
+      [m.crypto_id, timestamp]
+    );
+
+    if (marketRows.length === 0) {
+      log.error(`  - crypto_id ${m.crypto_id}: no market_data available — cannot backfill`);
+      continue;
+    }
+
+    const md = marketRows[0];
+    const ts = timestamp instanceof Date ? timestamp : new Date(timestamp);
+    const ageMs = ts.getTime() - new Date(md.timestamp).getTime();
+
+    if (ageMs > MAX_FALLBACK_AGE_MS) {
+      log.error(
+        `  - ${md.symbol} (crypto_id ${m.crypto_id}): last market_data is ${Math.round(ageMs / 60000)}min old (> 60min limit) — skipping`
+      );
+      continue;
+    }
+
+    log.warn(
+      `  - ${md.symbol} (crypto_id ${m.crypto_id}): backfilled from market_data id ${md.market_data_id} (age ${Math.round(ageMs / 60000)}min)`
+    );
+
+    augmented.push(md);
+  }
+
+  // Re-sort by market cap DESC since we added rows
+  augmented.sort((a, b) => parseFloat(b.market_cap_usd) - parseFloat(a.market_cap_usd));
+
+  return augmented;
 }
 
 /**

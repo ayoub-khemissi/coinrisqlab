@@ -165,6 +165,46 @@ The generated CSV includes, for the given portfolio:
 - Correlation matrix of constituents
 - DB row cross-check (field-by-field OK/DIFF) against `user_portfolio_analytics`
 
+## Index Calculation Resilience
+
+`calculateCoinRisqLab80.js` includes a safety net against transient
+CoinGecko API misses. Without it, a missing top crypto (ex: ETH absent from
+one fetch) silently lets a small-cap climb into the top 80 → the index
+level drops by ~10–15% for a few cycles before recovering, polluting the
+intra-day chart.
+
+**How the safety net works** — for every snapshot:
+
+1. Load the top `PROTECTED_TOP_RANK = 20` constituents from the previous
+   valid snapshot
+2. Detect any of them missing from the current `market_data` fetch
+3. For each missing crypto, fall back to its most recent `market_data` row
+   (within `MAX_FALLBACK_AGE_MS = 60min`) and merge it into the candidate
+   set before computing the index
+4. Each fallback is logged via `log.warn` (visible in the `log` table)
+5. If more than `MAX_FALLBACKS_PER_SNAPSHOT = 3` constituents are missing,
+   the whole snapshot is skipped — the next cron run will retry once the
+   API recovers
+
+**Retroactive repair** — if a corrupted snapshot is already in
+`index_history` (e.g. created before the safety net existed), use:
+
+```bash
+node commands/repairCorruptedIndexSnapshots.js <snapshot_id_1> [<snapshot_id_2> ...]
+```
+
+This reconstitutes each snapshot from the previous valid one using the
+same fallback logic and updates `index_history.index_level`,
+`total_market_cap_usd` and the full `index_constituents` set in a single
+transaction. All operations are logged via `log.warn` for audit.
+
+**Note on impact on downstream calculations** — daily aggregates
+(`crypto_beta`, `crypto_sml`, `portfolio_volatility`, `user_portfolio_analytics`)
+take the **last** index_level of each day via
+`SUBSTRING_INDEX(GROUP_CONCAT(index_level ORDER BY snapshot_date DESC), ',', 1)`.
+Intra-day corruption is therefore overwritten by later snapshots and does
+NOT affect daily metrics. The only visible impact is the intra-day chart.
+
 ### Crontab Notes:
 
 *   `cd /home/ubuntu/coinrisqlab/coinrisqlab/coinrisqlab-back`: Ensures scripts run from the correct directory for resolving local dependencies (`.env`, `utils`, etc.).
