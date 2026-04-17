@@ -248,13 +248,15 @@ async function backfillMissingTopConstituents(indexConfigId, timestamp, marketDa
 
   if (prevRows.length === 0) return marketData; // First snapshot ever — nothing to compare to
 
-  // Get the top N constituents from the previous snapshot
+  // Get the top N constituents from the previous snapshot.
+  // PROTECTED_TOP_RANK is interpolated (not passed as `?`) because mysql2's
+  // prepared statements reject parameter binding for LIMIT.
   const [topConstituents] = await Database.execute(
     `SELECT crypto_id FROM index_constituents
      WHERE index_history_id = ?
      ORDER BY rank_position ASC
-     LIMIT ?`,
-    [prevRows[0].id, PROTECTED_TOP_RANK]
+     LIMIT ${Number(PROTECTED_TOP_RANK)}`,
+    [prevRows[0].id]
   );
 
   const presentCryptoIds = new Set(marketData.map(d => d.crypto_id));
