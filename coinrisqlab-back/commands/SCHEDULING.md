@@ -92,6 +92,43 @@ The `fetchOHLC.js` script uses CoinGecko's `/coins/{id}/market_chart` endpoint t
 | `API_DELAY_MS` | 250 | Rate limit safety: 240 calls/min (Basic limit: 250/min) |
 | `DAYS_BUFFER` | 2 | Extra margin beyond the oldest daily gap |
 
+## Recent (5-min) Backfill — Safety Net for the `*/5` Cron
+
+`fetchOHLC.js --backfill-recent` is a safety net that fills 5-min
+gaps in `market_data` from CoinGecko `/market_chart?days=1`. It exists
+because CoinGecko's Basic plan only exposes 5-min granularity for the
+**last 24h glissantes** — beyond that, only hourly is available. So if
+the live `*/5` cron silently dies, we have a 24h window to recover the
+intraday data before it's lost forever.
+
+**How it works**
+
+1. Per-crypto detection: counts rows in `market_data` over the last 24h.
+   Expected: 24h × 12 = **288 rows**. If a crypto has <`RECENT_GAP_THRESHOLD`
+   (250) rows, it's flagged as a gap.
+2. For each flagged crypto, calls `/market_chart?days=1` (5-min auto
+   granularity) — 1 credit per crypto.
+3. Inserts each missing point into `market_data` with anti-duplicate
+   tolerance: skips the insert if a row already exists within ±150s of
+   the same crypto (avoids polluting the table when the cron's `*/5`
+   timestamps are at e.g. `XX:X{0|5}:01` and CoinGecko's at `XX:X{0|5}:00`).
+4. New "orphan" timestamps created by the backfill (where only a few
+   cryptos got a point) are filtered out by `MIN_CRYPTOS_PER_TIMESTAMP = 100`
+   in `calculateCoinRisqLab80.js getMissingIndexTimestamps`, so the index
+   calc doesn't try to compute partial snapshots.
+
+**Cost profile**
+
+| Scenario | API calls |
+| :--- | :--- |
+| `*/5` cron healthy (every crypto ≥250 rows) | **0** |
+| Single crypto missed (e.g. CoinGecko transient miss) | 1 |
+| Few cryptos newly entered top-500 | ~5–30 |
+| Full `*/5` cron outage (all cryptos missing) | ~500 (max) |
+
+Recommended cron: daily at `30 0 * * *` — covers the previous day with
+24h margin. Falls back to silent no-op when nothing is missing.
+
 ## Crontab Configuration for Ubuntu
 
 **Important:** The paths below are configured for the project located at `/home/ubuntu/coinrisqlab/coinrisqlab`.
@@ -109,6 +146,10 @@ The `fetchOHLC.js` script uses CoinGecko's `/coins/{id}/market_chart` endpoint t
 # Daily Backfill via /market_chart (01:00, ~500 credits CoinGecko)
 # Fills gaps in both ohlc and market_data tables
 0 1 * * * cd /home/ubuntu/coinrisqlab/coinrisqlab/coinrisqlab-back && node commands/fetchOHLC.js
+
+# Recent 5-min safety net (00:30, ≤500 credits CoinGecko, usually 0)
+# Detects market_data gaps in the last 24h and refills via /market_chart?days=1
+30 0 * * * cd /home/ubuntu/coinrisqlab/coinrisqlab/coinrisqlab-back && node commands/fetchOHLC.js --backfill-recent
 
 # Metadata weekly, Sunday 03:05 (~500 credits CoinGecko)
 5 3 * * 0 cd /home/ubuntu/coinrisqlab/coinrisqlab/coinrisqlab-back && node commands/fetchCryptoMetadata.js

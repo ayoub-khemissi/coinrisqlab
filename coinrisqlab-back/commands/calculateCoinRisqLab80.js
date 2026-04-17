@@ -68,12 +68,19 @@ async function calculateCoinRisqLab80() {
   }
 }
 
+// Minimum number of cryptos required at a timestamp for the index to be
+// computable. Below this, the snapshot is considered too sparse — typical
+// of "orphan" timestamps created by --backfill-recent for a small subset
+// of cryptos (e.g. when only a few coins have had a 5-min gap).
+const MIN_CRYPTOS_PER_TIMESTAMP = 100;
+
 /**
  * Get all market data timestamps that don't have a corresponding index calculation
+ * AND have enough crypto coverage to support a full top-80 selection.
  */
 async function getMissingIndexTimestamps(indexConfigId, baseDate) {
   const [rows] = await Database.execute(`
-    SELECT DISTINCT md.timestamp
+    SELECT md.timestamp, COUNT(*) AS crypto_count
     FROM market_data md
     WHERE md.timestamp >= ?
       AND md.timestamp NOT IN (
@@ -81,6 +88,8 @@ async function getMissingIndexTimestamps(indexConfigId, baseDate) {
         FROM index_history ih
         WHERE ih.index_config_id = ?
       )
+    GROUP BY md.timestamp
+    HAVING crypto_count >= ${MIN_CRYPTOS_PER_TIMESTAMP}
     ORDER BY md.timestamp ASC
   `, [baseDate, indexConfigId]);
 

@@ -21,8 +21,15 @@ async function fetchDailyData() {
 
     const isMarketCapBackfill = process.argv.includes('--backfill-mcap');
     const isHourlyBackfill = process.argv.includes('--backfill-hourly');
+    const isRecentBackfill = process.argv.includes('--backfill-recent');
 
-    if (isHourlyBackfill) {
+    if (isRecentBackfill) {
+      log.info('Starting recent (5-min) backfill for active cryptos (days=1)...');
+      const stats = await runRecentBackfill();
+      const duration = Date.now() - startTime;
+      log.info(`Recent backfill completed in ${(duration / 1000).toFixed(2)}s`);
+      log.info(`API calls: ${stats.apiCalls}, cryptos backfilled: ${stats.cryptosBackfilled}, rows inserted: ${stats.rowsInserted}, errors: ${stats.apiErrors}`);
+    } else if (isHourlyBackfill) {
       log.info('Starting hourly backfill for all cryptos (days=90)...');
       const stats = await runHourlyBackfill();
       const duration = Date.now() - startTime;
@@ -266,6 +273,113 @@ async function runMarketCapBackfill() {
       await delay(API_DELAY_MS);
     } catch (error) {
       log.error(`[McapBackfill] Error processing ${crypto.symbol}: ${error.message}`);
+      stats.apiErrors++;
+    }
+  }
+
+  return stats;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// RECENT BACKFILL (--backfill-recent)
+// Safety net for the */5 cron: fills 5-min market_data gaps from
+// CoinGecko /market_chart?days=1 (only 24h window where 5-min granularity
+// is available on the Basic plan). Designed to be cheap on healthy days
+// (zero API calls if everything is up to date) and surgical when the live
+// cron has missed snapshots.
+// ═══════════════════════════════════════════════════════════════
+
+const RECENT_BACKFILL_DAYS = 1;
+const RECENT_EXPECTED_ROWS_24H = 288; // 24h × 12 (every 5 min)
+const RECENT_GAP_THRESHOLD = 250;     // Trigger backfill when fewer than this in last 24h
+const RECENT_SLOT_TOLERANCE_SEC = 150; // Don't insert if a row already exists within ±2.5min
+
+async function runRecentBackfill() {
+  const stats = { apiCalls: 0, rowsInserted: 0, cryptosBackfilled: 0, apiErrors: 0 };
+
+  // Active cryptos = those with at least one market_data row in the last 24h.
+  // Anything that hasn't been touched by the */5 cron in 24h is out of scope
+  // (probably delisted or never indexed).
+  const [cryptos] = await Database.execute(`
+    SELECT c.id, c.symbol, c.coingecko_id, COUNT(md.id) AS recent_count
+    FROM cryptocurrencies c
+    INNER JOIN market_data md ON md.crypto_id = c.id
+    WHERE c.coingecko_id IS NOT NULL
+      AND md.timestamp >= NOW() - INTERVAL 24 HOUR
+    GROUP BY c.id, c.symbol, c.coingecko_id
+    HAVING recent_count < ${RECENT_GAP_THRESHOLD}
+    ORDER BY recent_count ASC
+  `);
+
+  if (cryptos.length === 0) {
+    log.info(`[RecentBackfill] All active cryptos have ≥${RECENT_GAP_THRESHOLD}/${RECENT_EXPECTED_ROWS_24H} rows in last 24h — nothing to backfill (0 credits spent)`);
+    return stats;
+  }
+
+  log.info(`[RecentBackfill] ${cryptos.length} crypto(s) below threshold, fetching /market_chart?days=1`);
+
+  for (const crypto of cryptos) {
+    try {
+      const { data, error } = await fetchMarketChart(crypto.coingecko_id, RECENT_BACKFILL_DAYS);
+      stats.apiCalls++;
+
+      if (error || !data || !data.prices || data.prices.length === 0) {
+        log.warn(`${crypto.symbol}: ${error || 'no data'}`);
+        stats.apiErrors++;
+        await delay(API_DELAY_MS);
+        continue;
+      }
+
+      // Pre-load existing timestamps in the same window so we don't double-insert
+      // adjacent points (the */5 cron inserts at offset 00:01, CoinGecko at 00:00).
+      const minTs = data.prices[0][0];
+      const maxTs = data.prices[data.prices.length - 1][0];
+      const [existingRows] = await Database.execute(
+        `SELECT UNIX_TIMESTAMP(timestamp) * 1000 AS ts
+         FROM market_data
+         WHERE crypto_id = ?
+           AND timestamp >= FROM_UNIXTIME(? / 1000)
+           AND timestamp <= FROM_UNIXTIME(? / 1000)`,
+        [crypto.id, minTs, maxTs]
+      );
+      const existingTs = existingRows.map(r => Number(r.ts));
+
+      let inserted = 0;
+      for (let i = 0; i < data.prices.length; i++) {
+        const [ts, price] = data.prices[i];
+        const mcap = data.market_caps?.[i]?.[1];
+        const vol = data.total_volumes?.[i]?.[1];
+
+        if (price <= 0) continue;
+
+        // Skip if a row already exists within the tolerance window
+        if (existingTs.some(ets => Math.abs(ets - ts) < RECENT_SLOT_TOLERANCE_SEC * 1000)) continue;
+
+        const supply = (mcap && price > 0) ? (mcap / price) : null;
+        const tsStr = new Date(ts).toISOString().slice(0, 19).replace('T', ' ');
+
+        await Database.execute(
+          `INSERT INTO market_data (crypto_id, price_usd, circulating_supply, volume_24h_usd, timestamp)
+           VALUES (?, ?, ?, ?, ?)
+           ON DUPLICATE KEY UPDATE
+             price_usd = VALUES(price_usd),
+             circulating_supply = COALESCE(VALUES(circulating_supply), circulating_supply),
+             volume_24h_usd = COALESCE(VALUES(volume_24h_usd), volume_24h_usd)`,
+          [crypto.id, price, supply, vol || 0, tsStr]
+        );
+        inserted++;
+        existingTs.push(ts); // Avoid re-inserting from the same fetch in case of duplicates in API response
+      }
+
+      stats.rowsInserted += inserted;
+      if (inserted > 0) {
+        stats.cryptosBackfilled++;
+        log.info(`${crypto.symbol}: had ${crypto.recent_count}/${RECENT_EXPECTED_ROWS_24H} rows, inserted ${inserted} missing 5-min point(s)`);
+      }
+
+      await delay(API_DELAY_MS);
+    } catch (e) {
+      log.error(`[RecentBackfill] Error processing ${crypto.symbol}: ${e.message}`);
       stats.apiErrors++;
     }
   }
