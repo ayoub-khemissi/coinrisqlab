@@ -182,12 +182,39 @@ function CryptoTableComponent({
           <div className="font-mono">{formatUSD(crypto.volume_24h_usd)}</div>
         );
 
-      case "ma_90d":
+      case "ma_90d": {
+        if (!crypto.ma_90d) {
+          return <div className="font-mono text-default-400">—</div>;
+        }
+
+        const maValue = parseFloat(crypto.ma_90d);
+        const currentPrice = parseFloat(crypto.price_usd);
+        const diffPct =
+          maValue > 0 ? ((currentPrice - maValue) / maValue) * 100 : 0;
+        const color = getPercentageColor(diffPct);
+
         return (
-          <div className="font-mono">
-            {crypto.ma_90d ? formatCryptoPrice(crypto.ma_90d) : "—"}
+          <div className="flex flex-col items-start gap-1">
+            <span className="font-mono text-sm">
+              {formatCryptoPrice(crypto.ma_90d)}
+            </span>
+            <Chip
+              color={color}
+              size="sm"
+              startContent={
+                diffPct > 0 ? (
+                  <TrendingUp size={14} />
+                ) : diffPct < 0 ? (
+                  <TrendingDown size={14} />
+                ) : null
+              }
+              variant="flat"
+            >
+              {formatPercentage(diffPct)}
+            </Chip>
           </div>
         );
+      }
 
       case "beta": {
         const betaValue = crypto.beta ? parseFloat(crypto.beta) : null;
