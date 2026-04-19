@@ -38,25 +38,39 @@ export default function BetaSmlPage() {
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(false);
-  const [currentParams, setCurrentParams] = useState<Record<string, string>>({});
+  const [currentParams, setCurrentParams] = useState<Record<string, string>>(
+    {},
+  );
 
-  const endpoint = tab === "beta" ? "/api/admin/data/beta" : "/api/admin/data/sml";
+  const endpoint =
+    tab === "beta" ? "/api/admin/data/beta" : "/api/admin/data/sml";
 
   const fetchData = async (params: Record<string, string>, pageNum: number) => {
     setLoading(true);
     try {
-      const query = new URLSearchParams({ ...params, limit: String(PAGE_SIZE), offset: String((pageNum - 1) * PAGE_SIZE) });
+      const query = new URLSearchParams({
+        ...params,
+        limit: String(PAGE_SIZE),
+        offset: String((pageNum - 1) * PAGE_SIZE),
+      });
       const res = await fetch(`${endpoint}?${query.toString()}`);
       const data = await res.json();
 
       setRows(data.rows || []);
       setTotal(data.total || 0);
-    } catch { /* ignore */ } finally {
+    } catch {
+      /* ignore */
+    } finally {
       setLoading(false);
     }
   };
 
-  const handleSearch = (filters: { cryptos: string[]; from: string; to: string; window: number }) => {
+  const handleSearch = (filters: {
+    cryptos: string[];
+    from: string;
+    to: string;
+    window: number;
+  }) => {
     const params: Record<string, string> = {};
 
     if (filters.cryptos.length > 0) params.cryptos = filters.cryptos.join(",");
@@ -68,12 +82,22 @@ export default function BetaSmlPage() {
     fetchData(params, 1);
   };
 
-  const handlePageChange = (p: number) => { setPage(p); fetchData(currentParams, p); };
+  const handlePageChange = (p: number) => {
+    setPage(p);
+    fetchData(currentParams, p);
+  };
 
   return (
     <div className="space-y-6">
       <h1 className="text-xl font-bold">Beta / Alpha / SML</h1>
-      <Tabs selectedKey={tab} onSelectionChange={(k) => { setTab(String(k)); setRows([]); setTotal(0); }}>
+      <Tabs
+        selectedKey={tab}
+        onSelectionChange={(k) => {
+          setTab(String(k));
+          setRows([]);
+          setTotal(0);
+        }}
+      >
         <Tab key="beta" title="Beta / Alpha" />
         <Tab key="sml" title="SML (CAPM)" />
       </Tabs>

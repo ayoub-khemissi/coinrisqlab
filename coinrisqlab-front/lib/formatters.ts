@@ -43,6 +43,7 @@ export function formatCryptoPrice(value: number | string): string {
   // Below $1: 4+ leading zeros after the decimal → subscript notation
   // ($0.0₄1234 = 0.00001234). Otherwise show plain decimals capped at 6.
   let raw = num.toString();
+
   if (raw.includes("e")) {
     // Expand scientific notation without float64 noise (e.g. 6.1e-9 → "0.0000000061")
     const [mantissa, expStr] = raw.toLowerCase().split("e");
@@ -57,24 +58,14 @@ export function formatCryptoPrice(value: number | string): string {
   }
 
   const match = raw.match(/^0\.(0*)(\d+)$/);
+
   if (!match) return `$${raw}`;
 
   const zeros = match[1];
   const significant = match[2];
 
   if (zeros.length >= 4) {
-    const subscriptDigits = [
-      "₀",
-      "₁",
-      "₂",
-      "₃",
-      "₄",
-      "₅",
-      "₆",
-      "₇",
-      "₈",
-      "₉",
-    ];
+    const subscriptDigits = ["₀", "₁", "₂", "₃", "₄", "₅", "₆", "₇", "₈", "₉"];
     const subscript = zeros.length
       .toString()
       .split("")

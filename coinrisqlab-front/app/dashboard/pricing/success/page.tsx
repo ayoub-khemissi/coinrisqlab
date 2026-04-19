@@ -25,11 +25,7 @@ export default function PricingSuccessPage() {
             Your subscription is active. You now have access to all advanced
             risk analytics, unlimited portfolios, and more.
           </p>
-          <Button
-            as={NextLink}
-            color="primary"
-            href="/dashboard"
-          >
+          <Button as={NextLink} color="primary" href="/dashboard">
             Go to Dashboard
           </Button>
         </CardBody>

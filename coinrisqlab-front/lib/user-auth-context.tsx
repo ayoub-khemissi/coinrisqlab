@@ -1,5 +1,7 @@
 "use client";
 
+import type { User } from "@/types/user";
+
 import {
   createContext,
   useContext,
@@ -11,8 +13,6 @@ import {
 } from "react";
 
 import { API_BASE_URL } from "@/config/constants";
-
-import type { User } from "@/types/user";
 
 interface UserAuthContextType {
   user: User | null;

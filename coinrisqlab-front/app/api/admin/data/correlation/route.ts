@@ -35,7 +35,8 @@ function pearsonCorrelation(x: number[], y: number[]): number {
 export async function GET(request: NextRequest) {
   const session = await verifyAdminSession();
 
-  if (!session) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  if (!session)
+    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
 
   const sp = request.nextUrl.searchParams;
   const crypto1 = sp.get("crypto1") || "";
@@ -45,10 +46,18 @@ export async function GET(request: NextRequest) {
   const format = sp.get("format");
 
   if (!crypto1 || !crypto2) {
-    return NextResponse.json({ error: "crypto1 and crypto2 are required" }, { status: 400 });
+    return NextResponse.json(
+      { error: "crypto1 and crypto2 are required" },
+      { status: 400 },
+    );
   }
 
-  const { rows, symbols } = await getCorrelationReturns(crypto1, crypto2, from, to);
+  const { rows, symbols } = await getCorrelationReturns(
+    crypto1,
+    crypto2,
+    from,
+    to,
+  );
 
   const r1 = rows.map((r: Record<string, unknown>) => Number(r.return_1));
   const r2 = rows.map((r: Record<string, unknown>) => Number(r.return_2));
@@ -60,10 +69,17 @@ export async function GET(request: NextRequest) {
       [`${symbols[0]}_return`]: r.return_1,
       [`${symbols[1]}_return`]: r.return_2,
     }));
-    const csv = toCsv(csvRows, ["date", `${symbols[0]}_return`, `${symbols[1]}_return`]);
+    const csv = toCsv(csvRows, [
+      "date",
+      `${symbols[0]}_return`,
+      `${symbols[1]}_return`,
+    ]);
 
     return new NextResponse(csv, {
-      headers: { "Content-Type": "text/csv; charset=utf-8", "Content-Disposition": 'attachment; filename="correlation_export.csv"' },
+      headers: {
+        "Content-Type": "text/csv; charset=utf-8",
+        "Content-Disposition": 'attachment; filename="correlation_export.csv"',
+      },
     });
   }
 

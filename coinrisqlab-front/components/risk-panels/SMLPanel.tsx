@@ -109,7 +109,11 @@ export function SMLPanel({ cryptoId, symbol }: SMLPanelProps) {
     const riskFreeRate = 0;
     const marketReturn = data.marketReturn / 100; // convert back to decimal
     const calcExpected = (beta: number) =>
-      Number(((riskFreeRate + beta * (marketReturn - riskFreeRate)) * 100).toFixed(2));
+      Number(
+        ((riskFreeRate + beta * (marketReturn - riskFreeRate)) * 100).toFixed(
+          2,
+        ),
+      );
 
     return [
       { beta: xDomain[0], expectedReturn: calcExpected(xDomain[0]) },
@@ -162,9 +166,7 @@ export function SMLPanel({ cryptoId, symbol }: SMLPanelProps) {
               </p>
             </div>
             <div>
-              <p className="text-sm text-default-500 mb-1">
-                Expected Return
-              </p>
+              <p className="text-sm text-default-500 mb-1">Expected Return</p>
               <p className="text-2xl font-bold">
                 {data?.cryptoExpectedReturn !== undefined
                   ? `${data.cryptoExpectedReturn >= 0 ? "+" : ""}${data.cryptoExpectedReturn.toFixed(4)}%`

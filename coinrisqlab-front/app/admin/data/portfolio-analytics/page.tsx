@@ -41,10 +41,7 @@ export default function PortfolioAnalyticsPage() {
       .catch(() => {});
   }, []);
 
-  const fetchData = async (
-    params: Record<string, string>,
-    pageNum: number,
-  ) => {
+  const fetchData = async (params: Record<string, string>, pageNum: number) => {
     setLoading(true);
     try {
       const query = new URLSearchParams({
@@ -94,7 +91,6 @@ export default function PortfolioAnalyticsPage() {
     <div className="space-y-6">
       <h1 className="text-xl font-bold">Portfolio Analytics</h1>
       <DataFilters
-        showCryptoSearch={false}
         showPortfolioSelector
         showWindowSelector
         csvEndpoint="/api/admin/data/portfolio-analytics"
@@ -102,6 +98,7 @@ export default function PortfolioAnalyticsPage() {
         defaultWindow={90}
         loading={loading}
         portfolios={portfolios}
+        showCryptoSearch={false}
         onSearch={handleSearch}
       />
       <DataTable

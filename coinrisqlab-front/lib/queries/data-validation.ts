@@ -452,7 +452,8 @@ export async function getCorrelationReturns(
     [crypto2],
   );
 
-  if (c1.length === 0 || c2.length === 0) return { rows: [], symbols: ["", ""] };
+  if (c1.length === 0 || c2.length === 0)
+    return { rows: [], symbols: ["", ""] };
 
   const [rows] = await db.execute<RowDataPacket[]>(
     `SELECT lr1.date, lr1.log_return AS return_1, lr2.log_return AS return_2

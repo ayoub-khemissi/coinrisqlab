@@ -78,11 +78,11 @@ export function UserNavButton() {
         <DropdownTrigger>
           <Avatar
             isBordered
+            showFallback
             as="button"
             className="transition-transform cursor-pointer"
             color="primary"
             name={user?.displayName || user?.email || "User"}
-            showFallback
             size="sm"
           />
         </DropdownTrigger>

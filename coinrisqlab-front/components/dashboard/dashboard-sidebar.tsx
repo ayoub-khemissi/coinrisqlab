@@ -89,7 +89,9 @@ export function DashboardSidebar({ mobile = false }: { mobile?: boolean }) {
             : item.href === "/dashboard"
               ? pathname === "/dashboard"
               : item.href === "/dashboard/portfolios"
-                ? pathname.startsWith("/dashboard/portfolios") && !pathname.includes("/analytics") && !pathname.includes("/export")
+                ? pathname.startsWith("/dashboard/portfolios") &&
+                  !pathname.includes("/analytics") &&
+                  !pathname.includes("/export")
                 : pathname.startsWith(item.href);
 
           return (
@@ -131,7 +133,9 @@ export function DashboardSidebar({ mobile = false }: { mobile?: boolean }) {
             : item.href === "/dashboard"
               ? pathname === "/dashboard"
               : item.href === "/dashboard/portfolios"
-                ? pathname.startsWith("/dashboard/portfolios") && !pathname.includes("/analytics") && !pathname.includes("/export")
+                ? pathname.startsWith("/dashboard/portfolios") &&
+                  !pathname.includes("/analytics") &&
+                  !pathname.includes("/export")
                 : pathname.startsWith(item.href);
 
           return (

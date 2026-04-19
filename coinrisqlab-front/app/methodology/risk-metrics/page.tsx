@@ -860,8 +860,8 @@ export default function RiskMetricsMethodologyPage() {
                     Pearson Correlation Coefficient
                   </h3>
                   <p className="text-default-600 text-sm mb-3">
-                    Given two series of daily log returns{" "}
-                    <Math>{"R_A"}</Math> and <Math>{"R_B"}</Math>:
+                    Given two series of daily log returns <Math>{"R_A"}</Math>{" "}
+                    and <Math>{"R_B"}</Math>:
                   </p>
                   <Math display>
                     {
@@ -908,8 +908,8 @@ export default function RiskMetricsMethodologyPage() {
                   <h3 className="font-semibold mb-2">Key Details</h3>
                   <ul className="list-disc pl-5 space-y-1 text-default-600 text-sm">
                     <li>
-                      Computed from <strong>aligned daily log returns</strong>{" "}
-                      — only dates where both assets have data are used.
+                      Computed from <strong>aligned daily log returns</strong> —
+                      only dates where both assets have data are used.
                     </li>
                     <li>
                       Uses <strong>sample covariance</strong> (n-1 denominator)
@@ -940,7 +940,9 @@ export default function RiskMetricsMethodologyPage() {
                     Covariance, correlation, and volatility are related:
                   </p>
                   <Math display>
-                    {"\\text{Cov}(R_A, R_B) = \\rho_{A,B} \\times \\sigma_A \\times \\sigma_B"}
+                    {
+                      "\\text{Cov}(R_A, R_B) = \\rho_{A,B} \\times \\sigma_A \\times \\sigma_B"
+                    }
                   </Math>
                   <p className="text-default-600 text-sm mt-2">
                     This relationship is at the heart of{" "}

@@ -29,7 +29,8 @@ interface DataTableProps {
 function formatCell(value: unknown): string {
   if (value === null || value === undefined) return "—";
   if (value instanceof Date) return value.toISOString().split("T")[0];
-  if (typeof value === "number") return value.toLocaleString("en-US", { maximumFractionDigits: 12 });
+  if (typeof value === "number")
+    return value.toLocaleString("en-US", { maximumFractionDigits: 12 });
   if (typeof value === "boolean") return value ? "Yes" : "No";
 
   const s = String(value);
@@ -64,7 +65,7 @@ export function DataTable({
   return (
     <div className="space-y-4">
       <p className="text-xs text-default-500">{total} results</p>
-      <Table aria-label="Data table" removeWrapper>
+      <Table removeWrapper aria-label="Data table">
         <TableHeader>
           {columns.map((col) => (
             <TableColumn key={col.key}>{col.label}</TableColumn>

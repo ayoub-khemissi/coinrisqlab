@@ -71,11 +71,14 @@ export default function PricingPage() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-3xl mx-auto">
         {/* Free */}
-        <Card className={user?.plan === "free" ? "border-2 border-primary" : ""}>
+        <Card
+          className={user?.plan === "free" ? "border-2 border-primary" : ""}
+        >
           <CardHeader className="flex-col gap-1 pb-0">
             <h2 className="text-xl font-bold">Free</h2>
             <p className="text-3xl font-bold">
-              $0<span className="text-sm font-normal text-default-500">/mo</span>
+              $0
+              <span className="text-sm font-normal text-default-500">/mo</span>
             </p>
           </CardHeader>
           <CardBody className="gap-2">
@@ -94,7 +97,11 @@ export default function PricingPage() {
           </CardBody>
           <CardFooter>
             {user?.plan === "free" ? (
-              <Chip className="w-full justify-center" color="primary" variant="flat">
+              <Chip
+                className="w-full justify-center"
+                color="primary"
+                variant="flat"
+              >
                 Current Plan
               </Chip>
             ) : (
@@ -106,14 +113,21 @@ export default function PricingPage() {
         </Card>
 
         {/* Pro */}
-        <Card className={user?.plan === "pro" ? "border-2 border-warning" : "border-2 border-warning/30"}>
+        <Card
+          className={
+            user?.plan === "pro"
+              ? "border-2 border-warning"
+              : "border-2 border-warning/30"
+          }
+        >
           <CardHeader className="flex-col gap-1 pb-0">
             <Chip color="warning" size="sm" variant="flat">
               Recommended
             </Chip>
             <h2 className="text-xl font-bold">Pro</h2>
             <p className="text-3xl font-bold">
-              $9.99<span className="text-sm font-normal text-default-500">/mo</span>
+              $9.99
+              <span className="text-sm font-normal text-default-500">/mo</span>
             </p>
           </CardHeader>
           <CardBody className="gap-2">
@@ -126,7 +140,11 @@ export default function PricingPage() {
           </CardBody>
           <CardFooter>
             {user?.plan === "pro" ? (
-              <Chip className="w-full justify-center" color="warning" variant="flat">
+              <Chip
+                className="w-full justify-center"
+                color="warning"
+                variant="flat"
+              >
                 Current Plan
               </Chip>
             ) : (

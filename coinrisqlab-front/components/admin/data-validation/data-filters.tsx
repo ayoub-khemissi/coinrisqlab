@@ -253,8 +253,8 @@ export function DataFilters({
         {showDateRange && (
           <>
             <Input
-              classNames={{ input: "cursor-pointer" }}
               className="w-40"
+              classNames={{ input: "cursor-pointer" }}
               label="From"
               placeholder="YYYY-MM-DD"
               size="sm"
@@ -263,8 +263,8 @@ export function DataFilters({
               onValueChange={setFrom}
             />
             <Input
-              classNames={{ input: "cursor-pointer" }}
               className="w-40"
+              classNames={{ input: "cursor-pointer" }}
               label="To"
               placeholder="YYYY-MM-DD"
               size="sm"

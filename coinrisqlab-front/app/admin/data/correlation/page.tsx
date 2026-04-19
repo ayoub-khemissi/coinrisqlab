@@ -31,7 +31,9 @@ export default function CorrelationPage() {
       if (filters.from) params.set("from", filters.from);
       if (filters.to) params.set("to", filters.to);
 
-      const res = await fetch(`/api/admin/data/correlation?${params.toString()}`);
+      const res = await fetch(
+        `/api/admin/data/correlation?${params.toString()}`,
+      );
       const data = await res.json();
 
       setRows(data.rows || []);
@@ -61,11 +63,11 @@ export default function CorrelationPage() {
     <div className="space-y-6">
       <h1 className="text-xl font-bold">Correlation</h1>
       <DataFilters
-        showCryptoSearch={false}
         showCryptoSearch2
         csvEndpoint="/api/admin/data/correlation"
         csvFilename="correlation_export.csv"
         loading={loading}
+        showCryptoSearch={false}
         onSearch={handleSearch}
       />
 

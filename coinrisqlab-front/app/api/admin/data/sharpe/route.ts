@@ -21,10 +21,26 @@ export async function GET(request: NextRequest) {
   const offset = parseInt(sp.get("offset") || "0");
   const format = sp.get("format");
 
-  const rows = await getSharpe(cryptos, from, to, windowDays, format === "csv" ? 0 : limit, format === "csv" ? 0 : offset);
+  const rows = await getSharpe(
+    cryptos,
+    from,
+    to,
+    windowDays,
+    format === "csv" ? 0 : limit,
+    format === "csv" ? 0 : offset,
+  );
 
   if (format === "csv") {
-    const csv = toCsv(rows as Record<string, unknown>[], ["symbol", "name", "date", "window_days", "sharpe_ratio", "mean_return", "std_return", "num_observations"]);
+    const csv = toCsv(rows as Record<string, unknown>[], [
+      "symbol",
+      "name",
+      "date",
+      "window_days",
+      "sharpe_ratio",
+      "mean_return",
+      "std_return",
+      "num_observations",
+    ]);
 
     return new NextResponse(csv, {
       headers: {

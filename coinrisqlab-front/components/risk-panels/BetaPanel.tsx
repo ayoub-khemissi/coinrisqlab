@@ -8,7 +8,6 @@ import {
   YAxis,
   Tooltip as RechartsTooltip,
   ResponsiveContainer,
-  CartesianGrid,
   ReferenceLine,
   Line,
   ComposedChart,
@@ -40,8 +39,14 @@ export function BetaPanel({
     if (!data?.scatterData || data.scatterData.length === 0) return null;
     const xs = data.scatterData.map((d) => d.marketReturn);
     const ys = data.scatterData.map((d) => d.cryptoReturn);
-    const xAbsMax = Math.max(Math.abs(Math.min(...xs)), Math.abs(Math.max(...xs)));
-    const yAbsMax = Math.max(Math.abs(Math.min(...ys)), Math.abs(Math.max(...ys)));
+    const xAbsMax = Math.max(
+      Math.abs(Math.min(...xs)),
+      Math.abs(Math.max(...xs)),
+    );
+    const yAbsMax = Math.max(
+      Math.abs(Math.min(...ys)),
+      Math.abs(Math.max(...ys)),
+    );
     // Use the larger absolute range so origin is centered and both axes match
     const absMax = Math.max(xAbsMax, yAbsMax);
     const pad = absMax * 0.3; // generous padding for a dezoom effect
@@ -207,17 +212,25 @@ export function BetaPanel({
                 <div className="absolute top-2 right-4 z-10">
                   <div className="bg-content1/80 backdrop-blur-sm rounded-lg px-2.5 py-1 border border-default-200 flex items-center gap-2 text-[11px]">
                     <span className="text-default-400">Beta</span>
-                    <span className="font-semibold">{data.beta?.toFixed(2) ?? "—"}</span>
+                    <span className="font-semibold">
+                      {data.beta?.toFixed(2) ?? "—"}
+                    </span>
                     <span className="text-default-200">|</span>
                     <span className="text-default-400">Alpha</span>
-                    <span className={`font-semibold ${(data.alpha || 0) >= 0 ? "text-success" : "text-danger"}`}>
-                      {data.alpha != null ? `${data.alpha >= 0 ? "+" : ""}${data.alpha.toFixed(4)}%` : "—"}
+                    <span
+                      className={`font-semibold ${(data.alpha || 0) >= 0 ? "text-success" : "text-danger"}`}
+                    >
+                      {data.alpha != null
+                        ? `${data.alpha >= 0 ? "+" : ""}${data.alpha.toFixed(4)}%`
+                        : "—"}
                     </span>
                   </div>
                 </div>
               )}
               <ResponsiveContainer height={500} width="100%">
-                <ComposedChart margin={{ top: 10, right: 30, bottom: 10, left: 30 }}>
+                <ComposedChart
+                  margin={{ top: 10, right: 30, bottom: 10, left: 30 }}
+                >
                   {/* Hidden external axes — only for domain and data binding */}
                   <XAxis
                     allowDataOverflow
@@ -262,13 +275,23 @@ export function BetaPanel({
                   />
                   {/* Central axes through origin */}
                   <ReferenceLine
-                    label={{ value: `Market Return (%)`, position: "insideBottomRight", fontSize: 10, fill: "#888" }}
+                    label={{
+                      value: `Market Return (%)`,
+                      position: "insideBottomRight",
+                      fontSize: 10,
+                      fill: "#888",
+                    }}
                     stroke="#888"
                     strokeOpacity={0.6}
                     y={0}
                   />
                   <ReferenceLine
-                    label={{ value: `${symbol.toUpperCase()} Return (%)`, position: "insideTopLeft", fontSize: 10, fill: "#888" }}
+                    label={{
+                      value: `${symbol.toUpperCase()} Return (%)`,
+                      position: "insideTopLeft",
+                      fontSize: 10,
+                      fill: "#888",
+                    }}
                     stroke="#888"
                     strokeOpacity={0.6}
                     x={0}

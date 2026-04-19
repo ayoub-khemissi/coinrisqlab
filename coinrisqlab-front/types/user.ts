@@ -55,7 +55,12 @@ export interface Alert {
   symbol: string;
   crypto_name: string;
   image_url: string | null;
-  alert_type: "price" | "volatility" | "drawdown" | "var_breach" | "rebalancing";
+  alert_type:
+    | "price"
+    | "volatility"
+    | "drawdown"
+    | "var_breach"
+    | "rebalancing";
   threshold_value: number;
   direction: "above" | "below";
   is_active: boolean;

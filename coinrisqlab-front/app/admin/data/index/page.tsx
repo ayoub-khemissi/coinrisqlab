@@ -35,24 +35,39 @@ export default function IndexPage() {
   const [historyRows, setHistoryRows] = useState<Record<string, unknown>[]>([]);
   const [historyTotal, setHistoryTotal] = useState(0);
   const [historyPage, setHistoryPage] = useState(1);
-  const [historyParams, setHistoryParams] = useState<Record<string, string>>({});
+  const [historyParams, setHistoryParams] = useState<Record<string, string>>(
+    {},
+  );
   const [historyLoading, setHistoryLoading] = useState(false);
 
   // Constituents state
   const [constRows, setConstRows] = useState<Record<string, unknown>[]>([]);
-  const [constDate, setConstDate] = useState(new Date().toISOString().split("T")[0]);
+  const [constDate, setConstDate] = useState(
+    new Date().toISOString().split("T")[0],
+  );
   const [constLoading, setConstLoading] = useState(false);
 
-  const fetchHistory = async (params: Record<string, string>, pageNum: number) => {
+  const fetchHistory = async (
+    params: Record<string, string>,
+    pageNum: number,
+  ) => {
     setHistoryLoading(true);
     try {
-      const query = new URLSearchParams({ ...params, limit: String(PAGE_SIZE), offset: String((pageNum - 1) * PAGE_SIZE) });
-      const res = await fetch(`/api/admin/data/index-history?${query.toString()}`);
+      const query = new URLSearchParams({
+        ...params,
+        limit: String(PAGE_SIZE),
+        offset: String((pageNum - 1) * PAGE_SIZE),
+      });
+      const res = await fetch(
+        `/api/admin/data/index-history?${query.toString()}`,
+      );
       const data = await res.json();
 
       setHistoryRows(data.rows || []);
       setHistoryTotal(data.total || 0);
-    } catch { /* ignore */ } finally {
+    } catch {
+      /* ignore */
+    } finally {
       setHistoryLoading(false);
     }
   };
@@ -60,11 +75,15 @@ export default function IndexPage() {
   const fetchConstituents = async () => {
     setConstLoading(true);
     try {
-      const res = await fetch(`/api/admin/data/index-constituents?date=${constDate}`);
+      const res = await fetch(
+        `/api/admin/data/index-constituents?date=${constDate}`,
+      );
       const data = await res.json();
 
       setConstRows(data.rows || []);
-    } catch { /* ignore */ } finally {
+    } catch {
+      /* ignore */
+    } finally {
       setConstLoading(false);
     }
   };
@@ -90,10 +109,10 @@ export default function IndexPage() {
       {tab === "history" && (
         <>
           <DataFilters
-            showCryptoSearch={false}
             csvEndpoint="/api/admin/data/index-history"
             csvFilename="index_history_export.csv"
             loading={historyLoading}
+            showCryptoSearch={false}
             onSearch={handleHistorySearch}
           />
           <DataTable
@@ -103,7 +122,10 @@ export default function IndexPage() {
             pageSize={PAGE_SIZE}
             rows={historyRows}
             total={historyTotal}
-            onPageChange={(p) => { setHistoryPage(p); fetchHistory(historyParams, p); }}
+            onPageChange={(p) => {
+              setHistoryPage(p);
+              fetchHistory(historyParams, p);
+            }}
           />
         </>
       )}
@@ -119,7 +141,13 @@ export default function IndexPage() {
               value={constDate}
               onValueChange={setConstDate}
             />
-            <Button color="primary" isLoading={constLoading} size="sm" startContent={<Search size={16} />} onPress={fetchConstituents}>
+            <Button
+              color="primary"
+              isLoading={constLoading}
+              size="sm"
+              startContent={<Search size={16} />}
+              onPress={fetchConstituents}
+            >
               Load
             </Button>
             <CsvDownloadButton

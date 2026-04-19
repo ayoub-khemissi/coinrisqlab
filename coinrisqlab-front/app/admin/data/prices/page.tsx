@@ -23,10 +23,7 @@ export default function PricesPage() {
     {},
   );
 
-  const fetchData = async (
-    params: Record<string, string>,
-    pageNum: number,
-  ) => {
+  const fetchData = async (params: Record<string, string>, pageNum: number) => {
     setLoading(true);
     try {
       const query = new URLSearchParams({
@@ -53,8 +50,7 @@ export default function PricesPage() {
   }) => {
     const params: Record<string, string> = {};
 
-    if (filters.cryptos.length > 0)
-      params.cryptos = filters.cryptos.join(",");
+    if (filters.cryptos.length > 0) params.cryptos = filters.cryptos.join(",");
     if (filters.from) params.from = filters.from;
     if (filters.to) params.to = filters.to;
     setCurrentParams(params);

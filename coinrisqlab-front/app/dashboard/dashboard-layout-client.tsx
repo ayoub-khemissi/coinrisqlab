@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { useRouter, usePathname } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { Spinner } from "@heroui/spinner";
 
 import { UserAuthProvider, useUserAuth } from "@/lib/user-auth-context";

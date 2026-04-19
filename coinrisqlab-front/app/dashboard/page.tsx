@@ -1,5 +1,7 @@
 "use client";
 
+import type { Portfolio, Holding } from "@/types/user";
+
 import { useEffect, useState } from "react";
 import { Card, CardBody, CardHeader } from "@heroui/card";
 import { Button } from "@heroui/button";
@@ -17,7 +19,6 @@ import {
 
 import { API_BASE_URL } from "@/config/constants";
 import { useUserAuth } from "@/lib/user-auth-context";
-import type { Portfolio, Holding } from "@/types/user";
 
 export default function DashboardPage() {
   const { user } = useUserAuth();
@@ -141,7 +142,11 @@ export default function DashboardPage() {
           <CardBody className="gap-1">
             <p className="text-sm text-default-500">Portfolio Value</p>
             <p className="text-2xl font-bold">
-              ${totalValue.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              $
+              {totalValue.toLocaleString("en-US", {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2,
+              })}
             </p>
           </CardBody>
         </Card>
@@ -173,7 +178,8 @@ export default function DashboardPage() {
             <p className="text-sm text-default-500">Holdings</p>
             <p className="text-2xl font-bold">{holdings.length}</p>
             <p className="text-xs text-default-400">
-              across {portfolios.length} portfolio{portfolios.length !== 1 ? "s" : ""}
+              across {portfolios.length} portfolio
+              {portfolios.length !== 1 ? "s" : ""}
             </p>
           </CardBody>
         </Card>
@@ -305,7 +311,11 @@ export default function DashboardPage() {
           </Button>
           <Button
             as={NextLink}
-            href={user?.plan === "pro" ? "/dashboard/portfolios" : "/dashboard/pricing"}
+            href={
+              user?.plan === "pro"
+                ? "/dashboard/portfolios"
+                : "/dashboard/pricing"
+            }
             size="sm"
             startContent={<BarChart3 size={16} />}
             variant="flat"
@@ -315,7 +325,11 @@ export default function DashboardPage() {
           </Button>
           <Button
             as={NextLink}
-            href={user?.plan === "pro" ? "/dashboard/portfolios" : "/dashboard/pricing"}
+            href={
+              user?.plan === "pro"
+                ? "/dashboard/portfolios"
+                : "/dashboard/pricing"
+            }
             size="sm"
             startContent={<Download size={16} />}
             variant="flat"

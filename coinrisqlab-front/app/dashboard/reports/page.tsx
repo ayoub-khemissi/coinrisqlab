@@ -1,21 +1,17 @@
 "use client";
 
+import type { Portfolio } from "@/types/user";
+
 import { useEffect, useState } from "react";
-import { Card, CardBody, CardHeader } from "@heroui/card";
+import { Card, CardBody } from "@heroui/card";
 import { Button } from "@heroui/button";
 import { Chip } from "@heroui/chip";
 import { Spinner } from "@heroui/spinner";
 import { Select, SelectItem } from "@heroui/select";
-import {
-  FileText,
-  FileSpreadsheet,
-  Download,
-  ShieldAlert,
-} from "lucide-react";
+import { FileText, FileSpreadsheet, Download, ShieldAlert } from "lucide-react";
 
 import { API_BASE_URL } from "@/config/constants";
 import { useUserAuth } from "@/lib/user-auth-context";
-import type { Portfolio } from "@/types/user";
 
 export default function ReportsPage() {
   const { user } = useUserAuth();
@@ -81,7 +77,8 @@ export default function ReportsPage() {
   const proReports = [
     {
       title: "Transactions CSV",
-      description: "Full transaction history with dates, prices, fees, and notes.",
+      description:
+        "Full transaction history with dates, prices, fees, and notes.",
       path: "transactions-csv",
       icon: FileSpreadsheet,
     },
@@ -134,7 +131,7 @@ export default function ReportsPage() {
                 <CardBody className="flex flex-row items-center justify-between gap-4">
                   <div className="flex items-center gap-3">
                     <div className="p-2 rounded-lg bg-default-100">
-                      <Icon size={20} className="text-default-600" />
+                      <Icon className="text-default-600" size={20} />
                     </div>
                     <div>
                       <p className="font-medium text-sm">{report.title}</p>
@@ -174,14 +171,11 @@ export default function ReportsPage() {
             const Icon = report.icon;
 
             return (
-              <Card
-                key={report.path}
-                className={!isPro ? "opacity-60" : ""}
-              >
+              <Card key={report.path} className={!isPro ? "opacity-60" : ""}>
                 <CardBody className="flex flex-row items-center justify-between gap-4">
                   <div className="flex items-center gap-3">
                     <div className="p-2 rounded-lg bg-default-100">
-                      <Icon size={20} className="text-default-600" />
+                      <Icon className="text-default-600" size={20} />
                     </div>
                     <div>
                       <p className="font-medium text-sm">{report.title}</p>

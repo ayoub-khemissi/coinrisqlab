@@ -34,6 +34,7 @@ export default function LoginPage() {
 
       if (!res.ok) {
         setError(json.msg || "Login failed");
+
         return;
       }
 

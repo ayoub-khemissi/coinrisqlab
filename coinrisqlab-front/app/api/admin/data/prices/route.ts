@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { verifyAdminSession } from "@/lib/admin-auth";
-import { getOhlcPrices, getOhlcPricesCount } from "@/lib/queries/data-validation";
+import {
+  getOhlcPrices,
+  getOhlcPricesCount,
+} from "@/lib/queries/data-validation";
 import { toCsv } from "@/lib/csv-export";
 
 export const dynamic = "force-dynamic";
@@ -20,10 +23,21 @@ export async function GET(request: NextRequest) {
   const offset = parseInt(sp.get("offset") || "0");
   const format = sp.get("format");
 
-  const rows = await getOhlcPrices(cryptos, from, to, format === "csv" ? 0 : limit, format === "csv" ? 0 : offset);
+  const rows = await getOhlcPrices(
+    cryptos,
+    from,
+    to,
+    format === "csv" ? 0 : limit,
+    format === "csv" ? 0 : offset,
+  );
 
   if (format === "csv") {
-    const csv = toCsv(rows as Record<string, unknown>[], ["symbol", "name", "date", "close_price_usd"]);
+    const csv = toCsv(rows as Record<string, unknown>[], [
+      "symbol",
+      "name",
+      "date",
+      "close_price_usd",
+    ]);
 
     return new NextResponse(csv, {
       headers: {

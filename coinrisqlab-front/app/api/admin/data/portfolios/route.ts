@@ -8,7 +8,8 @@ export const dynamic = "force-dynamic";
 export async function GET() {
   const session = await verifyAdminSession();
 
-  if (!session) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  if (!session)
+    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
 
   const portfolios = await listUserPortfolios();
 
