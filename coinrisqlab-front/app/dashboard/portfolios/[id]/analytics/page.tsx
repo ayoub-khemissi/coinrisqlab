@@ -334,9 +334,11 @@ export default function PortfolioAnalyticsPage() {
                         b.pct,
                       ]),
                     );
-                    const dates = Array.from(
-                      new Set([...pMap.keys(), ...bMap.keys()]),
-                    ).sort();
+                    const dateSet = new Set<string>();
+
+                    pMap.forEach((_, k) => dateSet.add(k));
+                    bMap.forEach((_, k) => dateSet.add(k));
+                    const dates = Array.from(dateSet).sort();
 
                     return dates.map((date) => ({
                       date,
