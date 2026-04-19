@@ -1,9 +1,15 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import NextLink from "next/link";
 import { Chip } from "@heroui/chip";
+import {
+  Dropdown,
+  DropdownTrigger,
+  DropdownMenu,
+  DropdownItem,
+} from "@heroui/dropdown";
 import {
   LayoutDashboard,
   Briefcase,
@@ -12,10 +18,16 @@ import {
   FileText,
   Settings,
   CreditCard,
+  ChevronDown,
 } from "lucide-react";
 
 import { API_BASE_URL } from "@/config/constants";
 import { useUserAuth } from "@/lib/user-auth-context";
+
+interface SidebarPortfolio {
+  id: number;
+  name: string;
+}
 
 const staticNavItems = [
   { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
@@ -27,37 +39,45 @@ const staticNavItems = [
 
 export function DashboardSidebar({ mobile = false }: { mobile?: boolean }) {
   const pathname = usePathname();
+  const router = useRouter();
   const { user } = useUserAuth();
-  const [firstPortfolioId, setFirstPortfolioId] = useState<number | null>(null);
+  const [portfolios, setPortfolios] = useState<SidebarPortfolio[]>([]);
 
   useEffect(() => {
-    async function fetchFirstPortfolio() {
+    async function fetchPortfolios() {
       try {
         const res = await fetch(`${API_BASE_URL}/user/portfolios`, {
           credentials: "include",
         });
         const data = await res.json();
 
-        if (data.data && data.data.length > 0) {
-          setFirstPortfolioId(data.data[0].id);
+        if (Array.isArray(data.data)) {
+          setPortfolios(
+            data.data.map((p: SidebarPortfolio) => ({
+              id: p.id,
+              name: p.name,
+            })),
+          );
         }
       } catch {
         // ignore
       }
     }
 
-    fetchFirstPortfolio();
+    fetchPortfolios();
   }, []);
 
-  // Build full nav items with dynamic analytics/reports links
+  const analyticsHref =
+    portfolios.length > 0
+      ? `/dashboard/portfolios/${portfolios[0].id}/analytics`
+      : "/dashboard/portfolios";
+
   const navItems = [
     staticNavItems[0], // Dashboard
     staticNavItems[1], // Portfolios
     {
       label: "Analytics",
-      href: firstPortfolioId
-        ? `/dashboard/portfolios/${firstPortfolioId}/analytics`
-        : "/dashboard/portfolios",
+      href: analyticsHref,
       icon: BarChart3,
       pro: true,
       activeMatch: "/analytics",
@@ -74,6 +94,26 @@ export function DashboardSidebar({ mobile = false }: { mobile?: boolean }) {
     staticNavItems[4], // Settings
   ];
 
+  const isActiveItem = (item: (typeof navItems)[number]) => {
+    const activeMatch = "activeMatch" in item ? item.activeMatch : null;
+
+    if (activeMatch) return pathname.includes(activeMatch as string);
+    if (item.href === "/dashboard") return pathname === "/dashboard";
+    if (item.href === "/dashboard/portfolios") {
+      return (
+        pathname.startsWith("/dashboard/portfolios") &&
+        !pathname.includes("/analytics") &&
+        !pathname.includes("/export")
+      );
+    }
+
+    return pathname.startsWith(item.href);
+  };
+
+  const handlePortfolioAnalyticsSelect = (portfolioId: number) => {
+    router.push(`/dashboard/portfolios/${portfolioId}/analytics`);
+  };
+
   if (mobile) {
     const mobileItems = navItems.slice(0, 4);
 
@@ -83,27 +123,46 @@ export function DashboardSidebar({ mobile = false }: { mobile?: boolean }) {
           const Icon = item.icon;
           const isPro = "pro" in item && item.pro;
           const isLocked = isPro && user?.plan !== "pro";
-          const activeMatch = "activeMatch" in item ? item.activeMatch : null;
-          const isActive = activeMatch
-            ? pathname.includes(activeMatch)
-            : item.href === "/dashboard"
-              ? pathname === "/dashboard"
-              : item.href === "/dashboard/portfolios"
-                ? pathname.startsWith("/dashboard/portfolios") &&
-                  !pathname.includes("/analytics") &&
-                  !pathname.includes("/export")
-                : pathname.startsWith(item.href);
+          const isActive = isActiveItem(item);
+          const isAnalytics = item.label === "Analytics";
+          const showDropdown =
+            isAnalytics && !isLocked && portfolios.length > 1;
+
+          const baseClass = `flex flex-col items-center gap-0.5 px-3 py-1 rounded-lg text-xs transition-colors ${
+            isLocked
+              ? "text-default-400"
+              : isActive
+                ? "text-primary"
+                : "text-default-500 hover:text-default-700"
+          }`;
+
+          if (showDropdown) {
+            return (
+              <Dropdown key={item.label} placement="top">
+                <DropdownTrigger>
+                  <button className={baseClass} type="button">
+                    <Icon size={20} />
+                    <span>{item.label}</span>
+                  </button>
+                </DropdownTrigger>
+                <DropdownMenu
+                  aria-label="Select portfolio for analytics"
+                  onAction={(key) =>
+                    handlePortfolioAnalyticsSelect(Number(key))
+                  }
+                >
+                  {portfolios.map((p) => (
+                    <DropdownItem key={String(p.id)}>{p.name}</DropdownItem>
+                  ))}
+                </DropdownMenu>
+              </Dropdown>
+            );
+          }
 
           return (
             <NextLink
               key={item.label}
-              className={`flex flex-col items-center gap-0.5 px-3 py-1 rounded-lg text-xs transition-colors ${
-                isLocked
-                  ? "text-default-400"
-                  : isActive
-                    ? "text-primary"
-                    : "text-default-500 hover:text-default-700"
-              }`}
+              className={baseClass}
               href={isLocked ? "/dashboard/pricing" : item.href}
             >
               <Icon size={20} />
@@ -127,27 +186,50 @@ export function DashboardSidebar({ mobile = false }: { mobile?: boolean }) {
           const Icon = item.icon;
           const isPro = "pro" in item && item.pro;
           const isLocked = isPro && user?.plan !== "pro";
-          const activeMatch = "activeMatch" in item ? item.activeMatch : null;
-          const isActive = activeMatch
-            ? pathname.includes(activeMatch as string)
-            : item.href === "/dashboard"
-              ? pathname === "/dashboard"
-              : item.href === "/dashboard/portfolios"
-                ? pathname.startsWith("/dashboard/portfolios") &&
-                  !pathname.includes("/analytics") &&
-                  !pathname.includes("/export")
-                : pathname.startsWith(item.href);
+          const isActive = isActiveItem(item);
+          const isAnalytics = item.label === "Analytics";
+          const showDropdown =
+            isAnalytics && !isLocked && portfolios.length > 1;
+
+          const baseClass = `flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors ${
+            isLocked
+              ? "text-default-400 hover:bg-default-100"
+              : isActive
+                ? "bg-primary/10 text-primary font-medium"
+                : "text-default-600 hover:bg-default-100 hover:text-default-900"
+          }`;
+
+          if (showDropdown) {
+            return (
+              <Dropdown key={item.label} placement="right-start">
+                <DropdownTrigger>
+                  <button
+                    className={`${baseClass} w-full text-left`}
+                    type="button"
+                  >
+                    <Icon size={18} />
+                    <span>{item.label}</span>
+                    <ChevronDown className="ml-auto" size={14} />
+                  </button>
+                </DropdownTrigger>
+                <DropdownMenu
+                  aria-label="Select portfolio for analytics"
+                  onAction={(key) =>
+                    handlePortfolioAnalyticsSelect(Number(key))
+                  }
+                >
+                  {portfolios.map((p) => (
+                    <DropdownItem key={String(p.id)}>{p.name}</DropdownItem>
+                  ))}
+                </DropdownMenu>
+              </Dropdown>
+            );
+          }
 
           return (
             <NextLink
               key={item.label}
-              className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors ${
-                isLocked
-                  ? "text-default-400 hover:bg-default-100"
-                  : isActive
-                    ? "bg-primary/10 text-primary font-medium"
-                    : "text-default-600 hover:bg-default-100 hover:text-default-900"
-              }`}
+              className={baseClass}
               href={isLocked ? "/dashboard/pricing" : item.href}
             >
               <Icon size={18} />
