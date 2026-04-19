@@ -4,19 +4,14 @@
 
 
 .recharts-wrapper,
+.recharts-wrapper *,
 .recharts-surface,
-.recharts-legend-wrapper,
-.recharts-pie,
-.recharts-sector {
+.recharts-surface * {
   outline: none !important;
 }
 
-.recharts-wrapper:focus,
-.recharts-surface:focus,
-.recharts-legend-wrapper:focus,
-.recharts-pie:focus,
-.recharts-sector:focus {
-  outline: none !important;
+.recharts-tooltip-cursor {
+  fill: transparent !important;
 }
 
 /* Markdown content styles */
