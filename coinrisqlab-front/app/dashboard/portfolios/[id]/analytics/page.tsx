@@ -625,15 +625,56 @@ export default function PortfolioAnalyticsPage() {
                   </div>
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                     {[
-                      { label: "VaR 95%", value: riskMetrics.var95, desc: "Max daily loss with 95% confidence" },
-                      { label: "VaR 99%", value: riskMetrics.var99, desc: "Max daily loss with 99% confidence" },
-                      { label: "CVaR 95%", value: riskMetrics.cvar95, desc: "Expected loss beyond VaR 95%" },
-                      { label: "CVaR 99%", value: riskMetrics.cvar99, desc: "Expected loss beyond VaR 99%" },
+                      {
+                        label: "VaR 95%",
+                        value: riskMetrics.var95,
+                        desc: "Max daily loss with 95% confidence",
+                        tone: "danger",
+                      },
+                      {
+                        label: "VaR 99%",
+                        value: riskMetrics.var99,
+                        desc: "Max daily loss with 99% confidence",
+                        tone: "danger",
+                      },
+                      {
+                        label: "CVaR 95%",
+                        value: riskMetrics.cvar95,
+                        desc: "Expected loss beyond VaR 95%",
+                        tone: "warning",
+                      },
+                      {
+                        label: "CVaR 99%",
+                        value: riskMetrics.cvar99,
+                        desc: "Expected loss beyond VaR 99%",
+                        tone: "warning",
+                      },
                     ].map((item) => (
-                      <div key={item.label} className="text-center p-4 rounded-xl bg-danger/5 border border-danger/10">
-                        <p className="text-xs text-default-500 mb-1">{item.label}</p>
-                        <p className="text-2xl font-bold text-danger">-{item.value}%</p>
-                        <p className="text-[10px] text-default-400 mt-1">{item.desc}</p>
+                      <div
+                        key={item.label}
+                        className={clsx(
+                          "text-center p-4 rounded-xl border",
+                          item.tone === "warning"
+                            ? "bg-warning/5 border-warning/10"
+                            : "bg-danger/5 border-danger/10",
+                        )}
+                      >
+                        <p className="text-xs text-default-500 mb-1">
+                          {item.label}
+                        </p>
+                        <p
+                          className={clsx(
+                            "text-2xl font-bold",
+                            item.tone === "warning"
+                              ? "text-warning"
+                              : "text-danger",
+                          )}
+                        >
+                          -{item.value}%
+                        </p>
+                        <p className="text-[10px] text-default-400 mt-1">
+                          {item.desc}
+                        </p>
                       </div>
                     ))}
                   </div>
@@ -644,35 +685,65 @@ export default function PortfolioAnalyticsPage() {
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <Card>
                   <CardBody className="p-6 text-center">
-                    <p className="text-xs text-default-500 mb-2">Sharpe Ratio</p>
+                    <p className="text-xs text-default-500 mb-2">
+                      Sharpe Ratio
+                    </p>
                     <p className="text-4xl font-bold">{riskMetrics.sharpe}</p>
                     <Chip
                       className="mt-2 mx-auto"
-                      color={riskMetrics.sharpe > 1 ? "success" : riskMetrics.sharpe > 0 ? "warning" : "danger"}
+                      color={
+                        riskMetrics.sharpe > 1
+                          ? "success"
+                          : riskMetrics.sharpe > 0
+                            ? "warning"
+                            : "danger"
+                      }
                       size="sm"
                       variant="flat"
                     >
-                      {riskMetrics.sharpe > 1 ? "Good" : riskMetrics.sharpe > 0 ? "Moderate" : "Poor"}
+                      {riskMetrics.sharpe > 1
+                        ? "Good"
+                        : riskMetrics.sharpe > 0
+                          ? "Moderate"
+                          : "Poor"}
                     </Chip>
                   </CardBody>
                 </Card>
                 <Card>
                   <CardBody className="p-6 text-center">
-                    <p className="text-xs text-default-500 mb-2">Regression Beta</p>
-                    <p className="text-4xl font-bold">{riskMetrics.beta ?? volatility?.beta ?? "—"}</p>
+                    <p className="text-xs text-default-500 mb-2">
+                      Regression Beta
+                    </p>
+                    <p className="text-4xl font-bold">
+                      {riskMetrics.beta ?? volatility?.beta ?? "—"}
+                    </p>
                     <p className="text-xs text-default-400 mt-2">
-                      {(riskMetrics.beta ?? volatility?.beta ?? 1) > 1 ? "Amplifies market moves" : "Dampens market moves"}
+                      {(riskMetrics.beta ?? volatility?.beta ?? 1) > 1
+                        ? "Amplifies market moves"
+                        : "Dampens market moves"}
                     </p>
                   </CardBody>
                 </Card>
                 <Card>
                   <CardBody className="p-6 text-center">
-                    <p className="text-xs text-default-500 mb-2">Alpha (annualized)</p>
-                    <p className={clsx("text-4xl font-bold", (riskMetrics.alpha || 0) >= 0 ? "text-success" : "text-danger")}>
-                      {(riskMetrics.alpha || 0) >= 0 ? "+" : ""}{riskMetrics.alpha || 0}%
+                    <p className="text-xs text-default-500 mb-2">
+                      Alpha (annualized)
+                    </p>
+                    <p
+                      className={clsx(
+                        "text-4xl font-bold",
+                        (riskMetrics.alpha || 0) >= 0
+                          ? "text-success"
+                          : "text-danger",
+                      )}
+                    >
+                      {(riskMetrics.alpha || 0) >= 0 ? "+" : ""}
+                      {riskMetrics.alpha || 0}%
                     </p>
                     <p className="text-xs text-default-400 mt-2">
-                      {(riskMetrics.alpha || 0) > 0 ? "Outperforming benchmark" : "Underperforming benchmark"}
+                      {(riskMetrics.alpha || 0) > 0
+                        ? "Outperforming benchmark"
+                        : "Underperforming benchmark"}
                     </p>
                   </CardBody>
                 </Card>
@@ -687,15 +758,53 @@ export default function PortfolioAnalyticsPage() {
                       <h3 className="font-semibold mb-4">Return Statistics</h3>
                       <div className="space-y-3">
                         {[
-                          { label: "Annualized Return", value: `${riskMetrics.returnStats.annualized >= 0 ? "+" : ""}${riskMetrics.returnStats.annualized}%`, color: riskMetrics.returnStats.annualized >= 0 ? "text-success" : "text-danger" },
-                          { label: "Mean Daily Return", value: `${riskMetrics.returnStats.meanDaily >= 0 ? "+" : ""}${riskMetrics.returnStats.meanDaily}%`, color: riskMetrics.returnStats.meanDaily >= 0 ? "text-success" : "text-danger" },
-                          { label: "Daily Std Dev", value: `${riskMetrics.returnStats.dailyStd}%`, color: "" },
-                          { label: "Best Day", value: `+${riskMetrics.returnStats.max}%`, color: "text-success" },
-                          { label: "Worst Day", value: `${riskMetrics.returnStats.min}%`, color: "text-danger" },
+                          {
+                            label: "Annualized Return",
+                            value: `${riskMetrics.returnStats.annualized >= 0 ? "+" : ""}${riskMetrics.returnStats.annualized}%`,
+                            color:
+                              riskMetrics.returnStats.annualized >= 0
+                                ? "text-success"
+                                : "text-danger",
+                          },
+                          {
+                            label: "Mean Daily Return",
+                            value: `${riskMetrics.returnStats.meanDaily >= 0 ? "+" : ""}${riskMetrics.returnStats.meanDaily}%`,
+                            color:
+                              riskMetrics.returnStats.meanDaily >= 0
+                                ? "text-success"
+                                : "text-danger",
+                          },
+                          {
+                            label: "Daily Std Dev",
+                            value: `${riskMetrics.returnStats.dailyStd}%`,
+                            color: "",
+                          },
+                          {
+                            label: "Best Day",
+                            value: `+${riskMetrics.returnStats.max}%`,
+                            color: "text-success",
+                          },
+                          {
+                            label: "Worst Day",
+                            value: `${riskMetrics.returnStats.min}%`,
+                            color: "text-danger",
+                          },
                         ].map((item) => (
-                          <div key={item.label} className="flex items-center justify-between py-1 border-b border-default-50 last:border-0">
-                            <span className="text-sm text-default-500">{item.label}</span>
-                            <span className={clsx("text-sm font-semibold", item.color)}>{item.value}</span>
+                          <div
+                            key={item.label}
+                            className="flex items-center justify-between py-1 border-b border-default-50 last:border-0"
+                          >
+                            <span className="text-sm text-default-500">
+                              {item.label}
+                            </span>
+                            <span
+                              className={clsx(
+                                "text-sm font-semibold",
+                                item.color,
+                              )}
+                            >
+                              {item.value}
+                            </span>
                           </div>
                         ))}
                       </div>
@@ -710,8 +819,12 @@ export default function PortfolioAnalyticsPage() {
                     <div className="space-y-5">
                       <div>
                         <div className="flex items-center justify-between mb-1">
-                          <span className="text-sm text-default-500">Skewness</span>
-                          <span className="text-sm font-semibold">{riskMetrics.skewness ?? "—"}</span>
+                          <span className="text-sm text-default-500">
+                            Skewness
+                          </span>
+                          <span className="text-sm font-semibold">
+                            {riskMetrics.skewness ?? "—"}
+                          </span>
                         </div>
                         <p className="text-xs text-default-400">
                           {(riskMetrics.skewness || 0) < -0.5
@@ -723,8 +836,12 @@ export default function PortfolioAnalyticsPage() {
                       </div>
                       <div>
                         <div className="flex items-center justify-between mb-1">
-                          <span className="text-sm text-default-500">Excess Kurtosis</span>
-                          <span className="text-sm font-semibold">{riskMetrics.kurtosis ?? "—"}</span>
+                          <span className="text-sm text-default-500">
+                            Excess Kurtosis
+                          </span>
+                          <span className="text-sm font-semibold">
+                            {riskMetrics.kurtosis ?? "—"}
+                          </span>
                         </div>
                         <p className="text-xs text-default-400">
                           {(riskMetrics.kurtosis || 0) > 3
@@ -736,14 +853,20 @@ export default function PortfolioAnalyticsPage() {
                       </div>
                       <div>
                         <div className="flex items-center justify-between mb-1">
-                          <span className="text-sm text-default-500">Diversification</span>
-                          <span className="text-sm font-semibold">{riskMetrics.diversificationBenefit}%</span>
+                          <span className="text-sm text-default-500">
+                            Diversification
+                          </span>
+                          <span className="text-sm font-semibold">
+                            {riskMetrics.diversificationBenefit}%
+                          </span>
                         </div>
                         <div className="flex items-center gap-3">
                           <div className="flex-1 bg-default-100 rounded-full h-2">
                             <div
                               className="bg-success rounded-full h-2 transition-all"
-                              style={{ width: `${Math.min(riskMetrics.diversificationBenefit, 100)}%` }}
+                              style={{
+                                width: `${Math.min(riskMetrics.diversificationBenefit, 100)}%`,
+                              }}
                             />
                           </div>
                         </div>
