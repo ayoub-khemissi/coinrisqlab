@@ -20,6 +20,7 @@ import {
 import { API_BASE_URL } from "@/config/constants";
 import { useUserAuth } from "@/lib/user-auth-context";
 import { useLivePortfolioMetrics } from "@/hooks/useLivePortfolioMetrics";
+import { MetricHelp } from "@/components/dashboard/metric-help";
 
 export default function DashboardPage() {
   const { user } = useUserAuth();
@@ -181,7 +182,13 @@ export default function DashboardPage() {
 
         <Card>
           <CardBody className="gap-1">
-            <p className="text-sm text-default-500">Fear & Greed</p>
+            <p className="text-sm text-default-500">
+              Fear & Greed
+              <MetricHelp
+                description="Daily crypto market sentiment index (0–100). Low values = widespread fear (potential buying opportunity); high values = greed (risk of a pullback)."
+                title="Fear & Greed Index"
+              />
+            </p>
             <p className="text-2xl font-bold">
               {fearGreed !== null ? fearGreed : "—"}
             </p>

@@ -39,6 +39,7 @@ import { formatCryptoPrice } from "@/lib/formatters";
 import { API_BASE_URL } from "@/config/constants";
 import { useUserAuth } from "@/lib/user-auth-context";
 import { ProUpgradeCta } from "@/components/dashboard/analytics/pro-upgrade-cta";
+import { MetricHelp } from "@/components/dashboard/metric-help";
 
 const COLORS = [
   "#FF6B35",
@@ -481,6 +482,14 @@ export default function PortfolioAnalyticsPage() {
                 <div className="flex items-center gap-2 mb-4">
                   <Activity className="text-primary" size={20} />
                   <h3 className="font-semibold">Current Volatility</h3>
+                  <MetricHelp
+                    description="Standard deviation of daily portfolio returns. Measures how much the portfolio value fluctuates. Higher = riskier. Annualized = daily × √252."
+                    formula={
+                      "\\sigma = \\sqrt{\\frac{1}{n}\\sum_{i=1}^{n}(r_i - \\bar{r})^2}"
+                    }
+                    title="Current Volatility"
+                    window="90 days"
+                  />
                 </div>
                 <div className="space-y-2">
                   <div>
@@ -523,7 +532,17 @@ export default function PortfolioAnalyticsPage() {
             {/* Beta */}
             <Card>
               <CardBody className="p-6">
-                <h3 className="font-semibold mb-4">Portfolio Beta</h3>
+                <div className="flex items-center gap-2 mb-4">
+                  <h3 className="font-semibold">Portfolio Beta</h3>
+                  <MetricHelp
+                    description="Sensitivity of the portfolio to moves of the CoinRisqLab 80 index. β = 1 moves with the market; β > 1 amplifies market moves; β < 1 dampens them. Weighted average of each holding's β."
+                    formula={
+                      "\\beta = \\frac{\\mathrm{Cov}(R_p, R_m)}{\\mathrm{Var}(R_m)}"
+                    }
+                    title="Portfolio Beta"
+                    window="365 days"
+                  />
+                </div>
                 <p className="text-3xl font-bold">{volatility.beta}</p>
                 <p className="text-xs text-default-400 mt-1">
                   {volatility.beta > 1
@@ -538,7 +557,17 @@ export default function PortfolioAnalyticsPage() {
             {/* Diversification Benefit */}
             <Card>
               <CardBody className="p-6">
-                <h3 className="font-semibold mb-4">Diversification Benefit</h3>
+                <div className="flex items-center gap-2 mb-4">
+                  <h3 className="font-semibold">Diversification Benefit</h3>
+                  <MetricHelp
+                    description="How much correlation between holdings reduces overall risk. 0% = all assets move together (no benefit); closer to 100% = holdings offset each other well. Compares actual portfolio volatility to the weighted average of individual volatilities."
+                    formula={
+                      "D = \\frac{\\sum_i w_i \\sigma_i - \\sigma_p}{\\sum_i w_i \\sigma_i} \\times 100"
+                    }
+                    title="Diversification Benefit"
+                    window="90 days"
+                  />
+                </div>
                 <p className="text-3xl font-bold">
                   {volatility.diversificationBenefit || 0}%
                 </p>
@@ -704,6 +733,14 @@ export default function PortfolioAnalyticsPage() {
                   <div className="flex items-center gap-2 mb-5">
                     <Shield className="text-danger" size={20} />
                     <h3 className="font-semibold">Value at Risk</h3>
+                    <MetricHelp
+                      description="Historical VaR: maximum daily loss at a given confidence level. CVaR (Expected Shortfall) is the average loss when VaR is exceeded — captures tail severity."
+                      formula={
+                        "\\mathrm{VaR}_\\alpha = -Q_{1-\\alpha}(r)\\;;\\; \\mathrm{CVaR}_\\alpha = -\\mathbb{E}[r \\mid r \\le -\\mathrm{VaR}_\\alpha]"
+                      }
+                      title="VaR & CVaR"
+                      window="365 days"
+                    />
                     <span className="text-xs text-default-400 ml-auto">
                       {riskMetrics.dataPoints} observations
                     </span>
@@ -772,6 +809,14 @@ export default function PortfolioAnalyticsPage() {
                   <CardBody className="p-6 text-center">
                     <p className="text-xs text-default-500 mb-2">
                       Sharpe Ratio
+                      <MetricHelp
+                        description="Risk-adjusted return. > 1 = good, > 2 = excellent, < 0 = underperforming a risk-free rate. Measures excess return per unit of volatility."
+                        formula={
+                          "\\mathrm{Sharpe} = \\frac{\\mu - r_f}{\\sigma} \\sqrt{252}"
+                        }
+                        title="Sharpe Ratio"
+                        window="365 days"
+                      />
                     </p>
                     <p className="text-4xl font-bold">{riskMetrics.sharpe}</p>
                     <Chip
@@ -798,6 +843,12 @@ export default function PortfolioAnalyticsPage() {
                   <CardBody className="p-6 text-center">
                     <p className="text-xs text-default-500 mb-2">
                       Regression Beta
+                      <MetricHelp
+                        description="Beta from linear regression of daily portfolio returns on the CoinRisqLab 80 returns — a statistically estimated sensitivity to market moves."
+                        formula={"R_p = \\alpha + \\beta R_m + \\varepsilon"}
+                        title="Regression Beta"
+                        window="365 days"
+                      />
                     </p>
                     <p className="text-4xl font-bold">
                       {riskMetrics.beta ?? volatility?.beta ?? "—"}
@@ -813,6 +864,14 @@ export default function PortfolioAnalyticsPage() {
                   <CardBody className="p-6 text-center">
                     <p className="text-xs text-default-500 mb-2">
                       Alpha (annualized)
+                      <MetricHelp
+                        description="Excess return vs. what beta alone would predict — how much the portfolio outperforms (α > 0) or underperforms (α < 0) the CoinRisqLab 80, annualized."
+                        formula={
+                          "\\alpha = \\mu_p - \\bigl[r_f + \\beta(\\mu_m - r_f)\\bigr]"
+                        }
+                        title="Alpha"
+                        window="365 days"
+                      />
                     </p>
                     <p
                       className={clsx(
@@ -906,7 +965,17 @@ export default function PortfolioAnalyticsPage() {
                 {/* Distribution Shape */}
                 <Card>
                   <CardBody className="p-6">
-                    <h3 className="font-semibold mb-4">Distribution Shape</h3>
+                    <div className="flex items-center gap-2 mb-4">
+                      <h3 className="font-semibold">Distribution Shape</h3>
+                      <MetricHelp
+                        description="Skewness tells you if losses or gains are more extreme (< 0 = heavier left tail). Excess kurtosis measures fat tails relative to a normal distribution (> 0 = more extreme events)."
+                        formula={
+                          "S = \\frac{1}{n}\\sum \\left(\\frac{r_i - \\mu}{\\sigma}\\right)^3;\\; K = \\frac{1}{n}\\sum \\left(\\frac{r_i - \\mu}{\\sigma}\\right)^4 - 3"
+                        }
+                        title="Distribution Shape"
+                        window="365 days"
+                      />
+                    </div>
                     <div className="space-y-5">
                       <div>
                         <div className="flex items-center justify-between mb-1">
@@ -976,7 +1045,17 @@ export default function PortfolioAnalyticsPage() {
           {correlation && correlation.symbols.length > 0 && (
             <Card>
               <CardHeader>
-                <h3 className="text-sm font-semibold">Correlation Matrix</h3>
+                <div className="flex items-center gap-2">
+                  <h3 className="text-sm font-semibold">Correlation Matrix</h3>
+                  <MetricHelp
+                    description="Pearson correlation of daily returns between each pair of holdings. +1 = move together, 0 = independent, −1 = move opposite. Low correlations across pairs drive the diversification benefit."
+                    formula={
+                      "\\rho_{ij} = \\frac{\\mathrm{Cov}(R_i, R_j)}{\\sigma_i \\sigma_j}"
+                    }
+                    title="Correlation Matrix"
+                    window="90 days"
+                  />
+                </div>
               </CardHeader>
               <CardBody>
                 <div className="overflow-x-auto">
@@ -1081,14 +1160,23 @@ export default function PortfolioAnalyticsPage() {
 
                   <Card>
                     <CardHeader>
-                      <div>
-                        <h3 className="text-lg font-semibold">
-                          Historical Scenarios
-                        </h3>
-                        <p className="text-sm text-default-500">
-                          Select a crisis to simulate its impact on your
-                          portfolio
-                        </p>
+                      <div className="flex items-start gap-2">
+                        <div>
+                          <h3 className="text-lg font-semibold">
+                            Historical Scenarios
+                          </h3>
+                          <p className="text-sm text-default-500">
+                            Select a crisis to simulate its impact on your
+                            portfolio
+                          </p>
+                        </div>
+                        <MetricHelp
+                          description="Applies the past market shock of each crisis to your portfolio using its beta. Negative betas are floored to 1 (in a real crisis correlations converge to 1)."
+                          formula={
+                            "\\Delta V = V_0 \\cdot \\beta_{\\mathrm{eff}} \\cdot s;\\quad \\beta_{\\mathrm{eff}} = \\max(\\beta, 1\\text{ if }\\beta<0)"
+                          }
+                          title="Stress Test"
+                        />
                       </div>
                     </CardHeader>
                     <CardBody className="p-4">
