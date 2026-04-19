@@ -755,7 +755,13 @@ export default function PortfolioAnalyticsPage() {
                 {riskMetrics.returnStats && (
                   <Card>
                     <CardBody className="p-6">
-                      <h3 className="font-semibold mb-4">Return Statistics</h3>
+                      <div className="mb-4">
+                        <h3 className="font-semibold">Return Statistics</h3>
+                        <p className="text-xs text-default-400">
+                          Based on the last {riskMetrics.dataPoints} daily
+                          observations
+                        </p>
+                      </div>
                       <div className="space-y-3">
                         {[
                           {
@@ -780,12 +786,12 @@ export default function PortfolioAnalyticsPage() {
                             color: "",
                           },
                           {
-                            label: "Best Day",
+                            label: `Best Day (last ${riskMetrics.dataPoints}d)`,
                             value: `+${riskMetrics.returnStats.max}%`,
                             color: "text-success",
                           },
                           {
-                            label: "Worst Day",
+                            label: `Worst Day (last ${riskMetrics.dataPoints}d)`,
                             value: `${riskMetrics.returnStats.min}%`,
                             color: "text-danger",
                           },
