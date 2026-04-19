@@ -28,6 +28,7 @@ import {
   Tooltip,
   ResponsiveContainer,
   Legend,
+  ReferenceLine,
   BarChart,
   Bar,
   Cell as RechartsCell,
@@ -319,11 +320,29 @@ export default function PortfolioAnalyticsPage() {
             <div className="h-80">
               <ResponsiveContainer height="100%" width="100%">
                 <LineChart
-                  data={performance.portfolio.map((p: any, i: number) => ({
-                    date: p.date,
-                    portfolio: p.value,
-                    benchmark: performance.benchmark[i]?.value ?? null,
-                  }))}
+                  data={(() => {
+                    const pMap = new Map<string, number | null>(
+                      (performance.portfolio24hSeries || []).map((p: any) => [
+                        p.date,
+                        p.pct,
+                      ]),
+                    );
+                    const bMap = new Map<string, number | null>(
+                      (performance.benchmark24hSeries || []).map((b: any) => [
+                        b.date,
+                        b.pct,
+                      ]),
+                    );
+                    const dates = Array.from(
+                      new Set([...pMap.keys(), ...bMap.keys()]),
+                    ).sort();
+
+                    return dates.map((date) => ({
+                      date,
+                      portfolio: pMap.get(date) ?? null,
+                      benchmark: bMap.get(date) ?? null,
+                    }));
+                  })()}
                 >
                   <CartesianGrid opacity={0.1} strokeDasharray="3 3" />
                   <XAxis
@@ -342,10 +361,11 @@ export default function PortfolioAnalyticsPage() {
                     domain={["auto", "auto"]}
                     fontSize={12}
                     stroke="#6b7280"
-                    tickFormatter={(v) => `${v.toFixed(0)}`}
+                    tickFormatter={(v) => `${v.toFixed(1)}%`}
                     tickLine={false}
-                    width={45}
+                    width={55}
                   />
+                  <ReferenceLine stroke="#6b7280" strokeDasharray="3 3" y={0} />
                   <Tooltip
                     content={({ active, payload }) => {
                       if (active && payload && payload.length > 0) {
@@ -371,26 +391,26 @@ export default function PortfolioAnalyticsPage() {
                                   className="text-sm font-semibold"
                                   style={{ color: "#FF6B35" }}
                                 >
-                                  {d.portfolio?.toFixed(2)}
+                                  {d.portfolio != null
+                                    ? `${d.portfolio >= 0 ? "+" : ""}${d.portfolio.toFixed(2)}%`
+                                    : "—"}
                                 </span>
                               </div>
-                              {d.benchmark != null && (
-                                <div className="flex items-center gap-2">
-                                  <div
-                                    className="w-2 h-2 rounded-full"
-                                    style={{ backgroundColor: "#3B82F6" }}
-                                  />
-                                  <span className="text-sm">
-                                    CoinRisqLab 80:
-                                  </span>
-                                  <span
-                                    className="text-sm font-semibold"
-                                    style={{ color: "#3B82F6" }}
-                                  >
-                                    {d.benchmark?.toFixed(2)}
-                                  </span>
-                                </div>
-                              )}
+                              <div className="flex items-center gap-2">
+                                <div
+                                  className="w-2 h-2 rounded-full"
+                                  style={{ backgroundColor: "#3B82F6" }}
+                                />
+                                <span className="text-sm">CoinRisqLab 80:</span>
+                                <span
+                                  className="text-sm font-semibold"
+                                  style={{ color: "#3B82F6" }}
+                                >
+                                  {d.benchmark != null
+                                    ? `${d.benchmark >= 0 ? "+" : ""}${d.benchmark.toFixed(2)}%`
+                                    : "—"}
+                                </span>
+                              </div>
                             </div>
                           </div>
                         );
@@ -401,6 +421,7 @@ export default function PortfolioAnalyticsPage() {
                   />
                   <Legend />
                   <Line
+                    connectNulls
                     activeDot={false}
                     dataKey="portfolio"
                     dot={false}
@@ -410,6 +431,7 @@ export default function PortfolioAnalyticsPage() {
                     type="monotone"
                   />
                   <Line
+                    connectNulls
                     activeDot={false}
                     dataKey="benchmark"
                     dot={false}
@@ -422,7 +444,8 @@ export default function PortfolioAnalyticsPage() {
               </ResponsiveContainer>
             </div>
             <p className="text-xs text-default-400 mt-2 text-right">
-              Normalized to 100 at start of period
+              Daily % change (close-to-close). Above 0 = gain that day, below 0
+              = loss.
             </p>
           </CardBody>
         </Card>

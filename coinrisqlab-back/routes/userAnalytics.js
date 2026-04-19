@@ -742,6 +742,27 @@ api.get('/user/portfolios/:id/analytics-bundle', authenticateUser, async (req, r
       benchmark24hReturn = prev > 0 ? ((latest - prev) / prev) * 100 : 0;
     }
 
+    // 24h rolling series: (close_t − close_{t-1}) / close_t × 100 for each day
+    const portfolio24hSeries = snapshots.length >= 2
+      ? snapshots.map((s, i) => {
+          if (i === 0) return { date: s.snapshot_date, pct: null };
+          const curr = parseFloat(s.total_value_usd);
+          const prev = parseFloat(snapshots[i - 1].total_value_usd);
+          const pct = curr > 0 ? ((curr - prev) / curr) * 100 : 0;
+          return { date: s.snapshot_date, pct: Number(pct.toFixed(4)) };
+        })
+      : [];
+
+    const benchmark24hSeries = indexHistory.length >= 2
+      ? indexHistory.map((h, i) => {
+          if (i === 0) return { date: h.snapshot_date, pct: null };
+          const curr = parseFloat(h.index_level);
+          const prev = parseFloat(indexHistory[i - 1].index_level);
+          const pct = curr > 0 ? ((curr - prev) / curr) * 100 : 0;
+          return { date: h.snapshot_date, pct: Number(pct.toFixed(4)) };
+        })
+      : [];
+
     result.performance = {
       portfolio: snapshots.length > 0 ? snapshots.map(s => ({ date: s.snapshot_date, value: Number(((s.total_value_usd / snapshots[0].total_value_usd) * 100).toFixed(2)) })) : [],
       benchmark: indexHistory.length > 0 ? indexHistory.map(h => ({ date: h.snapshot_date, value: Number(((h.index_level / indexHistory[0].index_level) * 100).toFixed(2)) })) : [],
@@ -749,6 +770,8 @@ api.get('/user/portfolios/:id/analytics-bundle', authenticateUser, async (req, r
       benchmarkReturn: indexHistory.length >= 2 ? Number((((indexHistory[indexHistory.length - 1].index_level / indexHistory[0].index_level) - 1) * 100).toFixed(2)) : 0,
       portfolio24hReturn: Number(portfolio24hReturn.toFixed(2)),
       benchmark24hReturn: Number(benchmark24hReturn.toFixed(2)),
+      portfolio24hSeries,
+      benchmark24hSeries,
     };
 
     res.json({ data: result });
