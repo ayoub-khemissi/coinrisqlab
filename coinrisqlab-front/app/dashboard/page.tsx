@@ -1,8 +1,8 @@
 "use client";
 
-import type { Portfolio, Holding } from "@/types/user";
+import type { HoldingWithPortfolio } from "@/types/user";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Card, CardBody, CardHeader } from "@heroui/card";
 import { Button } from "@heroui/button";
 import { Chip } from "@heroui/chip";
@@ -19,48 +19,26 @@ import {
 
 import { API_BASE_URL } from "@/config/constants";
 import { useUserAuth } from "@/lib/user-auth-context";
+import { useLivePortfolioMetrics } from "@/hooks/useLivePortfolioMetrics";
 
 export default function DashboardPage() {
   const { user } = useUserAuth();
-  const [portfolios, setPortfolios] = useState<Portfolio[]>([]);
-  const [holdings, setHoldings] = useState<Holding[]>([]);
-  const [totalValue, setTotalValue] = useState(0);
-  const [totalPnl, setTotalPnl] = useState(0);
+  const [holdings, setHoldings] = useState<HoldingWithPortfolio[]>([]);
+  const [portfoliosCount, setPortfoliosCount] = useState(0);
   const [fearGreed, setFearGreed] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     async function fetchData() {
       try {
-        // Fetch portfolios
-        const pRes = await fetch(`${API_BASE_URL}/user/portfolios`, {
+        const hRes = await fetch(`${API_BASE_URL}/user/holdings/all`, {
           credentials: "include",
         });
-        const pData = await pRes.json();
-        const portfolioList: Portfolio[] = pData.data || [];
+        const hData = await hRes.json();
 
-        setPortfolios(portfolioList);
+        setHoldings(hData.data || []);
+        setPortfoliosCount(hData.portfoliosCount || 0);
 
-        // Fetch holdings for first portfolio
-        if (portfolioList.length > 0) {
-          const hRes = await fetch(
-            `${API_BASE_URL}/user/portfolios/${portfolioList[0].id}/holdings`,
-            { credentials: "include" },
-          );
-          const hData = await hRes.json();
-
-          setHoldings(hData.data || []);
-          setTotalValue(hData.totalValue || 0);
-
-          const pnl = (hData.data || []).reduce(
-            (sum: number, h: Holding) => sum + (h.unrealized_pnl || 0),
-            0,
-          );
-
-          setTotalPnl(pnl);
-        }
-
-        // Fetch fear & greed
         const mRes = await fetch(`${API_BASE_URL}/metrics`);
         const mData = await mRes.json();
 
@@ -76,6 +54,32 @@ export default function DashboardPage() {
 
     fetchData();
   }, []);
+
+  const {
+    holdings: liveHoldings,
+    totalValue,
+    totalPnl,
+  } = useLivePortfolioMetrics(holdings);
+
+  const topPerformers = useMemo(
+    () =>
+      [...liveHoldings]
+        .sort(
+          (a, b) => (b.percent_change_24h || 0) - (a.percent_change_24h || 0),
+        )
+        .slice(0, 3),
+    [liveHoldings],
+  );
+
+  const worstPerformers = useMemo(
+    () =>
+      [...liveHoldings]
+        .sort(
+          (a, b) => (a.percent_change_24h || 0) - (b.percent_change_24h || 0),
+        )
+        .slice(0, 3),
+    [liveHoldings],
+  );
 
   if (loading) {
     return (
@@ -118,15 +122,6 @@ export default function DashboardPage() {
       </div>
     );
   }
-
-  // Top 3 performers (by 24h change)
-  const topPerformers = [...holdings]
-    .sort((a, b) => (b.percent_change_24h || 0) - (a.percent_change_24h || 0))
-    .slice(0, 3);
-
-  const worstPerformers = [...holdings]
-    .sort((a, b) => (a.percent_change_24h || 0) - (b.percent_change_24h || 0))
-    .slice(0, 3);
 
   return (
     <div className="space-y-6">
@@ -176,10 +171,10 @@ export default function DashboardPage() {
         <Card>
           <CardBody className="gap-1">
             <p className="text-sm text-default-500">Holdings</p>
-            <p className="text-2xl font-bold">{holdings.length}</p>
+            <p className="text-2xl font-bold">{liveHoldings.length}</p>
             <p className="text-xs text-default-400">
-              across {portfolios.length} portfolio
-              {portfolios.length !== 1 ? "s" : ""}
+              across {portfoliosCount} portfolio
+              {portfoliosCount !== 1 ? "s" : ""}
             </p>
           </CardBody>
         </Card>

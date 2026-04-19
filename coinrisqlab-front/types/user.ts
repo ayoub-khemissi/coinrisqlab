@@ -34,6 +34,11 @@ export interface Holding {
   allocation_pct: number;
 }
 
+export interface HoldingWithPortfolio extends Holding {
+  portfolio_id: number;
+  portfolio_name: string;
+}
+
 export interface Transaction {
   id: number;
   crypto_id: number;

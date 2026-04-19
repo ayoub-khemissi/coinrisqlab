@@ -1,6 +1,6 @@
 "use client";
 
-import type { Portfolio } from "@/types/user";
+import type { Portfolio, HoldingWithPortfolio } from "@/types/user";
 
 import { useEffect, useState } from "react";
 import { Card, CardBody, CardHeader } from "@heroui/card";
@@ -26,10 +26,12 @@ import {
 
 import { API_BASE_URL } from "@/config/constants";
 import { useUserAuth } from "@/lib/user-auth-context";
+import { useLivePortfolioMetrics } from "@/hooks/useLivePortfolioMetrics";
 
 export default function PortfoliosPage() {
   const { user } = useUserAuth();
   const [portfolios, setPortfolios] = useState<Portfolio[]>([]);
+  const [holdings, setHoldings] = useState<HoldingWithPortfolio[]>([]);
   const [loading, setLoading] = useState(true);
   const [newName, setNewName] = useState("");
   const [creating, setCreating] = useState(false);
@@ -37,14 +39,21 @@ export default function PortfoliosPage() {
   const { isOpen, onOpen, onClose } = useDisclosure();
   const deleteModal = useDisclosure();
 
-  const fetchPortfolios = async () => {
-    try {
-      const res = await fetch(`${API_BASE_URL}/user/portfolios`, {
-        credentials: "include",
-      });
-      const data = await res.json();
+  const { byPortfolio } = useLivePortfolioMetrics(holdings);
 
-      setPortfolios(data.data || []);
+  const fetchAll = async () => {
+    try {
+      const [pRes, hRes] = await Promise.all([
+        fetch(`${API_BASE_URL}/user/portfolios`, { credentials: "include" }),
+        fetch(`${API_BASE_URL}/user/holdings/all`, {
+          credentials: "include",
+        }),
+      ]);
+      const pData = await pRes.json();
+      const hData = await hRes.json();
+
+      setPortfolios(pData.data || []);
+      setHoldings(hData.data || []);
     } catch {
       // ignore
     } finally {
@@ -53,7 +62,7 @@ export default function PortfoliosPage() {
   };
 
   useEffect(() => {
-    fetchPortfolios();
+    fetchAll();
   }, []);
 
   const handleCreate = async () => {
@@ -68,7 +77,7 @@ export default function PortfoliosPage() {
       });
       setNewName("");
       onClose();
-      fetchPortfolios();
+      fetchAll();
     } catch {
       // ignore
     } finally {
@@ -85,7 +94,7 @@ export default function PortfoliosPage() {
       });
       deleteModal.onClose();
       setDeletingId(null);
-      fetchPortfolios();
+      fetchAll();
     } catch {
       // ignore
     }
@@ -181,33 +190,43 @@ export default function PortfoliosPage() {
                 className="gap-2 pt-0"
                 href={`/dashboard/portfolios/${p.id}`}
               >
-                <p className="text-2xl font-bold">
-                  $
-                  {(p.latest_value || 0).toLocaleString("en-US", {
-                    minimumFractionDigits: 2,
-                    maximumFractionDigits: 2,
-                  })}
-                </p>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-default-500">
-                    {p.holding_count} holding{p.holding_count !== 1 ? "s" : ""}
-                  </span>
-                  {p.latest_pnl !== null && (
-                    <span
-                      className={`text-sm flex items-center gap-1 ${
-                        p.latest_pnl >= 0 ? "text-success" : "text-danger"
-                      }`}
-                    >
-                      {p.latest_pnl >= 0 ? (
-                        <TrendingUp size={14} />
-                      ) : (
-                        <TrendingDown size={14} />
-                      )}
-                      {p.latest_pnl >= 0 ? "+" : ""}$
-                      {Math.abs(p.latest_pnl).toFixed(2)}
-                    </span>
-                  )}
-                </div>
+                {(() => {
+                  const agg = byPortfolio[p.id];
+                  const value = agg?.value ?? p.latest_value ?? 0;
+                  const pnl = agg?.pnl ?? p.latest_pnl;
+
+                  return (
+                    <>
+                      <p className="text-2xl font-bold">
+                        $
+                        {value.toLocaleString("en-US", {
+                          minimumFractionDigits: 2,
+                          maximumFractionDigits: 2,
+                        })}
+                      </p>
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm text-default-500">
+                          {p.holding_count} holding
+                          {p.holding_count !== 1 ? "s" : ""}
+                        </span>
+                        {pnl !== null && pnl !== undefined && (
+                          <span
+                            className={`text-sm flex items-center gap-1 ${
+                              pnl >= 0 ? "text-success" : "text-danger"
+                            }`}
+                          >
+                            {pnl >= 0 ? (
+                              <TrendingUp size={14} />
+                            ) : (
+                              <TrendingDown size={14} />
+                            )}
+                            {pnl >= 0 ? "+" : ""}${Math.abs(pnl).toFixed(2)}
+                          </span>
+                        )}
+                      </div>
+                    </>
+                  );
+                })()}
               </CardBody>
             </Card>
           ))}

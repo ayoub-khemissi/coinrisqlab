@@ -1,13 +1,14 @@
 "use client";
 
-import type { CorrelationMatrix } from "@/types/user";
+import type { CorrelationMatrix, Portfolio } from "@/types/user";
 
 import { useEffect, useState, useMemo } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { Card, CardBody, CardHeader } from "@heroui/card";
 import { Chip } from "@heroui/chip";
 import { Skeleton } from "@heroui/skeleton";
 import { Button } from "@heroui/button";
+import { Select, SelectItem } from "@heroui/select";
 import {
   Table,
   TableHeader,
@@ -78,6 +79,7 @@ function getRiskLevelColor(level: string): string {
 
 export default function PortfolioAnalyticsPage() {
   const params = useParams();
+  const router = useRouter();
   const portfolioId = parseInt(params.id as string);
   const { user } = useUserAuth();
   const isPro = user?.plan === "pro";
@@ -93,7 +95,25 @@ export default function PortfolioAnalyticsPage() {
   );
   const [stressTest, setStressTest] = useState<any>(null);
   const [performance, setPerformance] = useState<any>(null);
+  const [portfolios, setPortfolios] = useState<Portfolio[]>([]);
   const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function fetchPortfolios() {
+      try {
+        const res = await fetch(`${API_BASE_URL}/user/portfolios`, {
+          credentials: "include",
+        });
+        const json = await res.json();
+
+        setPortfolios(json.data || []);
+      } catch {
+        // ignore
+      }
+    }
+
+    fetchPortfolios();
+  }, []);
 
   useEffect(() => {
     async function fetchAll() {
@@ -164,7 +184,28 @@ export default function PortfolioAnalyticsPage() {
   if (loading) {
     return (
       <div className="space-y-6">
-        <h1 className="text-2xl font-bold">Portfolio Analytics</h1>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <h1 className="text-2xl font-bold">Portfolio Analytics</h1>
+          {portfolios.length > 1 && (
+            <Select
+              aria-label="Select portfolio"
+              className="sm:max-w-xs"
+              selectedKeys={[String(portfolioId)]}
+              size="sm"
+              onSelectionChange={(keys) => {
+                const next = Array.from(keys)[0] as string | undefined;
+
+                if (next && Number(next) !== portfolioId) {
+                  router.push(`/dashboard/portfolios/${next}/analytics`);
+                }
+              }}
+            >
+              {portfolios.map((p) => (
+                <SelectItem key={String(p.id)}>{p.name}</SelectItem>
+              ))}
+            </Select>
+          )}
+        </div>
         <Card>
           <CardHeader>
             <Skeleton className="w-48 h-4 rounded-lg" />
@@ -189,7 +230,28 @@ export default function PortfolioAnalyticsPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold">Portfolio Analytics</h1>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <h1 className="text-2xl font-bold">Portfolio Analytics</h1>
+        {portfolios.length > 1 && (
+          <Select
+            aria-label="Select portfolio"
+            className="sm:max-w-xs"
+            selectedKeys={[String(portfolioId)]}
+            size="sm"
+            onSelectionChange={(keys) => {
+              const next = Array.from(keys)[0] as string | undefined;
+
+              if (next && Number(next) !== portfolioId) {
+                router.push(`/dashboard/portfolios/${next}/analytics`);
+              }
+            }}
+          >
+            {portfolios.map((p) => (
+              <SelectItem key={String(p.id)}>{p.name}</SelectItem>
+            ))}
+          </Select>
+        )}
+      </div>
 
       {/* Performance vs Benchmark */}
       {performance && (

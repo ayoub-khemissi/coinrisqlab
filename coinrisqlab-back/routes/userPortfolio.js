@@ -112,6 +112,62 @@ api.delete('/user/portfolios/:id', authenticateUser, async (req, res) => {
   }
 });
 
+// ─── Aggregated holdings (all portfolios for a user) ───────────────────────
+
+// List holdings across ALL of the user's portfolios in a single round-trip.
+// Used by the dashboard and portfolios-list pages to compute live totals
+// without N+1 fetches.
+api.get('/user/holdings/all', authenticateUser, async (req, res) => {
+  try {
+    const [holdings] = await Database.execute(
+      `SELECT
+        h.id,
+        h.portfolio_id,
+        p.name AS portfolio_name,
+        h.crypto_id,
+        c.symbol,
+        c.name AS crypto_name,
+        c.image_url,
+        h.quantity,
+        h.avg_buy_price,
+        h.first_buy_date,
+        md.price_usd AS current_price,
+        (h.quantity * md.price_usd) AS current_value,
+        (h.quantity * (md.price_usd - h.avg_buy_price)) AS unrealized_pnl,
+        CASE WHEN h.avg_buy_price > 0
+          THEN ((md.price_usd - h.avg_buy_price) / h.avg_buy_price * 100)
+          ELSE 0
+        END AS pnl_percent,
+        md.percent_change_24h
+      FROM user_portfolios p
+      JOIN user_portfolio_holdings h ON h.portfolio_id = p.id
+      JOIN cryptocurrencies c ON c.id = h.crypto_id
+      LEFT JOIN market_data md ON md.crypto_id = h.crypto_id
+        AND md.timestamp = (SELECT MAX(timestamp) FROM market_data WHERE crypto_id = h.crypto_id)
+      WHERE p.user_id = ?
+      ORDER BY current_value DESC`,
+      [req.user.id]
+    );
+
+    const totalValue = holdings.reduce((sum, h) => sum + (parseFloat(h.current_value) || 0), 0);
+    const totalPnl = holdings.reduce((sum, h) => sum + (parseFloat(h.unrealized_pnl) || 0), 0);
+
+    const data = holdings.map(h => ({
+      ...h,
+      allocation_pct: totalValue > 0
+        ? Number(((parseFloat(h.current_value) || 0) / totalValue * 100).toFixed(2))
+        : 0,
+    }));
+
+    const portfoliosCount = new Set(holdings.map(h => h.portfolio_id)).size;
+
+    res.json({ data, totalValue, totalPnl, portfoliosCount });
+  } catch (error) {
+    log.error(`List all holdings error: ${error.message}`);
+    res.status(500).json({ data: null, msg: 'Failed to fetch holdings' });
+  }
+});
+
 // ─── Holdings CRUD ──────────────────────────────────────────────────────────
 
 // List holdings with live prices
