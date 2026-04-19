@@ -111,12 +111,15 @@ export default function CryptoDetailContent() {
   const [activePanel, setActivePanel] = useState<RiskPanel>(initialPanel);
   const [period, setPeriod] = useState<RiskPeriod>("90d");
 
-  // Risk metrics for sidebar
+  // Sidebar period is fixed — must not follow the chart's timeframe,
+  // otherwise switching Price History to 24h wipes sidebar metrics.
+  const SIDEBAR_PERIOD: RiskPeriod = "90d";
+
   const { data: riskSummary, isLoading: isRiskSummaryLoading } = useRiskSummary(
     id,
-    period,
+    SIDEBAR_PERIOD,
   );
-  const { data: priceData } = usePriceHistory(id, period);
+  const { data: priceData } = usePriceHistory(id, SIDEBAR_PERIOD);
 
   // Fetch specific periods for sidebar consistency (stable vs recent estimates)
   const { data: var365Data } = useVaR(id, "365d");
