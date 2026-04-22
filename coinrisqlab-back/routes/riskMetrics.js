@@ -625,8 +625,6 @@ async function getHistorizedDistributionStats(cryptoId, windowDays = 90) {
     SELECT
       skewness,
       kurtosis,
-      mean_return,
-      std_dev,
       num_observations,
       date
     FROM crypto_distribution_stats
@@ -759,7 +757,10 @@ api.get('/risk/crypto/:id/distribution', async (req, res) => {
     const windowDaysMap = { '7d': 7, '30d': 30, '90d': 90 };
     const windowDays = windowDaysMap[period] || 90;
 
-    // Try to get historized stats first (for 90d period)
+    // Try to get historized stats first (for 90d period).
+    // Note: mu/sigma are always computed on-the-fly because they're only used
+    // to overlay a normal curve on the log-returns histogram below, so they
+    // must live in log-return space — which is no longer stored.
     let skewness, kurtosis, mu, sigma, dataPoints;
     let fromHistorized = false;
 
@@ -768,8 +769,6 @@ api.get('/risk/crypto/:id/distribution', async (req, res) => {
       if (historizedStats) {
         skewness = parseFloat(historizedStats.skewness);
         kurtosis = parseFloat(historizedStats.kurtosis);
-        mu = parseFloat(historizedStats.mean_return);
-        sigma = parseFloat(historizedStats.std_dev);
         dataPoints = historizedStats.num_observations;
         fromHistorized = true;
         log.debug(`Using historized distribution stats for ${coingeckoId} (date: ${historizedStats.date})`);
@@ -801,11 +800,14 @@ api.get('/risk/crypto/:id/distribution', async (req, res) => {
     if (!fromHistorized) {
       skewness = calculateSkewness(logReturns);
       kurtosis = calculateKurtosis(logReturns);
-      mu = mean(logReturns);
-      sigma = standardDeviation(logReturns);
       dataPoints = logReturns.length;
       log.debug(`Calculated distribution on-the-fly for ${coingeckoId}`);
     }
+
+    // mu/sigma always derived from logReturns — they drive the normal-curve
+    // overlay on the histogram and must stay in log-return space.
+    mu = mean(logReturns);
+    sigma = standardDeviation(logReturns);
 
     // Generate histogram from current log returns (for visualization)
     const histogram = generateHistogramBins(logReturns, 30);
