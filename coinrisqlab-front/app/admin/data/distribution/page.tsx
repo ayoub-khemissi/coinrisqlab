@@ -12,8 +12,6 @@ const COLUMNS = [
   { key: "window_days", label: "Window" },
   { key: "skewness", label: "Skewness" },
   { key: "kurtosis", label: "Kurtosis" },
-  { key: "mean_return", label: "Mean Return" },
-  { key: "std_dev", label: "Std Dev" },
   { key: "num_observations", label: "Obs" },
 ];
 

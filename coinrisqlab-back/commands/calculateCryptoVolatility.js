@@ -105,7 +105,10 @@ async function calculateVolatilityForCrypto(cryptoId, symbol) {
       .slice(i - actualWindowDays + 1, i + 1)
       .map(r => parseFloat(r.log_return));
 
-    // Calculate statistics
+    // Calculate statistics. mean(log returns) is used internally to compute
+    // the variance/volatility but is NOT persisted: when exposed to users it
+    // would carry a "performance" semantic, which the methodology requires
+    // to be in simple returns — and that lives in crypto_var.mean_return.
     const meanReturn = mean(windowReturns);
     const dailyVol = standardDeviation(windowReturns, meanReturn);
     const annualizedVol = annualizeVolatility(dailyVol);
@@ -113,9 +116,9 @@ async function calculateVolatilityForCrypto(cryptoId, symbol) {
     // Insert into database
     await Database.execute(`
       INSERT INTO crypto_volatility
-      (crypto_id, date, window_days, daily_volatility, annualized_volatility, num_observations, mean_return)
-      VALUES (?, ?, ?, ?, ?, ?, ?)
-    `, [cryptoId, currentDate, actualWindowDays, dailyVol, annualizedVol, windowReturns.length, meanReturn]);
+      (crypto_id, date, window_days, daily_volatility, annualized_volatility, num_observations)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `, [cryptoId, currentDate, actualWindowDays, dailyVol, annualizedVol, windowReturns.length]);
 
     inserted++;
   }

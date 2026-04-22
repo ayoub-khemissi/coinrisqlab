@@ -246,7 +246,9 @@ CREATE TABLE IF NOT EXISTS `crypto_volatility` (
     `daily_volatility` DECIMAL(20, 12) NOT NULL COMMENT 'Daily volatility (standard deviation of log returns)',
     `annualized_volatility` DECIMAL(20, 12) NOT NULL COMMENT 'Annualized volatility (daily_vol * sqrt(365))',
     `num_observations` INT UNSIGNED NOT NULL COMMENT 'Number of data points used in calculation',
-    `mean_return` DECIMAL(20, 12) NOT NULL COMMENT 'Mean of log returns over the window',
+    -- mean_return intentionally not stored here: as a user-facing
+    -- "performance" stat it lives in crypto_var.mean_return (simple returns)
+    -- per the methodology split between descriptive (log) and economic (simple).
     `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY `fk_volatility_crypto_idx` (`crypto_id`) REFERENCES `cryptocurrencies`(`id`) ON DELETE CASCADE,
     UNIQUE KEY `idx_crypto_date_window` (`crypto_id`, `date`, `window_days`),
@@ -327,8 +329,9 @@ CREATE TABLE IF NOT EXISTS `crypto_distribution_stats` (
     `window_days` INT UNSIGNED NOT NULL DEFAULT 90 COMMENT 'Rolling window size in days',
     `skewness` DECIMAL(20, 12) NOT NULL COMMENT 'Fisher skewness of log returns',
     `kurtosis` DECIMAL(20, 12) NOT NULL COMMENT 'Excess kurtosis (Fisher) of log returns',
-    `mean_return` DECIMAL(20, 12) NOT NULL COMMENT 'Mean of log returns over the window',
-    `std_dev` DECIMAL(20, 12) NOT NULL COMMENT 'Standard deviation of log returns',
+    -- mean_return / std_dev intentionally not stored here: as user-facing
+    -- "performance" stats they live in crypto_var (simple returns) per the
+    -- methodology split between descriptive (log) and economic (simple).
     `num_observations` INT UNSIGNED NOT NULL COMMENT 'Number of data points used in calculation',
     `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY `fk_distribution_stats_crypto_idx` (`crypto_id`) REFERENCES `cryptocurrencies`(`id`) ON DELETE CASCADE,
@@ -347,10 +350,10 @@ CREATE TABLE IF NOT EXISTS `crypto_var` (
     `var_99` DECIMAL(20, 12) NOT NULL COMMENT 'Value at Risk at 99% confidence',
     `cvar_95` DECIMAL(20, 12) NOT NULL COMMENT 'Conditional VaR at 95% confidence',
     `cvar_99` DECIMAL(20, 12) NOT NULL COMMENT 'Conditional VaR at 99% confidence',
-    `mean_return` DECIMAL(20, 12) NOT NULL COMMENT 'Mean of log returns over the window',
-    `std_dev` DECIMAL(20, 12) NOT NULL COMMENT 'Standard deviation of log returns',
-    `min_return` DECIMAL(20, 12) NOT NULL COMMENT 'Minimum log return in window',
-    `max_return` DECIMAL(20, 12) NOT NULL COMMENT 'Maximum log return in window',
+    `mean_return` DECIMAL(20, 12) NOT NULL COMMENT 'Mean of simple returns over the window',
+    `std_dev` DECIMAL(20, 12) NOT NULL COMMENT 'Standard deviation of simple returns',
+    `min_return` DECIMAL(20, 12) NOT NULL COMMENT 'Minimum simple return in window',
+    `max_return` DECIMAL(20, 12) NOT NULL COMMENT 'Maximum simple return in window',
     `num_observations` INT UNSIGNED NOT NULL COMMENT 'Number of data points used in calculation',
     `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY `fk_var_crypto_idx` (`crypto_id`) REFERENCES `cryptocurrencies`(`id`) ON DELETE CASCADE,

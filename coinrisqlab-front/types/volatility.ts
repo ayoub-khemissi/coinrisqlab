@@ -61,7 +61,6 @@ export interface CryptoVolatility {
   daily_volatility: number;
   annualized_volatility: number;
   num_observations: number;
-  mean_return: number;
   created_at?: string;
 }
 

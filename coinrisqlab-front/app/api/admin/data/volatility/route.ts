@@ -41,7 +41,6 @@ export async function GET(request: NextRequest) {
       "window_days",
       "daily_volatility",
       "annualized_volatility",
-      "mean_return",
       "num_observations",
     ]);
 

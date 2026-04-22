@@ -28,7 +28,7 @@ const METRIC_TABLES = [
   {
     name: 'distribution_stats',
     table: 'crypto_distribution_stats',
-    columns: ['skewness', 'kurtosis', 'mean_return', 'std_dev'],
+    columns: ['skewness', 'kurtosis'],
   },
   {
     name: 'log_returns',
@@ -48,7 +48,7 @@ const METRIC_TABLES = [
   {
     name: 'volatility',
     table: 'crypto_volatility',
-    columns: ['daily_volatility', 'annualized_volatility', 'mean_return'],
+    columns: ['daily_volatility', 'annualized_volatility'],
   },
   {
     name: 'sharpe',

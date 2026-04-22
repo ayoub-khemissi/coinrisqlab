@@ -143,7 +143,10 @@ async function calculateStatsForCrypto(cryptoId, symbol) {
       .slice(i - actualWindowDays + 1, i + 1)
       .map(r => parseFloat(r.log_return));
 
-    // Calculate statistics
+    // mean / stdDev (log returns) are used internally to standardize the
+    // moments for skewness/kurtosis but are NOT persisted: as user-facing
+    // "performance" stats they belong in simple-return space, which is in
+    // crypto_var.mean_return / std_dev.
     const meanReturn = mean(windowReturns);
     const stdDev = standardDeviation(windowReturns, meanReturn);
     const skewness = calculateSkewness(windowReturns);
@@ -152,9 +155,9 @@ async function calculateStatsForCrypto(cryptoId, symbol) {
     // Insert into database
     await Database.execute(`
       INSERT INTO crypto_distribution_stats
-      (crypto_id, date, window_days, skewness, kurtosis, mean_return, std_dev, num_observations)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-    `, [cryptoId, currentDate, actualWindowDays, skewness, kurtosis, meanReturn, stdDev, windowReturns.length]);
+      (crypto_id, date, window_days, skewness, kurtosis, num_observations)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `, [cryptoId, currentDate, actualWindowDays, skewness, kurtosis, windowReturns.length]);
 
     inserted++;
   }

@@ -184,7 +184,7 @@ export async function getVolatility(
   const dateParams = [from || "2000-01-01", to || "2099-12-31"];
 
   const [rows] = await db.execute<RowDataPacket[]>(
-    `SELECT c.symbol, c.name, cv.date, cv.window_days, cv.daily_volatility, cv.annualized_volatility, cv.mean_return, cv.num_observations
+    `SELECT c.symbol, c.name, cv.date, cv.window_days, cv.daily_volatility, cv.annualized_volatility, cv.num_observations
      FROM crypto_volatility cv
      INNER JOIN cryptocurrencies c ON cv.crypto_id = c.id
      WHERE cv.date >= ? AND cv.date <= ? AND cv.window_days = ? ${clause}
@@ -399,7 +399,7 @@ export async function getDistributionStats(
   const dateParams = [from || "2000-01-01", to || "2099-12-31"];
 
   const [rows] = await db.execute<RowDataPacket[]>(
-    `SELECT c.symbol, c.name, cds.date, cds.window_days, cds.skewness, cds.kurtosis, cds.mean_return, cds.std_dev, cds.num_observations
+    `SELECT c.symbol, c.name, cds.date, cds.window_days, cds.skewness, cds.kurtosis, cds.num_observations
      FROM crypto_distribution_stats cds
      INNER JOIN cryptocurrencies c ON cds.crypto_id = c.id
      WHERE cds.date >= ? AND cds.date <= ? AND cds.window_days = ? ${clause}

@@ -151,8 +151,7 @@ api.get('/volatility/crypto/:id', async (req, res) => {
       SELECT
         date,
         daily_volatility,
-        annualized_volatility,
-        mean_return
+        annualized_volatility
       FROM crypto_volatility
       WHERE crypto_id = ?
         ${dateFilter}

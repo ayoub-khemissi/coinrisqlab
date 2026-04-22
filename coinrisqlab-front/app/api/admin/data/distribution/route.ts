@@ -41,8 +41,6 @@ export async function GET(request: NextRequest) {
       "window_days",
       "skewness",
       "kurtosis",
-      "mean_return",
-      "std_dev",
       "num_observations",
     ]);
 

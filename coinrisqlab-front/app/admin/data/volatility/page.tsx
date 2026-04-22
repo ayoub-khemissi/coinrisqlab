@@ -13,7 +13,6 @@ const CRYPTO_COLUMNS = [
   { key: "window_days", label: "Window" },
   { key: "daily_volatility", label: "Daily Vol" },
   { key: "annualized_volatility", label: "Ann Vol" },
-  { key: "mean_return", label: "Mean Return" },
   { key: "num_observations", label: "Obs" },
 ];
 
