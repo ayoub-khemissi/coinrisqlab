@@ -42,7 +42,9 @@ async function exportUserPortfolioAnalyticsValidation(portfolioIdArg) {
   try {
     const portfolioId = parseInt(portfolioIdArg);
     if (!portfolioId || Number.isNaN(portfolioId)) {
-      throw new Error('Usage: node commands/exportUserPortfolioAnalyticsValidation.js <portfolio_id>');
+      throw new Error(
+        'Usage: node commands/exportUserPortfolioAnalyticsValidation.js <portfolio_id>'
+      );
     }
 
     log.info(`Starting validation export for portfolio ${portfolioId}...`);
@@ -72,19 +74,21 @@ async function exportUserPortfolioAnalyticsValidation(portfolioIdArg) {
       throw new Error(`Portfolio ${portfolioId} has no holdings — nothing to validate`);
     }
 
-    const cryptoIds = holdings.map(h => h.crypto_id);
-    const [{ returnsByCrypto, alignedDates }, betaMap, indexReturnMap] = await Promise.all([
-      getAlignedReturns(cryptoIds, '90d'),
-      getLatestBetaMap(cryptoIds),
-      getIndexLogReturnsMap(),
-    ]);
+    const cryptoIds = holdings.map((h) => h.crypto_id);
+    const [{ returnsByCryptoLog, returnsByCryptoSimple, alignedDates }, betaMap, indexReturnMap] =
+      await Promise.all([
+        getAlignedReturns(cryptoIds, '90d'),
+        getLatestBetaMap(cryptoIds),
+        getIndexLogReturnsMap(),
+      ]);
 
     // ========================================
     // SECTION 2: RUN THE SHARED CALCULATION
     // ========================================
     const { bundle, raw } = computeAnalyticsBundle({
       holdings,
-      returnsByCrypto,
+      returnsByCryptoLog,
+      returnsByCryptoSimple,
       alignedDates,
       betaMap,
       indexReturnMap,
@@ -99,7 +103,7 @@ async function exportUserPortfolioAnalyticsValidation(portfolioIdArg) {
     const fmtDate = (d) => {
       if (!d) return '';
       const dt = d instanceof Date ? d : new Date(d);
-      const pad = n => n.toString().padStart(2, '0');
+      const pad = (n) => n.toString().padStart(2, '0');
       return `${dt.getFullYear()}-${pad(dt.getMonth() + 1)}-${pad(dt.getDate())} ${pad(dt.getHours())}:${pad(dt.getMinutes())}:${pad(dt.getSeconds())}`;
     };
 
@@ -136,7 +140,8 @@ async function exportUserPortfolioAnalyticsValidation(portfolioIdArg) {
     csv += `Target Window (days);90\n`;
     csv += `Actual Aligned Data Points;${raw.dataPoints}\n`;
     csv += `Has Enough Data (>= 10);${raw.hasEnoughData ? 'TRUE' : 'FALSE'}\n`;
-    csv += `Return Type;Logarithmic (ln(P_t / P_t-1))\n`;
+    csv += `Return Type (statistical metrics);Logarithmic (ln(P_t / P_t-1)) — volatility, skewness, kurtosis, correlation, beta regression\n`;
+    csv += `Return Type (economic metrics);Simple ((P_t / P_t-1) - 1) — VaR, CVaR, Sharpe, min/max/mean return\n`;
     csv += `Annualization Factor;${fmtNum(Math.sqrt(365), 6)}\n`;
     csv += `Annualization Formula;σ_annual = σ_daily × √365\n`;
     csv += `Trading Days per Year;365\n`;
@@ -152,25 +157,27 @@ async function exportUserPortfolioAnalyticsValidation(portfolioIdArg) {
     csv += '  current_value = quantity × current_price\n';
     csv += '  weight = current_value / total_value\n';
     csv += '\n';
-    csv += 'Crypto ID;Symbol;Name;Quantity;Avg Buy Price (USD);Current Price (USD);Current Value (USD);Weight;Beta (from crypto_beta);Daily Volatility;Annualized Volatility\n';
+    csv +=
+      'Crypto ID;Symbol;Name;Quantity;Avg Buy Price (USD);Current Price (USD);Current Value (USD);Weight;Beta (from crypto_beta);Daily Volatility;Annualized Volatility\n';
     let sumWeight = 0;
     let sumValue = 0;
     for (const c of raw.constituents) {
       sumWeight += c.weight || 0;
       sumValue += c.current_value || 0;
-      csv += [
-        c.crypto_id,
-        c.symbol,
-        c.name,
-        fmtNum(c.quantity, 18),
-        fmtNum(c.avg_buy_price, 8),
-        fmtNum(c.current_price, 8),
-        fmtNum(c.current_value, 8),
-        fmtNum(c.weight, 8),
-        fmtNum(c.beta, 6),
-        fmtNum(c.daily_volatility, 10),
-        fmtNum(c.annualized_volatility, 10),
-      ].join(';') + '\n';
+      csv +=
+        [
+          c.crypto_id,
+          c.symbol,
+          c.name,
+          fmtNum(c.quantity, 18),
+          fmtNum(c.avg_buy_price, 8),
+          fmtNum(c.current_price, 8),
+          fmtNum(c.current_value, 8),
+          fmtNum(c.weight, 8),
+          fmtNum(c.beta, 6),
+          fmtNum(c.daily_volatility, 10),
+          fmtNum(c.annualized_volatility, 10),
+        ].join(';') + '\n';
     }
     csv += '\n';
     csv += 'Validations:\n';
@@ -188,16 +195,43 @@ async function exportUserPortfolioAnalyticsValidation(portfolioIdArg) {
     }
 
     // --- Aligned log returns ---
-    csv += '=== ALIGNED LOG RETURNS (used by all calculations) ===\n';
-    csv += 'Only dates where ALL constituents have a log return are kept (inner-join).\n';
+    csv += '=== ALIGNED LOG RETURNS (statistical metrics) ===\n';
+    csv += 'Used for: volatility, skewness, kurtosis, correlation matrix, beta/alpha regression.\n';
+    csv +=
+      'Only dates where ALL constituents have a log AND simple return are kept (inner-join).\n';
     csv += 'Source: crypto_log_returns, period=90d, date < CURDATE()\n';
     csv += '\n';
-    csv += 'Index;Date;' + raw.constituents.map(c => c.symbol).join(';') + ';Portfolio Synthetic Return (Σ w_i × r_i)\n';
+    csv +=
+      'Index;Date;' +
+      raw.constituents.map((c) => c.symbol).join(';') +
+      ';Portfolio Synthetic Log Return (Σ w_i × r_i)\n';
     for (let d = 0; d < alignedDates.length; d++) {
       const row = [d + 1, alignedDates[d]];
       let portReturn = 0;
       for (const c of raw.constituents) {
-        const r = returnsByCrypto[c.crypto_id][d];
+        const r = returnsByCryptoLog[c.crypto_id][d];
+        row.push(fmtNum(r, 10));
+        portReturn += c.weight * r;
+      }
+      row.push(fmtNum(portReturn, 10));
+      csv += row.join(';') + '\n';
+    }
+    csv += '\n';
+
+    // --- Aligned simple returns ---
+    csv += '=== ALIGNED SIMPLE RETURNS (economic metrics) ===\n';
+    csv += 'Used for: VaR, CVaR, Sharpe, min/max/mean return.\n';
+    csv += 'Source: crypto_simple_returns, period=90d, date < CURDATE()\n';
+    csv += '\n';
+    csv +=
+      'Index;Date;' +
+      raw.constituents.map((c) => c.symbol).join(';') +
+      ';Portfolio Synthetic Simple Return (Σ w_i × r_i)\n';
+    for (let d = 0; d < alignedDates.length; d++) {
+      const row = [d + 1, alignedDates[d]];
+      let portReturn = 0;
+      for (const c of raw.constituents) {
+        const r = returnsByCryptoSimple[c.crypto_id][d];
         row.push(fmtNum(r, 10));
         portReturn += c.weight * r;
       }
@@ -213,14 +247,18 @@ async function exportUserPortfolioAnalyticsValidation(portfolioIdArg) {
     csv += 'Sample (co)variance uses n-1 denominator.\n';
     csv += '\n';
 
-    csv += '--- Covariance matrix (n-1) ---\n';
-    csv += ';' + raw.constituents.map(c => c.symbol).join(';') + '\n';
+    csv += '--- Covariance matrix (n-1, on log returns) ---\n';
+    csv += ';' + raw.constituents.map((c) => c.symbol).join(';') + '\n';
     for (let i = 0; i < raw.constituents.length; i++) {
       const rowVals = [raw.constituents[i].symbol];
       for (let j = 0; j < raw.constituents.length; j++) {
-        const cov = i === j
-          ? variance(returnsByCrypto[raw.constituents[i].crypto_id])
-          : covariance(returnsByCrypto[raw.constituents[i].crypto_id], returnsByCrypto[raw.constituents[j].crypto_id]);
+        const cov =
+          i === j
+            ? variance(returnsByCryptoLog[raw.constituents[i].crypto_id])
+            : covariance(
+                returnsByCryptoLog[raw.constituents[i].crypto_id],
+                returnsByCryptoLog[raw.constituents[j].crypto_id]
+              );
         rowVals.push(fmtNum(cov, 12));
       }
       csv += rowVals.join(';') + '\n';
@@ -232,13 +270,14 @@ async function exportUserPortfolioAnalyticsValidation(portfolioIdArg) {
     let weightedAvgVolCheck = 0;
     for (const c of raw.constituents) {
       weightedAvgVolCheck += c.weight * (c.daily_volatility || 0);
-      csv += [
-        c.symbol,
-        fmtNum(c.weight, 8),
-        fmtNum(c.daily_volatility, 12),
-        fmtNum(c.annualized_volatility, 12),
-        fmtNum(c.weight * (c.daily_volatility || 0), 12),
-      ].join(';') + '\n';
+      csv +=
+        [
+          c.symbol,
+          fmtNum(c.weight, 8),
+          fmtNum(c.daily_volatility, 12),
+          fmtNum(c.annualized_volatility, 12),
+          fmtNum(c.weight * (c.daily_volatility || 0), 12),
+        ].join(';') + '\n';
     }
     csv += '\n';
     csv += 'Portfolio Volatility Results:\n';
@@ -254,13 +293,13 @@ async function exportUserPortfolioAnalyticsValidation(portfolioIdArg) {
     csv += '\n';
 
     // --- Return statistics ---
-    csv += '=== PORTFOLIO RETURN STATISTICS ===\n';
-    csv += 'Based on the synthetic portfolio log returns (one per aligned date).\n';
+    csv += '=== PORTFOLIO RETURN STATISTICS (simple returns — economic interpretation) ===\n';
+    csv += 'Based on the synthetic portfolio simple returns (one per aligned date).\n';
     csv += 'Formulas:\n';
     csv += '  mean μ = (1/n) × Σ r_i\n';
     csv += '  std σ = sqrt((1/(n-1)) × Σ (r_i − μ)²)\n';
     csv += '\n';
-    csv += 'Sorted portfolio returns (ascending) — used for historical VaR/CVaR:\n';
+    csv += 'Sorted portfolio simple returns (ascending) — used for historical VaR/CVaR:\n';
     const sortedReturns = [...raw.portfolioReturns].sort((a, b) => a - b);
     csv += 'Rank;Return\n';
     for (let i = 0; i < sortedReturns.length; i++) {
@@ -309,7 +348,7 @@ async function exportUserPortfolioAnalyticsValidation(portfolioIdArg) {
     csv += '\n';
 
     // --- Skewness / Kurtosis ---
-    csv += '=== SKEWNESS / KURTOSIS (Fisher, bias-corrected) ===\n';
+    csv += '=== SKEWNESS / KURTOSIS (Fisher, bias-corrected — on log returns) ===\n';
     csv += 'Skewness = (n / ((n−1)(n−2))) × Σ z_i³,  z_i = (r_i − μ) / σ\n';
     csv += 'Kurtosis = ((n(n+1)) / ((n−1)(n−2)(n−3))) × Σ z_i⁴ − (3(n−1)²) / ((n−2)(n−3))\n';
     csv += '\n';
@@ -344,7 +383,11 @@ async function exportUserPortfolioAnalyticsValidation(portfolioIdArg) {
       csv += '\n';
       csv += ';' + raw.correlationSymbols.join(';') + '\n';
       for (let i = 0; i < raw.correlationMatrix.length; i++) {
-        csv += raw.correlationSymbols[i] + ';' + raw.correlationMatrix[i].map(v => fmtNum(v, 6)).join(';') + '\n';
+        csv +=
+          raw.correlationSymbols[i] +
+          ';' +
+          raw.correlationMatrix[i].map((v) => fmtNum(v, 6)).join(';') +
+          '\n';
       }
       csv += '\n';
     }
@@ -357,7 +400,8 @@ async function exportUserPortfolioAnalyticsValidation(portfolioIdArg) {
       [portfolioId]
     );
     if (dbRows.length === 0) {
-      csv += 'No persisted row for today. Run commands/calculateUserPortfolioAnalytics.js to create it.\n';
+      csv +=
+        'No persisted row for today. Run commands/calculateUserPortfolioAnalytics.js to create it.\n';
     } else {
       const db = dbRows[0];
       csv += 'Field;DB value;Recomputed value;Match\n';
@@ -386,9 +430,14 @@ async function exportUserPortfolioAnalyticsValidation(portfolioIdArg) {
       for (const [field, dbVal, rawVal] of pairs) {
         const dbNum = dbVal !== null ? parseFloat(dbVal) : null;
         const tolerance = 1e-9;
-        const match = dbNum !== null && rawVal !== null
-          ? Math.abs(dbNum - rawVal) < tolerance ? 'OK' : 'DIFF'
-          : dbNum === null && rawVal === null ? 'OK (both null)' : 'DIFF';
+        const match =
+          dbNum !== null && rawVal !== null
+            ? Math.abs(dbNum - rawVal) < tolerance
+              ? 'OK'
+              : 'DIFF'
+            : dbNum === null && rawVal === null
+              ? 'OK (both null)'
+              : 'DIFF';
         csv += `${field};${fmtNum(dbNum, 12)};${fmtNum(rawVal, 12)};${match}\n`;
       }
     }
@@ -396,7 +445,6 @@ async function exportUserPortfolioAnalyticsValidation(portfolioIdArg) {
 
     writeFile(portfolioId, csv);
     log.info(`Export completed in ${Date.now() - startTime}ms`);
-
   } catch (error) {
     log.error(`Error exporting validation data: ${error.message}`);
     throw error;

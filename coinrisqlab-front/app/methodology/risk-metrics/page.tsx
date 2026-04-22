@@ -24,6 +24,7 @@ import { useScrollSpy } from "@/hooks/useScrollSpy";
 
 const RISK_METRICS_SECTIONS = [
   "overview",
+  "return-types",
   "volatility",
   "var",
   "cvar",
@@ -97,6 +98,14 @@ export default function RiskMetricsMethodologyPage() {
                   onPress={() => scrollToSection("overview")}
                 >
                   Overview
+                </Button>
+                <Button
+                  className="justify-start"
+                  size="sm"
+                  variant={activeSection === "return-types" ? "flat" : "light"}
+                  onPress={() => scrollToSection("return-types")}
+                >
+                  Return Types
                 </Button>
                 <Button
                   className="justify-start"
@@ -254,6 +263,91 @@ export default function RiskMetricsMethodologyPage() {
                   <p className="font-bold">SML</p>
                   <p className="text-xs text-default-500">CAPM Valuation</p>
                 </div>
+              </div>
+            </CardBody>
+          </Card>
+
+          {/* Return Types Section */}
+          <Card id="return-types">
+            <CardBody className="p-8">
+              <div className="flex items-center justify-center sm:justify-start gap-3 mb-4">
+                <GitCompare className="w-6 h-6 text-primary" />
+                <h2 className="text-2xl font-bold text-center sm:text-left">
+                  Return Types: Logarithmic vs Simple
+                </h2>
+              </div>
+              <p className="text-default-600 mb-6">
+                Les métriques descriptives de distribution (volatilité,
+                asymétrie, kurtosis, bêta statistique) sont estimées sur
+                rendements logarithmiques pour des raisons de stabilité
+                statistique. Les métriques d&apos;interprétation économique et
+                de risque portefeuille (performance, VaR, CVaR, stress tests,
+                SML) sont calculées en rendements simples ou en PnL afin de
+                conserver une lecture économique directement exploitable.
+              </p>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="bg-success/5 p-6 rounded-lg border-l-4 border-success">
+                  <h3 className="text-xl font-bold mb-3">
+                    Logarithmic Returns
+                  </h3>
+                  <div className="bg-content1 p-4 rounded-lg mb-3">
+                    <Math display>
+                      {
+                        "R_{\\text{log}} = \\ln\\!\\left(\\frac{P_t}{P_{t-1}}\\right)"
+                      }
+                    </Math>
+                  </div>
+                  <p className="text-default-600 text-sm mb-3">
+                    Used for <strong>statistical distribution metrics</strong>,
+                    where additivity over time and symmetry around zero matter.
+                  </p>
+                  <ul className="list-disc list-inside text-default-600 text-sm space-y-1">
+                    <li>Volatility (σ)</li>
+                    <li>Skewness</li>
+                    <li>Kurtosis</li>
+                    <li>Beta (statistical — OLS regression)</li>
+                    <li>Correlation matrix</li>
+                  </ul>
+                </div>
+
+                <div className="bg-primary/5 p-6 rounded-lg border-l-4 border-primary">
+                  <h3 className="text-xl font-bold mb-3">Simple Returns</h3>
+                  <div className="bg-content1 p-4 rounded-lg mb-3">
+                    <Math display>
+                      {
+                        "R_{\\text{simple}} = \\frac{P_t - P_{t-1}}{P_{t-1}} = \\frac{P_t}{P_{t-1}} - 1"
+                      }
+                    </Math>
+                  </div>
+                  <p className="text-default-600 text-sm mb-3">
+                    Used for{" "}
+                    <strong>economic interpretation and portfolio risk</strong>,
+                    where the result must read as an actual profit or loss.
+                  </p>
+                  <ul className="list-disc list-inside text-default-600 text-sm space-y-1">
+                    <li>VaR / CVaR</li>
+                    <li>Sharpe ratio</li>
+                    <li>Security Market Line (SML)</li>
+                    <li>Min / Max / Mean return</li>
+                    <li>Stress tests &amp; PnL</li>
+                  </ul>
+                </div>
+              </div>
+
+              <div className="bg-default-50 p-6 rounded-lg mt-6">
+                <h3 className="text-lg font-bold mb-2">Why the split?</h3>
+                <p className="text-default-600 text-sm">
+                  Log returns are <strong>additive over time</strong> (
+                  <Math>{"\\sum r_t = \\ln(P_n / P_0)"}</Math>) and better
+                  approximate a normal distribution, which stabilises variance,
+                  regression, and higher-moment estimators. Simple returns are{" "}
+                  <strong>additive across assets</strong> (a portfolio simple
+                  return is exactly the weighted sum of its constituents&apos;
+                  simple returns) and align with how gains and losses are
+                  realised in practice, so they are the right basis for
+                  risk-at-loss and performance metrics shown to investors.
+                </p>
               </div>
             </CardBody>
           </Card>
@@ -1640,14 +1734,29 @@ export default function RiskMetricsMethodologyPage() {
                       </td>
                     </tr>
                     <tr className="border-b border-default-200">
-                      <td className="py-3 px-4 font-semibold">Return Type</td>
+                      <td className="py-3 px-4 font-semibold">
+                        Return Type (statistical)
+                      </td>
                       <td className="py-3 px-4">
                         <Chip color="success" size="sm">
                           Logarithmic
                         </Chip>
                       </td>
                       <td className="py-3 px-4 text-default-600">
-                        Natural log of price ratios
+                        Volatility, skewness, kurtosis, beta, correlation
+                      </td>
+                    </tr>
+                    <tr className="border-b border-default-200">
+                      <td className="py-3 px-4 font-semibold">
+                        Return Type (economic)
+                      </td>
+                      <td className="py-3 px-4">
+                        <Chip color="primary" size="sm">
+                          Simple
+                        </Chip>
+                      </td>
+                      <td className="py-3 px-4 text-default-600">
+                        VaR, CVaR, Sharpe, SML, min/max/mean return
                       </td>
                     </tr>
                     <tr className="border-b border-default-200">

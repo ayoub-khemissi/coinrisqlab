@@ -96,8 +96,8 @@ async function calculateUserPortfolioAnalytics() {
     const duration = Date.now() - startTime;
     log.info(
       `User portfolio analytics complete: ${processed} processed, ` +
-      `${skippedEmpty} empty, ${skippedInsufficient} insufficient data, ` +
-      `${errors} errors, ${duration}ms`
+        `${skippedEmpty} empty, ${skippedInsufficient} insufficient data, ` +
+        `${errors} errors, ${duration}ms`
     );
   } catch (error) {
     log.error(`calculateUserPortfolioAnalytics error: ${error.message}`);
@@ -119,10 +119,10 @@ async function processPortfolio(portfolioId, indexReturnMap) {
     return 'empty';
   }
 
-  const cryptoIds = holdings.map(h => h.crypto_id);
+  const cryptoIds = holdings.map((h) => h.crypto_id);
 
-  // 2. Fetch aligned returns + beta map in parallel
-  const [{ returnsByCrypto, alignedDates }, betaMap] = await Promise.all([
+  // 2. Fetch aligned returns (log + simple) + beta map in parallel
+  const [{ returnsByCryptoLog, returnsByCryptoSimple, alignedDates }, betaMap] = await Promise.all([
     getAlignedReturns(cryptoIds, '90d'),
     getLatestBetaMap(cryptoIds),
   ]);
@@ -131,7 +131,8 @@ async function processPortfolio(portfolioId, indexReturnMap) {
   //    computeProMetrics=true → always compute everything for validation
   const { raw } = computeAnalyticsBundle({
     holdings,
-    returnsByCrypto,
+    returnsByCryptoLog,
+    returnsByCryptoSimple,
     alignedDates,
     betaMap,
     indexReturnMap,
@@ -148,13 +149,15 @@ async function processPortfolio(portfolioId, indexReturnMap) {
   });
 
   if (!raw.hasEnoughData) {
-    log.debug(`Portfolio ${portfolioId}: persisted (insufficient data, only ${raw.dataPoints} points)`);
+    log.debug(
+      `Portfolio ${portfolioId}: persisted (insufficient data, only ${raw.dataPoints} points)`
+    );
     return 'insufficient';
   }
 
   log.debug(
     `Portfolio ${portfolioId}: persisted — vol=${raw.annualizedVolatility !== null ? (raw.annualizedVolatility * 100).toFixed(2) + '%' : 'n/a'}, ` +
-    `${raw.numHoldings} holdings, ${raw.dataPoints} points, ${calculationDurationMs}ms`
+      `${raw.numHoldings} holdings, ${raw.dataPoints} points, ${calculationDurationMs}ms`
   );
   return 'processed';
 }

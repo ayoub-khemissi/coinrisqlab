@@ -18,14 +18,17 @@ async function calculateSharpeStats() {
 
     await ensureTableExists();
 
-    const [cryptos] = await Database.execute(`
+    const [cryptos] = await Database.execute(
+      `
       SELECT DISTINCT c.id, c.symbol, c.name
       FROM cryptocurrencies c
-      INNER JOIN crypto_log_returns clr ON c.id = clr.crypto_id
+      INNER JOIN crypto_simple_returns csr ON c.id = csr.crypto_id
       GROUP BY c.id, c.symbol, c.name
       HAVING COUNT(*) >= ?
       ORDER BY c.symbol
-    `, [MINIMUM_WINDOW_DAYS]);
+    `,
+      [MINIMUM_WINDOW_DAYS]
+    );
 
     log.info(`Found ${cryptos.length} cryptocurrencies with sufficient data`);
 
@@ -47,7 +50,6 @@ async function calculateSharpeStats() {
     const duration = Date.now() - startTime;
     log.info(`Sharpe calculation completed in ${duration}ms`);
     log.info(`Total calculated: ${totalCalculated}, Skipped: ${totalSkipped}, Errors: ${errors}`);
-
   } catch (error) {
     log.error(`Error in calculateSharpeStats: ${error.message}`);
     throw error;
@@ -79,24 +81,28 @@ async function ensureTableExists() {
 }
 
 async function calculateSharpeForCrypto(cryptoId, symbol) {
-  const [logReturns] = await Database.execute(`
-    SELECT date, log_return
-    FROM crypto_log_returns
+  // Sharpe is an economic interpretation metric — computed on simple returns
+  const [simpleReturns] = await Database.execute(
+    `
+    SELECT date, simple_return
+    FROM crypto_simple_returns
     WHERE crypto_id = ?
       AND date < CURDATE()
     ORDER BY date ASC
-  `, [cryptoId]);
+  `,
+    [cryptoId]
+  );
 
-  if (logReturns.length < MINIMUM_WINDOW_DAYS) {
+  if (simpleReturns.length < MINIMUM_WINDOW_DAYS) {
     return { inserted: 0, skipped: 0 };
   }
 
   const returnsByDate = [];
-  for (const r of logReturns) {
+  for (const r of simpleReturns) {
     returnsByDate.push({
       date: r.date,
       dateStr: r.date.toISOString().split('T')[0],
-      return: parseFloat(r.log_return)
+      return: parseFloat(r.simple_return),
     });
   }
 
@@ -122,16 +128,21 @@ async function calculateSharpeForCrypto(cryptoId, symbol) {
       continue;
     }
 
-    const returns = windowData.map(d => d.return);
+    const returns = windowData.map((d) => d.return);
     const sharpeRatio = calculateSharpeRatio(returns);
     const meanReturn = returns.reduce((s, r) => s + r, 0) / returns.length;
-    const stdReturn = Math.sqrt(returns.reduce((s, r) => s + Math.pow(r - meanReturn, 2), 0) / (returns.length - 1));
+    const stdReturn = Math.sqrt(
+      returns.reduce((s, r) => s + Math.pow(r - meanReturn, 2), 0) / (returns.length - 1)
+    );
 
-    await Database.execute(`
+    await Database.execute(
+      `
       INSERT INTO crypto_sharpe
       (crypto_id, date, window_days, sharpe_ratio, mean_return, std_return, num_observations)
       VALUES (?, ?, ?, ?, ?, ?, ?)
-    `, [cryptoId, currentDate, windowDays, sharpeRatio, meanReturn, stdReturn, windowDays]);
+    `,
+      [cryptoId, currentDate, windowDays, sharpeRatio, meanReturn, stdReturn, windowDays]
+    );
 
     inserted++;
   }

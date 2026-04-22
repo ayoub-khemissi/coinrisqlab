@@ -1,7 +1,11 @@
 import Database from '../lib/database.js';
 import log from '../lib/log.js';
-import { calculateBetaAlpha, calculateSML, calculateAnnualizedReturn } from '../utils/riskMetrics.js';
-import { logReturn } from '../utils/statistics.js';
+import {
+  calculateBetaAlpha,
+  calculateSML,
+  calculateAnnualizedReturn,
+} from '../utils/riskMetrics.js';
+import { simpleReturn } from '../utils/statistics.js';
 
 const DEFAULT_WINDOW_DAYS = 90;
 const MINIMUM_WINDOW_DAYS = 7;
@@ -32,7 +36,7 @@ async function calculateSMLStats() {
       ORDER BY date ASC
     `);
 
-    // Calculate index log returns in JS (same methodology as calculateLogReturns)
+    // Calculate index simple returns in JS (SML is an economic interpretation metric)
     const indexReturnsByDate = new Map();
     for (let i = 1; i < indexLevels.length; i++) {
       const currentDate = indexLevels[i].date;
@@ -48,7 +52,7 @@ async function calculateSMLStats() {
         continue;
       }
 
-      const ret = logReturn(currentLevel, previousLevel);
+      const ret = simpleReturn(currentLevel, previousLevel);
       indexReturnsByDate.set(currentDate.toISOString().split('T')[0], ret);
     }
 
@@ -59,14 +63,17 @@ async function calculateSMLStats() {
       return;
     }
 
-    const [cryptos] = await Database.execute(`
+    const [cryptos] = await Database.execute(
+      `
       SELECT DISTINCT c.id, c.symbol, c.name
       FROM cryptocurrencies c
-      INNER JOIN crypto_log_returns clr ON c.id = clr.crypto_id
+      INNER JOIN crypto_simple_returns csr ON c.id = csr.crypto_id
       GROUP BY c.id, c.symbol, c.name
       HAVING COUNT(*) >= ?
       ORDER BY c.symbol
-    `, [MINIMUM_WINDOW_DAYS]);
+    `,
+      [MINIMUM_WINDOW_DAYS]
+    );
 
     log.info(`Found ${cryptos.length} cryptocurrencies with sufficient data`);
 
@@ -76,7 +83,11 @@ async function calculateSMLStats() {
 
     for (const crypto of cryptos) {
       try {
-        const calculated = await calculateSMLForCrypto(crypto.id, crypto.symbol, indexReturnsByDate);
+        const calculated = await calculateSMLForCrypto(
+          crypto.id,
+          crypto.symbol,
+          indexReturnsByDate
+        );
         totalCalculated += calculated.inserted;
         totalSkipped += calculated.skipped;
       } catch (error) {
@@ -88,7 +99,6 @@ async function calculateSMLStats() {
     const duration = Date.now() - startTime;
     log.info(`SML calculation completed in ${duration}ms`);
     log.info(`Total calculated: ${totalCalculated}, Skipped: ${totalSkipped}, Errors: ${errors}`);
-
   } catch (error) {
     log.error(`Error in calculateSMLStats: ${error.message}`);
     throw error;
@@ -136,31 +146,34 @@ function areConsecutiveDays(date1, date2) {
 }
 
 async function calculateSMLForCrypto(cryptoId, symbol, indexReturnsByDate) {
-  const [logReturns] = await Database.execute(`
-    SELECT date, log_return
-    FROM crypto_log_returns
+  const [simpleReturns] = await Database.execute(
+    `
+    SELECT date, simple_return
+    FROM crypto_simple_returns
     WHERE crypto_id = ?
       AND date < CURDATE()
     ORDER BY date ASC
-  `, [cryptoId]);
+  `,
+    [cryptoId]
+  );
 
-  if (logReturns.length < MINIMUM_WINDOW_DAYS) {
+  if (simpleReturns.length < MINIMUM_WINDOW_DAYS) {
     return { inserted: 0, skipped: 0 };
   }
 
   // Build crypto returns by date
   const cryptoReturnsByDate = new Map();
-  for (const r of logReturns) {
+  for (const r of simpleReturns) {
     const dateStr = r.date.toISOString().split('T')[0];
     cryptoReturnsByDate.set(dateStr, {
       date: r.date,
-      return: parseFloat(r.log_return)
+      return: parseFloat(r.simple_return),
     });
   }
 
   // Get all dates where we have both crypto and index returns
   const allDates = [...cryptoReturnsByDate.keys()]
-    .filter(date => indexReturnsByDate.has(date))
+    .filter((date) => indexReturnsByDate.has(date))
     .sort();
 
   if (allDates.length < MINIMUM_WINDOW_DAYS) {
@@ -187,8 +200,8 @@ async function calculateSMLForCrypto(cryptoId, symbol, indexReturnsByDate) {
 
     // Get window of aligned returns
     const windowDates = allDates.slice(i - actualWindowDays + 1, i + 1);
-    const cryptoReturns = windowDates.map(d => cryptoReturnsByDate.get(d).return);
-    const marketReturns = windowDates.map(d => indexReturnsByDate.get(d));
+    const cryptoReturns = windowDates.map((d) => cryptoReturnsByDate.get(d).return);
+    const marketReturns = windowDates.map((d) => indexReturnsByDate.get(d));
 
     // Calculate beta
     const { beta } = calculateBetaAlpha(cryptoReturns, marketReturns);
@@ -200,22 +213,25 @@ async function calculateSMLForCrypto(cryptoId, symbol, indexReturnsByDate) {
     // Calculate SML (Rf = 0)
     const smlData = calculateSML(beta, cryptoAnnualReturn, marketAnnualReturn, 0);
 
-    await Database.execute(`
+    await Database.execute(
+      `
       INSERT INTO crypto_sml
       (crypto_id, date, window_days, beta, expected_return, actual_return, alpha, is_overvalued, market_return, num_observations)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `, [
-      cryptoId,
-      currentDate,
-      actualWindowDays,
-      beta,
-      smlData.cryptoExpectedReturn / 100, // Store as decimal
-      smlData.cryptoActualReturn / 100,
-      smlData.alpha / 100,
-      smlData.isOvervalued,
-      marketAnnualReturn,
-      windowDates.length
-    ]);
+    `,
+      [
+        cryptoId,
+        currentDate,
+        actualWindowDays,
+        beta,
+        smlData.cryptoExpectedReturn / 100, // Store as decimal
+        smlData.cryptoActualReturn / 100,
+        smlData.alpha / 100,
+        smlData.isOvervalued,
+        marketAnnualReturn,
+        windowDates.length,
+      ]
+    );
 
     inserted++;
   }
