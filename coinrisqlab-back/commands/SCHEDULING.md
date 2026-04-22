@@ -93,42 +93,45 @@ The `fetchOHLC.js` script uses CoinGecko's `/coins/{id}/market_chart` endpoint t
 | `API_DELAY_MS` | 250 | Rate limit safety: 240 calls/min (Basic limit: 250/min) |
 | `DAYS_BUFFER` | 2 | Extra margin beyond the oldest daily gap |
 
-## Recent (5-min) Backfill — Safety Net for the `*/5` Cron
+## Recent (5-min) Backfill — Daily Refresh of the Last 24h
 
-`fetchOHLC.js --backfill-recent` is a safety net that fills 5-min
-gaps in `market_data` from CoinGecko `/market_chart?days=1`. It exists
-because CoinGecko's Basic plan only exposes 5-min granularity for the
-**last 24h glissantes** — beyond that, only hourly is available. So if
-the live `*/5` cron silently dies, we have a 24h window to recover the
-intraday data before it's lost forever.
+`fetchOHLC.js --backfill-recent` refreshes the last 24h of every active
+crypto from CoinGecko `/market_chart?days=1` (the only window where the
+Basic plan exposes 5-min granularity). It serves two purposes:
 
-**How it works**
+1. **Gap fill** — if the live `*/5` cron has missed snapshots (server
+   downtime, transient API misses), the missing 5-min slots are inserted.
+2. **Precision upgrade** — `/coins/markets` (used by the live `*/5`)
+   truncates prices to 2 decimals for cryptos in the $1–$100 range.
+   `/market_chart` returns full precision. We `UPDATE` existing rows in
+   place to upgrade the price without changing the timestamp, so existing
+   `*/5` rows keep their slot but adopt the higher-precision value.
 
-1. Per-crypto detection: counts rows in `market_data` over the last 24h.
-   Expected: 24h × 12 = **288 rows**. If a crypto has <`RECENT_GAP_THRESHOLD`
-   (250) rows, it's flagged as a gap.
-2. For each flagged crypto, calls `/market_chart?days=1` (5-min auto
-   granularity) — 1 credit per crypto.
-3. Inserts each missing point into `market_data` with anti-duplicate
-   tolerance: skips the insert if a row already exists within ±150s of
-   the same crypto (avoids polluting the table when the cron's `*/5`
-   timestamps are at e.g. `XX:X{0|5}:01` and CoinGecko's at `XX:X{0|5}:00`).
-4. New "orphan" timestamps created by the backfill (where only a few
-   cryptos got a point) are filtered out by `MIN_CRYPTOS_PER_TIMESTAMP = 100`
-   in `calculateCoinRisqLab80.js getMissingIndexTimestamps`, so the index
-   calc doesn't try to compute partial snapshots.
+**Algorithm per crypto**
+
+- Pre-load all market_data rows in the same 24h window
+- For each CoinGecko 5-min point:
+  - If a row exists within ±150s → `UPDATE price_usd in place` (precision upgrade)
+  - Otherwise → `INSERT` new row (gap fill)
+- Orphan timestamps from gap fills (where only a subset of cryptos got a
+  new point) are filtered out by `MIN_CRYPTOS_PER_TIMESTAMP = 100` in
+  `calculateCoinRisqLab80.js getMissingIndexTimestamps`, so the index calc
+  doesn't try to compute partial snapshots.
 
 **Cost profile**
 
 | Scenario | API calls |
 | :--- | :--- |
-| `*/5` cron healthy (every crypto ≥250 rows) | **0** |
-| Single crypto missed (e.g. CoinGecko transient miss) | 1 |
-| Few cryptos newly entered top-500 | ~5–30 |
-| Full `*/5` cron outage (all cryptos missing) | ~500 (max) |
+| Healthy day (just precision upgrade) | ~500 (one per active crypto) |
+| `*/5` cron outage on top of normal day | ~500 (same) |
 
-Recommended cron: daily at `30 0 * * *` — covers the previous day with
-24h margin. Falls back to silent no-op when nothing is missing.
+~500 credits/day = 15K/month on a 100K quota. The trade-off vs the old
+"gap-only" mode is precision: every $1–$100 crypto gets full-precision
+prices on the price-history charts, not the 2-decimal CoinGecko/markets
+truncation.
+
+Recommended cron: daily at `30 0 * * *` — runs after the previous day
+fully closes.
 
 ## Crontab Configuration for Ubuntu
 
