@@ -55,6 +55,19 @@ export function logReturn(currentPrice, previousPrice) {
 }
 
 /**
+ * Calculate simple (arithmetic) return: (price_t / price_t-1) - 1
+ * @param {number} currentPrice - Current price
+ * @param {number} previousPrice - Previous price
+ * @returns {number} Simple return
+ */
+export function simpleReturn(currentPrice, previousPrice) {
+  if (previousPrice <= 0 || currentPrice <= 0) {
+    return 0;
+  }
+  return currentPrice / previousPrice - 1;
+}
+
+/**
  * Annualize volatility (daily to annual)
  * @param {number} dailyVolatility - Daily volatility (standard deviation)
  * @param {number} [tradingDays=365] - Number of trading days per year
@@ -93,7 +106,9 @@ export function covariance(returns1, returns2) {
  */
 export function buildCovarianceMatrix(assets) {
   const n = assets.length;
-  const matrix = Array(n).fill(null).map(() => Array(n).fill(0));
+  const matrix = Array(n)
+    .fill(null)
+    .map(() => Array(n).fill(0));
 
   for (let i = 0; i < n; i++) {
     for (let j = 0; j < n; j++) {

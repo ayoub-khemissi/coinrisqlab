@@ -127,6 +127,49 @@ export async function getLogReturnsCount(
   return rows[0].total as number;
 }
 
+// ─── Simple Returns ─────────────────────────────────────────────────────────
+
+export async function getSimpleReturns(
+  cryptos: string[],
+  from: string,
+  to: string,
+  limit: number,
+  offset: number,
+) {
+  const { clause, params } = buildCryptoFilter(cryptos, "c");
+  const dateParams = [from || "2000-01-01", to || "2099-12-31"];
+
+  const [rows] = await db.execute<RowDataPacket[]>(
+    `SELECT c.symbol, c.name, csr.date, csr.simple_return, csr.price_current, csr.price_previous
+     FROM crypto_simple_returns csr
+     INNER JOIN cryptocurrencies c ON csr.crypto_id = c.id
+     WHERE csr.date >= ? AND csr.date <= ? ${clause}
+     ORDER BY c.symbol ASC, csr.date DESC
+     ${limit > 0 ? `LIMIT ${limit} OFFSET ${offset}` : ""}`,
+    [...dateParams, ...params],
+  );
+
+  return rows;
+}
+
+export async function getSimpleReturnsCount(
+  cryptos: string[],
+  from: string,
+  to: string,
+) {
+  const { clause, params } = buildCryptoFilter(cryptos, "c");
+  const dateParams = [from || "2000-01-01", to || "2099-12-31"];
+
+  const [rows] = await db.execute<RowDataPacket[]>(
+    `SELECT COUNT(*) as total FROM crypto_simple_returns csr
+     INNER JOIN cryptocurrencies c ON csr.crypto_id = c.id
+     WHERE csr.date >= ? AND csr.date <= ? ${clause}`,
+    [...dateParams, ...params],
+  );
+
+  return rows[0].total as number;
+}
+
 // ─── Volatility ─────────────────────────────────────────────────────────────
 
 export async function getVolatility(

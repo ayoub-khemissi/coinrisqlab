@@ -4,14 +4,15 @@ import log from '../lib/log.js';
 /**
  * Orchestrates the full volatility and risk metrics calculation pipeline
  * 1. Calculate logarithmic returns
- * 2. Calculate individual crypto volatility
- * 3. Calculate portfolio volatility
- * 4. Calculate distribution statistics (skewness & kurtosis)
- * 5. Calculate VaR/CVaR statistics
- * 6. Calculate Beta/Alpha statistics
- * 7. Calculate SML statistics
- * 8. Calculate moving averages
- * 9. Calculate Sharpe Ratio statistics
+ * 2. Calculate simple (arithmetic) returns
+ * 3. Calculate individual crypto volatility
+ * 4. Calculate portfolio volatility
+ * 5. Calculate distribution statistics (skewness & kurtosis)
+ * 6. Calculate VaR/CVaR statistics
+ * 7. Calculate Beta/Alpha statistics
+ * 8. Calculate SML statistics
+ * 9. Calculate moving averages
+ * 10. Calculate Sharpe Ratio statistics
  */
 async function updateVolatility() {
   const startTime = Date.now();
@@ -22,46 +23,51 @@ async function updateVolatility() {
     log.info('='.repeat(60));
 
     // Step 1: Calculate logarithmic returns
-    log.info('\n[1/9] Calculating logarithmic returns...');
+    log.info('\n[1/10] Calculating logarithmic returns...');
     await runCommand('calculateLogReturns.js');
 
-    // Step 2: Calculate individual crypto volatility
-    log.info('\n[2/9] Calculating individual cryptocurrency volatility...');
+    // Step 2: Calculate simple (arithmetic) returns
+    log.info('\n[2/10] Calculating simple returns...');
+    await runCommand('calculateSimpleReturns.js');
+
+    // Step 3: Calculate individual crypto volatility
+    log.info('\n[3/10] Calculating individual cryptocurrency volatility...');
     await runCommand('calculateCryptoVolatility.js');
 
-    // Step 3: Calculate portfolio volatility
-    log.info('\n[3/9] Calculating portfolio volatility...');
+    // Step 4: Calculate portfolio volatility
+    log.info('\n[4/10] Calculating portfolio volatility...');
     await runCommand('calculatePortfolioVolatility.js');
 
-    // Step 4: Calculate distribution statistics (skewness & kurtosis)
-    log.info('\n[4/9] Calculating distribution statistics (skewness & kurtosis)...');
+    // Step 5: Calculate distribution statistics (skewness & kurtosis)
+    log.info('\n[5/10] Calculating distribution statistics (skewness & kurtosis)...');
     await runCommand('calculateDistributionStats.js');
 
-    // Step 5: Calculate VaR/CVaR statistics
-    log.info('\n[5/9] Calculating VaR/CVaR statistics...');
+    // Step 6: Calculate VaR/CVaR statistics
+    log.info('\n[6/10] Calculating VaR/CVaR statistics...');
     await runCommand('calculateVaRStats.js');
 
-    // Step 6: Calculate Beta/Alpha statistics
-    log.info('\n[6/9] Calculating Beta/Alpha statistics...');
+    // Step 7: Calculate Beta/Alpha statistics
+    log.info('\n[7/10] Calculating Beta/Alpha statistics...');
     await runCommand('calculateBetaStats.js');
 
-    // Step 7: Calculate SML statistics
-    log.info('\n[7/9] Calculating SML statistics...');
+    // Step 8: Calculate SML statistics
+    log.info('\n[8/10] Calculating SML statistics...');
     await runCommand('calculateSMLStats.js');
 
-    // Step 8: Calculate moving averages
-    log.info('\n[8/9] Calculating moving averages...');
+    // Step 9: Calculate moving averages
+    log.info('\n[9/10] Calculating moving averages...');
     await runCommand('calculateMovingAverages.js');
 
-    // Step 9: Calculate Sharpe Ratio statistics
-    log.info('\n[9/9] Calculating Sharpe Ratio statistics...');
+    // Step 10: Calculate Sharpe Ratio statistics
+    log.info('\n[10/10] Calculating Sharpe Ratio statistics...');
     await runCommand('calculateSharpeStats.js');
 
     const totalDuration = Date.now() - startTime;
     log.info('\n' + '='.repeat(60));
-    log.info(`Volatility & Risk Metrics Pipeline Completed in ${(totalDuration / 1000).toFixed(2)}s`);
+    log.info(
+      `Volatility & Risk Metrics Pipeline Completed in ${(totalDuration / 1000).toFixed(2)}s`
+    );
     log.info('='.repeat(60));
-
   } catch (error) {
     log.error(`Volatility update pipeline failed: ${error.message}`);
     throw error;
@@ -81,7 +87,7 @@ function runCommand(scriptName) {
 
     const child = spawn('node', [scriptPath], {
       stdio: 'inherit',
-      shell: true
+      shell: true,
     });
 
     child.on('close', (code) => {

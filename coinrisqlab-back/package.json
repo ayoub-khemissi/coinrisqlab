@@ -18,6 +18,7 @@
     "calculate-index": "node commands/calculateCoinRisqLab80.js",
     "update-all": "node commands/updateAll.js",
     "calculate-log-returns": "node commands/calculateLogReturns.js",
+    "calculate-simple-returns": "node commands/calculateSimpleReturns.js",
     "calculate-crypto-volatility": "node commands/calculateCryptoVolatility.js",
     "calculate-portfolio-volatility": "node commands/calculatePortfolioVolatility.js",
     "update-volatility": "node commands/updateVolatility.js",

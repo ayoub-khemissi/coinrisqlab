@@ -28,6 +28,7 @@ const NAV_ITEMS = [
 const DATA_NAV_ITEMS = [
   { key: "Prices", href: "/data/prices", icon: DollarSign },
   { key: "Log Returns", href: "/data/log-returns", icon: TrendingUp },
+  { key: "Simple Returns", href: "/data/simple-returns", icon: TrendingUp },
   { key: "Volatility", href: "/data/volatility", icon: Activity },
   { key: "VaR / CVaR", href: "/data/var", icon: Shield },
   { key: "Beta / SML", href: "/data/beta-sml", icon: BarChart3 },

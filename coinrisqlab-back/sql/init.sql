@@ -223,6 +223,20 @@ CREATE TABLE IF NOT EXISTS `crypto_log_returns` (
     KEY `idx_date` (`date`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+DROP TABLE IF EXISTS `crypto_simple_returns`;
+CREATE TABLE IF NOT EXISTS `crypto_simple_returns` (
+    `id` BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    `crypto_id` INT UNSIGNED NOT NULL,
+    `date` DATE NOT NULL,
+    `simple_return` DECIMAL(20, 12) NOT NULL COMMENT 'Simple return: (Price_t / Price_t-1) - 1',
+    `price_current` DECIMAL(30, 18) NOT NULL COMMENT 'Current day closing price',
+    `price_previous` DECIMAL(30, 18) NOT NULL COMMENT 'Previous day closing price',
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY `fk_simple_returns_crypto_idx` (`crypto_id`) REFERENCES `cryptocurrencies`(`id`) ON DELETE CASCADE,
+    UNIQUE KEY `idx_crypto_date` (`crypto_id`, `date`),
+    KEY `idx_date` (`date`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 DROP TABLE IF EXISTS `crypto_volatility`;
 CREATE TABLE IF NOT EXISTS `crypto_volatility` (
     `id` BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,

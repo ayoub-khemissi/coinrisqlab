@@ -29,6 +29,7 @@ Each call to a CoinGecko API endpoint costs 1 credit.
 
 2. **`updateVolatility.js`**: Orchestrates the full risk metrics pipeline:
    - Logarithmic returns calculation
+   - Simple (arithmetic) returns calculation
    - Individual cryptocurrency volatility
    - Portfolio volatility
    - Distribution statistics (skewness & kurtosis)
