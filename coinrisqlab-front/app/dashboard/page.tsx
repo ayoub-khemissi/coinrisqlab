@@ -62,24 +62,38 @@ export default function DashboardPage() {
     totalPnl,
   } = useLivePortfolioMetrics(holdings);
 
+  // Dedupe holdings by crypto_id — when the same crypto is held in multiple
+  // portfolios it appears once per portfolio in liveHoldings, but the 24h
+  // performance is the same per crypto so duplicates would add no signal.
+  const uniqueHoldings = useMemo(() => {
+    const seen = new Set<number>();
+
+    return liveHoldings.filter((h) => {
+      if (seen.has(h.crypto_id)) return false;
+      seen.add(h.crypto_id);
+
+      return true;
+    });
+  }, [liveHoldings]);
+
   const topPerformers = useMemo(
     () =>
-      [...liveHoldings]
+      [...uniqueHoldings]
         .sort(
           (a, b) => (b.percent_change_24h || 0) - (a.percent_change_24h || 0),
         )
         .slice(0, 3),
-    [liveHoldings],
+    [uniqueHoldings],
   );
 
   const worstPerformers = useMemo(
     () =>
-      [...liveHoldings]
+      [...uniqueHoldings]
         .sort(
           (a, b) => (a.percent_change_24h || 0) - (b.percent_change_24h || 0),
         )
         .slice(0, 3),
-    [liveHoldings],
+    [uniqueHoldings],
   );
 
   if (loading) {
