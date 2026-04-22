@@ -70,6 +70,7 @@ api.get('/cryptocurrencies', async (req, res) => {
         md.timestamp,
         ranked.rank_number as \`rank\`,
         cma.moving_average as ma_90d,
+        r90.return_90d,
         cb.beta
       FROM cryptocurrencies c
       INNER JOIN market_data md ON c.id = md.crypto_id
@@ -110,6 +111,22 @@ api.get('/cryptocurrencies', async (req, res) => {
           AND cb2.date = cb_max.date
           AND cb2.window_days = cb_max.max_window
       ) cb ON c.id = cb.crypto_id
+      LEFT JOIN (
+        -- 90-day simple return: (close[N-1] / close[N-91]) - 1
+        -- N-1 = latest OHLC row (today is excluded from ohlc by upstream cron)
+        SELECT
+          o1.crypto_id,
+          (o1.close / NULLIF(o2.close, 0)) - 1 AS return_90d
+        FROM ohlc o1
+        INNER JOIN (
+          SELECT crypto_id, MAX(timestamp) AS latest_ts
+          FROM ohlc
+          GROUP BY crypto_id
+        ) latest_ohlc ON o1.crypto_id = latest_ohlc.crypto_id
+                     AND o1.timestamp = latest_ohlc.latest_ts
+        LEFT JOIN ohlc o2 ON o2.crypto_id = o1.crypto_id
+                         AND o2.timestamp = DATE_SUB(o1.timestamp, INTERVAL 90 DAY)
+      ) r90 ON c.id = r90.crypto_id
       WHERE md.timestamp = (SELECT MAX(timestamp) FROM market_data)
         AND (md.price_usd * md.circulating_supply) > 0
         ${searchCondition}

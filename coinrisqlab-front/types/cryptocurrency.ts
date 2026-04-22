@@ -13,6 +13,7 @@ export interface Cryptocurrency {
   timestamp: string;
   rank: number;
   ma_90d: string | null;
+  return_90d: string | null;
   beta: string | null;
 }
 

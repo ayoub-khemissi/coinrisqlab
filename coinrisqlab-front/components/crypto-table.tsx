@@ -187,31 +187,22 @@ function CryptoTableComponent({
           return <div className="font-mono text-default-400">—</div>;
         }
 
-        const maValue = parseFloat(crypto.ma_90d);
-        const currentPrice = parseFloat(crypto.price_usd);
-        const diffPct =
-          maValue > 0 ? ((currentPrice - maValue) / maValue) * 100 : 0;
-        const color = getPercentageColor(diffPct);
+        // 90-day simple return: (close[N-1] / close[N-91]) - 1
+        // Drives the arrow direction/color next to the MA value.
+        const ret = crypto.return_90d != null ? parseFloat(crypto.return_90d) : null;
+        const arrowClass =
+          ret == null ? "text-default-400" : ret > 0 ? "text-success" : ret < 0 ? "text-danger" : "text-default-400";
 
         return (
-          <div className="flex flex-col items-start gap-1">
+          <div className="flex items-center gap-2">
             <span className="font-mono text-sm">
               {formatCryptoPrice(crypto.ma_90d)}
             </span>
-            <Chip
-              color={color}
-              size="sm"
-              startContent={
-                diffPct > 0 ? (
-                  <TrendingUp size={14} />
-                ) : diffPct < 0 ? (
-                  <TrendingDown size={14} />
-                ) : null
-              }
-              variant="flat"
-            >
-              {formatPercentage(diffPct)}
-            </Chip>
+            {ret != null && ret > 0 ? (
+              <TrendingUp className={arrowClass} size={16} />
+            ) : ret != null && ret < 0 ? (
+              <TrendingDown className={arrowClass} size={16} />
+            ) : null}
           </div>
         );
       }
