@@ -1,13 +1,15 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Input } from "@heroui/input";
 import { Button } from "@heroui/button";
 import { Chip } from "@heroui/chip";
 import { Select, SelectItem } from "@heroui/select";
 import { Autocomplete, AutocompleteItem } from "@heroui/autocomplete";
+import { Listbox, ListboxItem } from "@heroui/listbox";
+import { Popover, PopoverTrigger, PopoverContent } from "@heroui/popover";
 import { Tooltip } from "@heroui/tooltip";
-import { Search, X, Info } from "lucide-react";
+import { Search, X, Info, ChevronDown } from "lucide-react";
 
 const WINDOW_MIN = 1;
 const WINDOW_MAX = 730;
@@ -66,6 +68,20 @@ export function DataFilters({
   const [portfolioId, setPortfolioId] = useState<number | undefined>(
     portfolios?.[0]?.id,
   );
+  const [cryptoSearch, setCryptoSearch] = useState("");
+
+  // Case-insensitive symbol/name filter for the multi-select crypto picker.
+  const filteredCryptos = useMemo(() => {
+    const q = cryptoSearch.trim().toLowerCase();
+
+    if (!q) return allCryptos;
+
+    return allCryptos.filter(
+      (c) =>
+        c.symbol.toLowerCase().includes(q) ||
+        c.name.toLowerCase().includes(q),
+    );
+  }, [allCryptos, cryptoSearch]);
 
   useEffect(() => {
     if (!showCryptoSearch && !showCryptoSearch2) return;
@@ -123,58 +139,97 @@ export function DataFilters({
       {/* Filter inputs row */}
       <div className="flex flex-wrap items-end gap-3">
         {showCryptoSearch && !showCryptoSearch2 && (
-          <Select
-            aria-label="Add cryptocurrencies"
-            className="w-72"
-            classNames={{ trigger: "cursor-pointer" }}
-            items={allCryptos}
-            label="Add cryptocurrencies"
-            placeholder="Pick one or more..."
-            renderValue={(items) => (
-              <span className="text-xs text-default-500">
-                {items.length} selected
-              </span>
-            )}
-            selectedKeys={
-              new Set(selectedCryptoObjects.map((c) => c.coingecko_id))
-            }
-            selectionMode="multiple"
-            size="sm"
-            onSelectionChange={(keys) => {
-              const ids = Array.from(keys as Set<string>);
-
-              setSelectedCryptoObjects(
-                allCryptos.filter((c) => ids.includes(c.coingecko_id)),
-              );
-            }}
-            // closeOnSelect is supported at runtime by HeroUI Select but missing
-            // from its TS types — keeps the popover open while picking multiple.
-            {...({ closeOnSelect: false } as Record<string, unknown>)}
-          >
-            {(item) => (
-              <SelectItem
-                key={item.coingecko_id}
-                textValue={`${item.symbol} ${item.name}`}
+          <div className="w-72">
+            <label
+              className="block text-xs text-default-500 mb-1 px-1"
+              htmlFor="crypto-picker-trigger"
+            >
+              Add cryptocurrencies
+            </label>
+            <Popover
+              placement="bottom-start"
+              shouldCloseOnInteractOutside={(el) => {
+                // Don't close when clicking inside the popover content
+                return !el.closest("[data-crypto-picker-popover]");
+              }}
+            >
+              <PopoverTrigger>
+                <Button
+                  className="w-full justify-between font-normal"
+                  endContent={<ChevronDown size={14} />}
+                  id="crypto-picker-trigger"
+                  size="sm"
+                  variant="bordered"
+                >
+                  <span className="text-xs text-default-500">
+                    {selectedCryptoObjects.length > 0
+                      ? `${selectedCryptoObjects.length} selected`
+                      : "Pick one or more..."}
+                  </span>
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent
+                className="p-2 w-72"
+                data-crypto-picker-popover
               >
-                <div className="flex items-center gap-2 min-w-0">
-                  {item.image_url && (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      alt={item.symbol}
-                      className="w-5 h-5 rounded-full flex-shrink-0"
-                      src={item.image_url}
-                    />
+                <Input
+                  // eslint-disable-next-line jsx-a11y/no-autofocus
+                  autoFocus
+                  className="mb-2"
+                  placeholder="Search by symbol or name..."
+                  size="sm"
+                  startContent={<Search size={14} />}
+                  value={cryptoSearch}
+                  onValueChange={setCryptoSearch}
+                />
+                <Listbox
+                  aria-label="Cryptocurrencies"
+                  className="max-h-64 overflow-y-auto"
+                  emptyContent="No match"
+                  items={filteredCryptos}
+                  selectedKeys={
+                    new Set(
+                      selectedCryptoObjects.map((c) => c.coingecko_id),
+                    )
+                  }
+                  selectionMode="multiple"
+                  onSelectionChange={(keys) => {
+                    const ids = Array.from(keys as Set<string>);
+
+                    setSelectedCryptoObjects(
+                      allCryptos.filter((c) =>
+                        ids.includes(c.coingecko_id),
+                      ),
+                    );
+                  }}
+                >
+                  {(item) => (
+                    <ListboxItem
+                      key={item.coingecko_id}
+                      textValue={`${item.symbol} ${item.name}`}
+                    >
+                      <div className="flex items-center gap-2 min-w-0">
+                        {item.image_url && (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            alt={item.symbol}
+                            className="w-5 h-5 rounded-full flex-shrink-0"
+                            src={item.image_url}
+                          />
+                        )}
+                        <span className="font-medium flex-shrink-0">
+                          {item.symbol}
+                        </span>
+                        <span className="text-default-400 text-sm truncate">
+                          {item.name}
+                        </span>
+                      </div>
+                    </ListboxItem>
                   )}
-                  <span className="font-medium flex-shrink-0">
-                    {item.symbol}
-                  </span>
-                  <span className="text-default-400 text-sm truncate">
-                    {item.name}
-                  </span>
-                </div>
-              </SelectItem>
-            )}
-          </Select>
+                </Listbox>
+              </PopoverContent>
+            </Popover>
+          </div>
         )}
 
         {showCryptoSearch2 && (
