@@ -152,6 +152,12 @@ Recommended cron: daily at `30 0 * * *` — covers the previous day with
 # Detects market_data gaps in the last 24h and refills via /market_chart?days=1
 30 0 * * * cd /home/ubuntu/coinrisqlab/coinrisqlab/coinrisqlab-back && node commands/fetchOHLC.js --backfill-recent
 
+# Hourly density safety net (00:45, ≤500 credits CoinGecko, usually 0)
+# Backfills ohlc_hourly for cryptos newly entered the universe (or otherwise
+# below the HOURLY_ENTRY_THRESHOLD of 500 rows in 90d) so the 30d/90d charts
+# always have hourly granularity instead of falling back to daily-only.
+45 0 * * * cd /home/ubuntu/coinrisqlab/coinrisqlab/coinrisqlab-back && node commands/fetchOHLC.js --backfill-hourly
+
 # Metadata weekly, Sunday 03:05 (~500 credits CoinGecko)
 5 3 * * 0 cd /home/ubuntu/coinrisqlab/coinrisqlab/coinrisqlab-back && node commands/fetchCryptoMetadata.js
 

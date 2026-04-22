@@ -392,22 +392,49 @@ async function runRecentBackfill() {
 // ═══════════════════════════════════════════════════════════════
 
 const HOURLY_BACKFILL_DAYS = 90; // CoinGecko returns hourly data for days<=90
+// We check the LAST 30 DAYS density (not 90d) because some cryptos can have
+// dense old history but sparse recent data (e.g. RAVEDAO had 24h/day for
+// J-60 but only 1/day for J-30 since the daily-backfill cron, when finding
+// no daily gap, never re-pulled the hourly granularity for the recent past).
+// Threshold = 30d × 24h × 0.7 = 504 — leaves margin for transient API misses.
+const HOURLY_RECENT_WINDOW_DAYS = 30;
+const HOURLY_RECENT_THRESHOLD = 504;
 
 /**
- * Backfill ohlc_hourly for ALL cryptos (days=90).
- * CoinGecko returns hourly granularity when days<=90.
+ * Backfill ohlc_hourly for cryptos whose recent 30-day hourly history is
+ * sparse. CoinGecko returns hourly granularity when days<=90.
+ *
+ * Designed to run daily as a safety net — cryptos that are already dense
+ * cost 0 credits, only newly-added or sparsely-tracked cryptos pay.
  */
 async function runHourlyBackfill() {
   const stats = { apiCalls: 0, hourlyInserted: 0, apiErrors: 0 };
 
   const [cryptos] = await Database.execute(`
-    SELECT c.id, c.symbol, c.coingecko_id
+    SELECT c.id, c.symbol, c.coingecko_id, COALESCE(oh_count.n, 0) AS recent_hourly_rows
     FROM cryptocurrencies c
+    INNER JOIN (
+      SELECT DISTINCT crypto_id
+      FROM market_data
+      WHERE timestamp >= NOW() - INTERVAL 24 HOUR
+    ) active ON active.crypto_id = c.id
+    LEFT JOIN (
+      SELECT crypto_id, COUNT(*) AS n
+      FROM ohlc_hourly
+      WHERE timestamp >= NOW() - INTERVAL ${HOURLY_RECENT_WINDOW_DAYS} DAY
+      GROUP BY crypto_id
+    ) oh_count ON oh_count.crypto_id = c.id
     WHERE c.coingecko_id IS NOT NULL
-    ORDER BY c.symbol
+      AND COALESCE(oh_count.n, 0) < ${HOURLY_RECENT_THRESHOLD}
+    ORDER BY recent_hourly_rows ASC
   `);
 
-  log.info(`[HourlyBackfill] Found ${cryptos.length} crypto(s) to backfill`);
+  if (cryptos.length === 0) {
+    log.info(`[HourlyBackfill] All active cryptos have ≥${HOURLY_RECENT_THRESHOLD} rows in last ${HOURLY_RECENT_WINDOW_DAYS}d — nothing to backfill (0 credits spent)`);
+    return stats;
+  }
+
+  log.info(`[HourlyBackfill] Found ${cryptos.length} crypto(s) below ${HOURLY_RECENT_THRESHOLD}/${HOURLY_RECENT_WINDOW_DAYS}d threshold to backfill`);
 
   for (const crypto of cryptos) {
     try {
@@ -439,7 +466,7 @@ async function runHourlyBackfill() {
       }
 
       stats.hourlyInserted += inserted;
-      log.info(`${crypto.symbol}: Inserted ${inserted} hourly records`);
+      log.info(`${crypto.symbol}: had ${crypto.recent_hourly_rows}/${HOURLY_RECENT_WINDOW_DAYS * 24} rows in last ${HOURLY_RECENT_WINDOW_DAYS}d, inserted ${inserted} hourly records`);
 
       await delay(API_DELAY_MS);
     } catch (error) {
