@@ -932,12 +932,12 @@ export default function PortfolioAnalyticsPage() {
                             color: "",
                           },
                           {
-                            label: `Best Day (last ${riskMetrics.dataPoints}d)`,
+                            label: `Best Day (${riskMetrics.dataPoints}d)`,
                             value: `+${riskMetrics.returnStats.max}%`,
                             color: "text-success",
                           },
                           {
-                            label: `Worst Day (last ${riskMetrics.dataPoints}d)`,
+                            label: `Worst Day (${riskMetrics.dataPoints}d)`,
                             value: `${riskMetrics.returnStats.min}%`,
                             color: "text-danger",
                           },
