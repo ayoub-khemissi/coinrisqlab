@@ -308,7 +308,10 @@ export function calculateStressTest(beta, currentPrice, scenarios = null) {
     // tend toward 1 in practice, so we apply the raw market shock instead of
     // amplifying or dampening it for negative-beta assets.
     const effectiveBeta = beta < 0 ? 1 : beta;
-    const expectedImpact = effectiveBeta * scenario.shock;
+    // Cap the loss at 100%: a high-beta asset (e.g. β=2 with a -50% shock)
+    // would mathematically project a -100%+ loss, which is impossible — an
+    // asset can lose at most its full value.
+    const expectedImpact = Math.max(effectiveBeta * scenario.shock, -1);
     const newPrice = currentPrice * (1 + expectedImpact);
     const priceChange = newPrice - currentPrice;
 

@@ -240,12 +240,14 @@ export function StressTestPanel({ cryptoId, symbol }: StressTestPanelProps) {
       // Calculate stressed price if a scenario is selected.
       // Negative beta is treated as 1 so the asset takes the raw market shock
       // (in a catastrophe scenario all betas tend toward 1 in practice).
+      // Loss is capped at 100%: a high-beta asset can't lose more than its
+      // full value, even if β × shock mathematically projects a worse outcome.
       if (activeScenario && data.beta != null) {
         const effectiveBeta = data.beta < 0 ? 1 : data.beta;
-        const impactMultiplier =
-          1 + (activeScenario.marketShock / 100) * effectiveBeta;
+        const rawImpact = (activeScenario.marketShock / 100) * effectiveBeta;
+        const cappedImpact = Math.max(rawImpact, -1);
 
-        baseData.stressedPrice = p.price * impactMultiplier;
+        baseData.stressedPrice = p.price * (1 + cappedImpact);
       }
 
       return baseData;
