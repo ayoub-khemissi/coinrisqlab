@@ -14,6 +14,85 @@ async function verifyPortfolioOwnership(portfolioId, userId) {
   return rows.length > 0;
 }
 
+/**
+ * Recompute a holding's quantity and avg_buy_price from the full transaction
+ * history. The single source of truth is `user_transactions` — holdings are a
+ * derived cache. Called after every transaction insert/update/delete so the
+ * holding stays in sync with the trade history.
+ *
+ *   quantity      = sum(buy.qty) − sum(sell.qty) + sum(transfer.qty signed)
+ *   avg_buy_price = sum(buy.qty × buy.price) / sum(buy.qty)   (cost-basis on buys)
+ *
+ * If the resulting quantity is ≤ 0 (full liquidation), the holding row is
+ * deleted. If there's no buy at all (e.g. only sells from an external import
+ * with no opening lot), avg_buy_price falls back to 0.
+ */
+async function recomputeHolding(portfolioId, cryptoId) {
+  const [txs] = await Database.execute(
+    `SELECT type, quantity, price_usd, timestamp
+     FROM user_transactions
+     WHERE portfolio_id = ? AND crypto_id = ?
+     ORDER BY timestamp ASC, id ASC`,
+    [portfolioId, cryptoId]
+  );
+
+  let totalQty = 0;
+  let buyQtySum = 0;
+  let buyCostSum = 0;
+  let firstBuyDate = null;
+
+  for (const t of txs) {
+    const q = parseFloat(t.quantity);
+    const p = parseFloat(t.price_usd);
+
+    if (t.type === 'buy') {
+      totalQty += q;
+      buyQtySum += q;
+      buyCostSum += q * p;
+      if (firstBuyDate === null) firstBuyDate = t.timestamp;
+    } else if (t.type === 'sell') {
+      totalQty -= q;
+    } else if (t.type === 'transfer') {
+      // Transfers don't move the cost basis but contribute to qty if signed.
+      // Keeping behaviour consistent with the previous implementation: noop on qty.
+    }
+  }
+
+  const avgBuyPrice = buyQtySum > 0 ? buyCostSum / buyQtySum : 0;
+
+  const [existing] = await Database.execute(
+    'SELECT id FROM user_portfolio_holdings WHERE portfolio_id = ? AND crypto_id = ?',
+    [portfolioId, cryptoId]
+  );
+
+  if (totalQty <= 0) {
+    if (existing.length > 0) {
+      await Database.execute(
+        'DELETE FROM user_portfolio_holdings WHERE id = ?',
+        [existing[0].id]
+      );
+    }
+    return;
+  }
+
+  if (existing.length > 0) {
+    await Database.execute(
+      'UPDATE user_portfolio_holdings SET quantity = ?, avg_buy_price = ? WHERE id = ?',
+      [totalQty, avgBuyPrice, existing[0].id]
+    );
+  } else {
+    const fbDate = firstBuyDate
+      ? new Date(firstBuyDate).toISOString().slice(0, 10)
+      : new Date().toISOString().slice(0, 10);
+
+    await Database.execute(
+      `INSERT INTO user_portfolio_holdings (portfolio_id, crypto_id, quantity, avg_buy_price, first_buy_date)
+       VALUES (?, ?, ?, ?, ?)`,
+      [portfolioId, cryptoId, totalQty, avgBuyPrice, fbDate]
+    );
+  }
+}
+
 // ─── List Transactions ──────────────────────────────────────────────────────
 
 api.get('/user/portfolios/:id/transactions', authenticateUser, async (req, res) => {
@@ -91,6 +170,26 @@ api.post('/user/portfolios/:id/transactions', authenticateUser, async (req, res)
       return res.status(400).json({ data: null, msg: 'Cryptocurrency not found' });
     }
 
+    // Free-plan limit: max 10 distinct cryptos per portfolio. Only relevant
+    // when the buy creates a new holding row (i.e. crypto not yet held).
+    if (type === 'buy' && req.user.plan === 'free') {
+      const [existingHolding] = await Database.execute(
+        'SELECT id FROM user_portfolio_holdings WHERE portfolio_id = ? AND crypto_id = ?',
+        [portfolioId, crypto_id]
+      );
+
+      if (existingHolding.length === 0) {
+        const [count] = await Database.execute(
+          'SELECT COUNT(*) AS cnt FROM user_portfolio_holdings WHERE portfolio_id = ?',
+          [portfolioId]
+        );
+
+        if (count[0].cnt >= 10) {
+          return res.status(403).json({ data: null, msg: 'Free plan allows max 10 cryptos per portfolio' });
+        }
+      }
+    }
+
     // Insert transaction
     const txTimestamp = timestamp || new Date().toISOString().slice(0, 19).replace('T', ' ');
     const [result] = await Database.execute(
@@ -99,61 +198,9 @@ api.post('/user/portfolios/:id/transactions', authenticateUser, async (req, res)
       [portfolioId, crypto_id, type, quantity, price_usd, fee_usd || 0, txTimestamp, notes || null]
     );
 
-    // Update holding based on transaction type
-    const [existingHolding] = await Database.execute(
-      'SELECT id, quantity, avg_buy_price FROM user_portfolio_holdings WHERE portfolio_id = ? AND crypto_id = ?',
-      [portfolioId, crypto_id]
-    );
-
-    const qty = parseFloat(quantity);
-    const price = parseFloat(price_usd);
-
-    if (type === 'buy') {
-      if (existingHolding.length > 0) {
-        const oldQty = parseFloat(existingHolding[0].quantity);
-        const oldPrice = parseFloat(existingHolding[0].avg_buy_price);
-        const totalQty = oldQty + qty;
-        const weightedPrice = totalQty > 0 ? (oldQty * oldPrice + qty * price) / totalQty : 0;
-
-        await Database.execute(
-          'UPDATE user_portfolio_holdings SET quantity = ?, avg_buy_price = ? WHERE id = ?',
-          [totalQty, weightedPrice, existingHolding[0].id]
-        );
-      } else {
-        // Check free plan limit
-        if (req.user.plan === 'free') {
-          const [count] = await Database.execute(
-            'SELECT COUNT(*) AS cnt FROM user_portfolio_holdings WHERE portfolio_id = ?',
-            [portfolioId]
-          );
-          if (count[0].cnt >= 10) {
-            return res.status(403).json({ data: null, msg: 'Free plan allows max 10 cryptos per portfolio' });
-          }
-        }
-
-        await Database.execute(
-          `INSERT INTO user_portfolio_holdings (portfolio_id, crypto_id, quantity, avg_buy_price, first_buy_date)
-           VALUES (?, ?, ?, ?, ?)`,
-          [portfolioId, crypto_id, qty, price, txTimestamp.slice(0, 10)]
-        );
-      }
-    } else if (type === 'sell') {
-      if (existingHolding.length > 0) {
-        const newQty = parseFloat(existingHolding[0].quantity) - qty;
-        if (newQty <= 0) {
-          await Database.execute(
-            'DELETE FROM user_portfolio_holdings WHERE id = ?',
-            [existingHolding[0].id]
-          );
-        } else {
-          await Database.execute(
-            'UPDATE user_portfolio_holdings SET quantity = ? WHERE id = ?',
-            [newQty, existingHolding[0].id]
-          );
-        }
-      }
-    }
-    // transfer: no holding update
+    // Recompute the holding from the full transaction history. Single source
+    // of truth = user_transactions; the holding row is just a derived cache.
+    await recomputeHolding(portfolioId, crypto_id);
 
     res.status(201).json({ data: { id: result.insertId } });
   } catch (error) {
@@ -173,6 +220,16 @@ api.put('/user/portfolios/:id/transactions/:txId', authenticateUser, async (req,
 
     const txId = parseInt(req.params.txId);
     const { quantity, price_usd, fee_usd, notes } = req.body;
+
+    // Need the crypto_id to know which holding to recompute after the update
+    const [txBefore] = await Database.execute(
+      'SELECT crypto_id FROM user_transactions WHERE id = ? AND portfolio_id = ?',
+      [txId, portfolioId]
+    );
+
+    if (txBefore.length === 0) {
+      return res.status(404).json({ data: null, msg: 'Transaction not found' });
+    }
 
     const [result] = await Database.execute(
       `UPDATE user_transactions
@@ -195,6 +252,9 @@ api.put('/user/portfolios/:id/transactions/:txId', authenticateUser, async (req,
       return res.status(404).json({ data: null, msg: 'Transaction not found' });
     }
 
+    // Sync the derived holding (qty + avg_buy_price) with the new history.
+    await recomputeHolding(portfolioId, txBefore[0].crypto_id);
+
     res.json({ data: { id: txId } });
   } catch (error) {
     log.error(`Update transaction error: ${error.message}`);
@@ -211,14 +271,30 @@ api.delete('/user/portfolios/:id/transactions/:txId', authenticateUser, async (r
       return res.status(404).json({ data: null, msg: 'Portfolio not found' });
     }
 
+    const txId = parseInt(req.params.txId);
+
+    // Capture the crypto_id before deletion so we can recompute its holding after
+    const [txBefore] = await Database.execute(
+      'SELECT crypto_id FROM user_transactions WHERE id = ? AND portfolio_id = ?',
+      [txId, portfolioId]
+    );
+
+    if (txBefore.length === 0) {
+      return res.status(404).json({ data: null, msg: 'Transaction not found' });
+    }
+
     const [result] = await Database.execute(
       'DELETE FROM user_transactions WHERE id = ? AND portfolio_id = ?',
-      [parseInt(req.params.txId), portfolioId]
+      [txId, portfolioId]
     );
 
     if (result.affectedRows === 0) {
       return res.status(404).json({ data: null, msg: 'Transaction not found' });
     }
+
+    // Sync the derived holding — may now have a smaller qty, a different
+    // avg_buy_price, or be deleted entirely if no positive qty remains.
+    await recomputeHolding(portfolioId, txBefore[0].crypto_id);
 
     res.json({ data: null, msg: 'Transaction deleted' });
   } catch (error) {
@@ -244,9 +320,11 @@ api.post('/user/portfolios/:id/transactions/import', authenticateUser, requirePr
 
     let imported = 0;
     let errors = [];
+    const touchedCryptoIds = new Set();
 
     for (let i = 0; i < transactions.length; i++) {
       const tx = transactions[i];
+
       try {
         if (!tx.crypto_id || !tx.type || !tx.quantity || !tx.price_usd) {
           errors.push({ row: i + 1, msg: 'Missing required fields' });
@@ -259,8 +337,19 @@ api.post('/user/portfolios/:id/transactions/import', authenticateUser, requirePr
           [portfolioId, tx.crypto_id, tx.type, tx.quantity, tx.price_usd, tx.fee_usd || 0, tx.timestamp || new Date(), tx.notes || null]
         );
         imported++;
+        touchedCryptoIds.add(tx.crypto_id);
       } catch (err) {
         errors.push({ row: i + 1, msg: err.message });
+      }
+    }
+
+    // Recompute holdings once per touched crypto (instead of per-row) — faster
+    // for large CSVs and avoids redundant intermediate states.
+    for (const cryptoId of touchedCryptoIds) {
+      try {
+        await recomputeHolding(portfolioId, cryptoId);
+      } catch (err) {
+        log.warn(`recomputeHolding failed for crypto ${cryptoId}: ${err.message}`);
       }
     }
 
