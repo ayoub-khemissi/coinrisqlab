@@ -76,12 +76,14 @@ export function formatCryptoPrice(value: number | string): string {
     return `$0.0${subscript}${significantDigits}`;
   }
 
-  // 0-5 leading zeros: show real value, capped at 6 decimals total, padded to min 2.
+  // 0-3 leading zeros: cap at 4 decimals so the display stays compact and
+  // consistent with the [1, 100) tier (also max 4). For deeper-precision
+  // assets the subscript notation kicks in once we hit 4+ leading zeros.
   return new Intl.NumberFormat("en-US", {
     style: "currency",
     currency: "USD",
     minimumFractionDigits: 2,
-    maximumFractionDigits: 6,
+    maximumFractionDigits: 4,
   }).format(num);
 }
 
