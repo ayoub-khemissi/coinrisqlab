@@ -322,29 +322,68 @@ export default function PortfolioAnalyticsPage() {
               <ResponsiveContainer height="100%" width="100%">
                 <LineChart
                   data={(() => {
-                    const pMap = new Map<string, number | null>(
-                      (performance.portfolio24hSeries || []).map((p: any) => [
-                        p.date,
-                        p.pct,
-                      ]),
+                    // Compounded performance comparison: both series rebased to
+                    // 0% on the LATEST common start date, so the two lines
+                    // begin at the same x and y values and diverge based on
+                    // their actual performance — no more orphan benchmark line
+                    // spanning months while the portfolio shows a 2-day stub.
+                    const pSeries = (performance.portfolio || []) as Array<{
+                      date: string;
+                      value: number;
+                    }>;
+                    const bSeries = (performance.benchmark || []) as Array<{
+                      date: string;
+                      value: number;
+                    }>;
+
+                    if (pSeries.length === 0 || bSeries.length === 0) return [];
+
+                    const pFirst = new Date(pSeries[0].date).getTime();
+                    const bFirst = new Date(bSeries[0].date).getTime();
+                    const commonStart = Math.max(pFirst, bFirst);
+
+                    const pMap = new Map<string, number>(
+                      pSeries.map((p) => [p.date, p.value]),
                     );
-                    const bMap = new Map<string, number | null>(
-                      (performance.benchmark24hSeries || []).map((b: any) => [
-                        b.date,
-                        b.pct,
-                      ]),
+                    const bMap = new Map<string, number>(
+                      bSeries.map((b) => [b.date, b.value]),
                     );
+
+                    // Intersection of dates from commonStart onward
                     const dateSet = new Set<string>();
 
-                    pMap.forEach((_, k) => dateSet.add(k));
-                    bMap.forEach((_, k) => dateSet.add(k));
+                    pSeries.forEach((p) => {
+                      if (new Date(p.date).getTime() >= commonStart) {
+                        dateSet.add(p.date);
+                      }
+                    });
+                    bSeries.forEach((b) => {
+                      if (new Date(b.date).getTime() >= commonStart) {
+                        dateSet.add(b.date);
+                      }
+                    });
                     const dates = Array.from(dateSet).sort();
 
-                    return dates.map((date) => ({
-                      date,
-                      portfolio: pMap.get(date) ?? null,
-                      benchmark: bMap.get(date) ?? null,
-                    }));
+                    if (dates.length === 0) return [];
+
+                    // Re-base both at the common start date — pick the closest
+                    // available value at or after commonStart.
+                    const baseDate = dates[0];
+                    const pBase = pMap.get(baseDate);
+                    const bBase = bMap.get(baseDate);
+
+                    if (!pBase || !bBase) return [];
+
+                    return dates.map((date) => {
+                      const pVal = pMap.get(date);
+                      const bVal = bMap.get(date);
+
+                      return {
+                        date,
+                        portfolio: pVal != null ? (pVal / pBase - 1) * 100 : null,
+                        benchmark: bVal != null ? (bVal / bBase - 1) * 100 : null,
+                      };
+                    });
                   })()}
                 >
                   <CartesianGrid opacity={0.1} strokeDasharray="3 3" />
