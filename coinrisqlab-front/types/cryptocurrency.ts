@@ -14,6 +14,7 @@ export interface Cryptocurrency {
   rank: number;
   ma_90d: string | null;
   return_90d: string | null;
+  rsi_14d: string | null;
   beta: string | null;
 }
 

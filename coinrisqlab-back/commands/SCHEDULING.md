@@ -36,6 +36,9 @@ Each call to a CoinGecko API endpoint costs 1 credit.
    - VaR/CVaR statistics
    - Beta/Alpha statistics
    - SML statistics
+   - Moving averages (90d SMA)
+   - Sharpe Ratio
+   - RSI (14d, Wilder smoothing)
 
    All risk metrics support **retroactive backfill** - they automatically calculate missing historical values.
 

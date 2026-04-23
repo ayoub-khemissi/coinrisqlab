@@ -414,6 +414,20 @@ CREATE TABLE IF NOT EXISTS `crypto_moving_averages` (
     KEY `idx_date` (`date`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+DROP TABLE IF EXISTS `crypto_rsi`;
+CREATE TABLE IF NOT EXISTS `crypto_rsi` (
+    `id` BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    `crypto_id` INT UNSIGNED NOT NULL,
+    `date` DATE NOT NULL COMMENT 'Date for which RSI is calculated',
+    `window_days` INT UNSIGNED NOT NULL DEFAULT 14 COMMENT 'RSI window in days (Wilder smoothing)',
+    `rsi` DECIMAL(7, 4) NOT NULL COMMENT 'RSI value (0-100)',
+    `num_observations` INT UNSIGNED NOT NULL,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (`crypto_id`) REFERENCES `cryptocurrencies`(`id`) ON DELETE CASCADE,
+    UNIQUE KEY `idx_crypto_date_window` (`crypto_id`, `date`, `window_days`),
+    KEY `idx_date` (`date`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 -- ============================================================================
 -- USER SPACE TABLES
 -- ============================================================================

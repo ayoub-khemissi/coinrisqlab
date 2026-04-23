@@ -71,6 +71,7 @@ api.get('/cryptocurrencies', async (req, res) => {
         ranked.rank_number as \`rank\`,
         cma.moving_average as ma_90d,
         r90.return_90d,
+        cr.rsi as rsi_14d,
         cb.beta
       FROM cryptocurrencies c
       INNER JOIN market_data md ON c.id = md.crypto_id
@@ -111,6 +112,19 @@ api.get('/cryptocurrencies', async (req, res) => {
           AND cb2.date = cb_max.date
           AND cb2.window_days = cb_max.max_window
       ) cb ON c.id = cb.crypto_id
+      LEFT JOIN (
+        -- Latest 14-day RSI per crypto (Wilder smoothing, computed nightly)
+        SELECT cr2.crypto_id, cr2.rsi
+        FROM crypto_rsi cr2
+        INNER JOIN (
+          SELECT crypto_id, MAX(date) as max_date
+          FROM crypto_rsi
+          WHERE window_days = 14
+          GROUP BY crypto_id
+        ) cr_latest ON cr2.crypto_id = cr_latest.crypto_id
+                   AND cr2.date = cr_latest.max_date
+                   AND cr2.window_days = 14
+      ) cr ON c.id = cr.crypto_id
       LEFT JOIN (
         -- 90-day simple return: (close[N-1] / close[N-91]) - 1
         -- N-1 = latest OHLC row (today is excluded from ohlc by upstream cron)

@@ -67,6 +67,7 @@ function CryptoTableComponent({
     { key: "circulating_supply", label: "Circulating Supply", sortable: true },
     { key: "volume_24h_usd", label: "24h Volume", sortable: true },
     { key: "ma_90d", label: "MA 90d", sortable: true },
+    { key: "rsi_14d", label: "RSI 14d", sortable: true },
     { key: "beta", label: "Beta", sortable: true },
   ];
 
@@ -213,6 +214,28 @@ function CryptoTableComponent({
         return (
           <div className="font-mono">
             {betaValue !== null ? betaValue.toFixed(2) : "—"}
+          </div>
+        );
+      }
+
+      case "rsi_14d": {
+        if (!crypto.rsi_14d) {
+          return <div className="font-mono text-default-400">—</div>;
+        }
+
+        const rsi = parseFloat(crypto.rsi_14d);
+        // Standard RSI thresholds: <30 oversold (success/buy signal),
+        // >70 overbought (warning/sell signal), 30-70 neutral.
+        const colorClass =
+          rsi >= 70
+            ? "text-warning"
+            : rsi <= 30
+              ? "text-success"
+              : "text-default-700";
+
+        return (
+          <div className={`font-mono ${colorClass}`}>
+            {rsi.toFixed(1)}
           </div>
         );
       }

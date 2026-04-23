@@ -23,44 +23,48 @@ async function updateVolatility() {
     log.info('='.repeat(60));
 
     // Step 1: Calculate logarithmic returns
-    log.info('\n[1/10] Calculating logarithmic returns...');
+    log.info('\n[1/11] Calculating logarithmic returns...');
     await runCommand('calculateLogReturns.js');
 
     // Step 2: Calculate simple (arithmetic) returns
-    log.info('\n[2/10] Calculating simple returns...');
+    log.info('\n[2/11] Calculating simple returns...');
     await runCommand('calculateSimpleReturns.js');
 
     // Step 3: Calculate individual crypto volatility
-    log.info('\n[3/10] Calculating individual cryptocurrency volatility...');
+    log.info('\n[3/11] Calculating individual cryptocurrency volatility...');
     await runCommand('calculateCryptoVolatility.js');
 
     // Step 4: Calculate portfolio volatility
-    log.info('\n[4/10] Calculating portfolio volatility...');
+    log.info('\n[4/11] Calculating portfolio volatility...');
     await runCommand('calculatePortfolioVolatility.js');
 
     // Step 5: Calculate distribution statistics (skewness & kurtosis)
-    log.info('\n[5/10] Calculating distribution statistics (skewness & kurtosis)...');
+    log.info('\n[5/11] Calculating distribution statistics (skewness & kurtosis)...');
     await runCommand('calculateDistributionStats.js');
 
     // Step 6: Calculate VaR/CVaR statistics
-    log.info('\n[6/10] Calculating VaR/CVaR statistics...');
+    log.info('\n[6/11] Calculating VaR/CVaR statistics...');
     await runCommand('calculateVaRStats.js');
 
     // Step 7: Calculate Beta/Alpha statistics
-    log.info('\n[7/10] Calculating Beta/Alpha statistics...');
+    log.info('\n[7/11] Calculating Beta/Alpha statistics...');
     await runCommand('calculateBetaStats.js');
 
     // Step 8: Calculate SML statistics
-    log.info('\n[8/10] Calculating SML statistics...');
+    log.info('\n[8/11] Calculating SML statistics...');
     await runCommand('calculateSMLStats.js');
 
     // Step 9: Calculate moving averages
-    log.info('\n[9/10] Calculating moving averages...');
+    log.info('\n[9/11] Calculating moving averages...');
     await runCommand('calculateMovingAverages.js');
 
     // Step 10: Calculate Sharpe Ratio statistics
-    log.info('\n[10/10] Calculating Sharpe Ratio statistics...');
+    log.info('\n[10/11] Calculating Sharpe Ratio statistics...');
     await runCommand('calculateSharpeStats.js');
+
+    // Step 11: Calculate RSI(14) momentum
+    log.info('\n[11/11] Calculating RSI(14) momentum...');
+    await runCommand('calculateRSI.js');
 
     const totalDuration = Date.now() - startTime;
     log.info('\n' + '='.repeat(60));
