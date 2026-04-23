@@ -65,7 +65,16 @@ export function DashboardSidebar({ mobile = false }: { mobile?: boolean }) {
     }
 
     fetchPortfolios();
-  }, []);
+
+    // Refresh the list whenever a CRUD page broadcasts a change. This avoids
+    // a stale sidebar when a user creates/deletes a portfolio without
+    // navigating (or before the route transitions).
+    const handler = () => fetchPortfolios();
+
+    window.addEventListener("portfolios:changed", handler);
+
+    return () => window.removeEventListener("portfolios:changed", handler);
+  }, [pathname]);
 
   const analyticsHref =
     portfolios.length > 0

@@ -78,6 +78,7 @@ export default function PortfoliosPage() {
       setNewName("");
       onClose();
       fetchAll();
+      window.dispatchEvent(new Event("portfolios:changed"));
     } catch {
       // ignore
     } finally {
@@ -95,6 +96,7 @@ export default function PortfoliosPage() {
       deleteModal.onClose();
       setDeletingId(null);
       fetchAll();
+      window.dispatchEvent(new Event("portfolios:changed"));
     } catch {
       // ignore
     }
