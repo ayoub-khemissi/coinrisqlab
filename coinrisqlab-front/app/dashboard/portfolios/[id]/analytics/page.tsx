@@ -773,34 +773,51 @@ export default function PortfolioAnalyticsPage() {
                         desc: "Expected loss beyond VaR 99%",
                         tone: "warning",
                       },
-                    ].map((item) => (
-                      <div
-                        key={item.label}
-                        className={clsx(
-                          "text-center p-4 rounded-xl border",
-                          item.tone === "warning"
-                            ? "bg-warning/5 border-warning/10"
-                            : "bg-danger/5 border-danger/10",
-                        )}
-                      >
-                        <p className="text-xs text-default-500 mb-1">
-                          {item.label}
-                        </p>
-                        <p
+                    ].map((item) => {
+                      const portfolioValue = stressTest?.totalValue || 0;
+                      const lossAmount = portfolioValue * (item.value / 100);
+
+                      return (
+                        <div
+                          key={item.label}
                           className={clsx(
-                            "text-2xl font-bold",
+                            "text-center p-4 rounded-xl border",
                             item.tone === "warning"
-                              ? "text-warning"
-                              : "text-danger",
+                              ? "bg-warning/5 border-warning/10"
+                              : "bg-danger/5 border-danger/10",
                           )}
                         >
-                          -{item.value}%
-                        </p>
-                        <p className="text-[10px] text-default-400 mt-1">
-                          {item.desc}
-                        </p>
-                      </div>
-                    ))}
+                          <p className="text-xs text-default-500 mb-1">
+                            {item.label}
+                          </p>
+                          <p
+                            className={clsx(
+                              "text-2xl font-bold",
+                              item.tone === "warning"
+                                ? "text-warning"
+                                : "text-danger",
+                            )}
+                          >
+                            -{item.value}%
+                          </p>
+                          {portfolioValue > 0 && (
+                            <p
+                              className={clsx(
+                                "text-sm font-semibold mt-1",
+                                item.tone === "warning"
+                                  ? "text-warning"
+                                  : "text-danger",
+                              )}
+                            >
+                              −{formatCryptoPrice(lossAmount)}
+                            </p>
+                          )}
+                          <p className="text-[10px] text-default-400 mt-1">
+                            {item.desc}
+                          </p>
+                        </div>
+                      );
+                    })}
                   </div>
                 </CardBody>
               </Card>
