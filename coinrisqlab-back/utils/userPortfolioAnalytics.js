@@ -423,7 +423,9 @@ export function computeAnalyticsBundle({
       const var99 = calculateVaR(portfolioReturnsSimple, 99);
       const cvar95 = calculateCVaR(portfolioReturnsSimple, 95);
       const cvar99 = calculateCVaR(portfolioReturnsSimple, 99);
-      const sharpe = calculateSharpeRatio(portfolioReturnsSimple);
+      // Sharpe is computed on log returns per methodology (descriptive
+      // distribution metric, paired with the log-return volatility).
+      const sharpe = calculateSharpeRatio(portfolioReturnsLog);
       const meanReturn = mean(portfolioReturnsSimple);
       const dailyStd = standardDeviation(portfolioReturnsSimple);
       const minReturn = Math.min(...portfolioReturnsSimple);

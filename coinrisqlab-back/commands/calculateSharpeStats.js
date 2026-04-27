@@ -22,7 +22,7 @@ async function calculateSharpeStats() {
       `
       SELECT DISTINCT c.id, c.symbol, c.name
       FROM cryptocurrencies c
-      INNER JOIN crypto_simple_returns csr ON c.id = csr.crypto_id
+      INNER JOIN crypto_log_returns clr ON c.id = clr.crypto_id
       GROUP BY c.id, c.symbol, c.name
       HAVING COUNT(*) >= ?
       ORDER BY c.symbol
@@ -81,11 +81,12 @@ async function ensureTableExists() {
 }
 
 async function calculateSharpeForCrypto(cryptoId, symbol) {
-  // Sharpe is an economic interpretation metric — computed on simple returns
-  const [simpleReturns] = await Database.execute(
+  // Sharpe is computed on logarithmic returns (descriptive distribution
+  // metric — additive over time and stable for variance estimation).
+  const [logReturns] = await Database.execute(
     `
-    SELECT date, simple_return
-    FROM crypto_simple_returns
+    SELECT date, log_return
+    FROM crypto_log_returns
     WHERE crypto_id = ?
       AND date < CURDATE()
     ORDER BY date ASC
@@ -93,16 +94,17 @@ async function calculateSharpeForCrypto(cryptoId, symbol) {
     [cryptoId]
   );
 
-  if (simpleReturns.length < MINIMUM_WINDOW_DAYS) {
+  if (logReturns.length < MINIMUM_WINDOW_DAYS) {
     return { inserted: 0, skipped: 0 };
   }
 
   const returnsByDate = [];
-  for (const r of simpleReturns) {
+
+  for (const r of logReturns) {
     returnsByDate.push({
       date: r.date,
       dateStr: r.date.toISOString().split('T')[0],
-      return: parseFloat(r.simple_return),
+      return: parseFloat(r.log_return),
     });
   }
 

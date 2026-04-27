@@ -441,8 +441,8 @@ api.get('/user/portfolios/:id/risk-metrics', authenticateUser, requirePro, async
     const cvar95 = calculateCVaR(portfolioReturnsSimple, 95);
     const cvar99 = calculateCVaR(portfolioReturnsSimple, 99);
 
-    // Sharpe (simple returns)
-    const sharpe = calculateSharpeRatio(portfolioReturnsSimple);
+    // Sharpe (log returns — descriptive distribution metric per methodology)
+    const sharpe = calculateSharpeRatio(portfolioReturnsLog);
 
     // Alpha + Beta (portfolio vs market index)
     // Compute index log returns on-the-fly from index_history

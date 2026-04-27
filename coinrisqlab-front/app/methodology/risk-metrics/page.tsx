@@ -1743,7 +1743,7 @@ export default function RiskMetricsMethodologyPage() {
                         </Chip>
                       </td>
                       <td className="py-3 px-4 text-default-600">
-                        Volatility, skewness, kurtosis, beta, correlation
+                        Volatility, skewness, kurtosis, beta, correlation, Sharpe
                       </td>
                     </tr>
                     <tr className="border-b border-default-200">
@@ -1756,7 +1756,7 @@ export default function RiskMetricsMethodologyPage() {
                         </Chip>
                       </td>
                       <td className="py-3 px-4 text-default-600">
-                        VaR, CVaR, Sharpe, SML, min/max/mean return
+                        VaR, CVaR, SML, min/max/mean return
                       </td>
                     </tr>
                     <tr className="border-b border-default-200">
