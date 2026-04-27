@@ -441,11 +441,10 @@ api.get('/risk/crypto/:id/var', async (req, res) => {
       }
     }
 
-    // Get log returns for histogram (always needed for visualization)
-    const dateFilter = getDateFilter(period);
-    const returns = await getCryptoLogReturns(crypto.id, dateFilter);
-
-    if (returns.length < 5) {
+    // No on-the-fly fallback: VaR/CVaR are read from crypto_var (simple
+    // returns, batch-computed nightly). If the crypto has no historized row
+    // we surface "no data" instead of recomputing with mismatched semantics.
+    if (!fromHistorized) {
       return res.json({
         data: {
           crypto: crypto,
@@ -455,33 +454,29 @@ api.get('/risk/crypto/:id/var', async (req, res) => {
           cvar99: null,
           histogram: null,
           period,
-          dataPoints: returns.length,
-          msg: 'Insufficient data points for VaR calculation (minimum 5 required)'
-        }
+          dataPoints: 0,
+          msg: 'No historized VaR data available for this crypto yet',
+        },
       });
     }
 
-    const logReturns = returns.map(r => parseFloat(r.log_return));
-
-    // If not from historized data, calculate on-the-fly
-    if (!fromHistorized) {
-      var95 = calculateVaR(logReturns, 95);
-      var99 = calculateVaR(logReturns, 99);
-      cvar95 = calculateCVaR(logReturns, 95);
-      cvar99 = calculateCVaR(logReturns, 99);
-      meanReturn = mean(logReturns);
-      stdDev = standardDeviation(logReturns);
-      minReturn = Math.min(...logReturns);
-      maxReturn = Math.max(...logReturns);
-      dataPoints = logReturns.length;
-      log.debug(`Calculated VaR on-the-fly for ${coingeckoId}`);
-    }
-
-    // Generate histogram for visualization (always from current returns)
-    const histogram = generateHistogramBins(logReturns, 30);
+    // Histogram visualisation: read the same simple returns the VaR was
+    // computed on, so the chart axis matches the VaR semantics.
+    const dateFilter = getDateFilter(period);
+    const [simpleReturnsRows] = await Database.execute(
+      `SELECT date, simple_return
+       FROM crypto_simple_returns
+       WHERE crypto_id = ?
+         ${dateFilter}
+       ORDER BY date ASC`,
+      [crypto.id],
+    );
+    const returns = simpleReturnsRows;
+    const simpleReturns = simpleReturnsRows.map(r => parseFloat(r.simple_return));
+    const histogram = generateHistogramBins(simpleReturns, 30);
 
     // Convert histogram counts to percentages for chart
-    const totalCount = logReturns.length;
+    const totalCount = simpleReturns.length;
     const histogramData = [];
     for (let i = 0; i < histogram.counts.length; i++) {
       const binStart = histogram.bins[i];
@@ -660,6 +655,10 @@ async function getHistorizedDistributionStats(cryptoId, windowDays = 90) {
  * @param {number|null} windowDays - Window days to filter by, or null for "all" (latest entry regardless of window)
  */
 async function getHistorizedVaRStats(cryptoId, windowDays = null) {
+  // Try the requested window first (exact match), then fall back to the
+  // largest available window for that crypto. Cryptos newer than the
+  // requested window won't have a 365-day row but should still surface
+  // their latest entry instead of forcing the caller to recompute.
   let query = `
     SELECT
       var_95,
@@ -679,13 +678,22 @@ async function getHistorizedVaRStats(cryptoId, windowDays = null) {
   const params = [cryptoId];
 
   if (windowDays !== null) {
-    query += ' AND window_days = ?';
-    params.push(windowDays);
+    // Try exact match first; if no row exists for that window (e.g. crypto
+    // is younger than the requested window) the caller falls back below.
+    const [exact] = await Database.execute(
+      query + ' AND window_days = ? ORDER BY date DESC LIMIT 1',
+      [...params, windowDays],
+    );
+
+    if (exact.length > 0) return exact[0];
   }
 
+  // Fallback: latest row regardless of window — surfaces the most recent
+  // VaR available (the largest window the crypto's history can support).
   query += ' ORDER BY date DESC LIMIT 1';
 
   const [stats] = await Database.execute(query, params);
+
   return stats[0] || null;
 }
 
