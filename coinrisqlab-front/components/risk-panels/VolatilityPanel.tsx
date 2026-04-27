@@ -53,9 +53,14 @@ const RISK_ZONES_DAILY = [
 ];
 
 function getRiskLevel(volatility: number, isAnnualized: boolean) {
+  // Annualized scale (in %):  <25 low, 25-60 medium, 60-90 high, ≥90 extreme
+  // Daily equivalent ≈ annualized / sqrt(365):
+  //   25 / 19.10 ≈ 1.31
+  //   60 / 19.10 ≈ 3.14
+  //   90 / 19.10 ≈ 4.71
   const thresholds = isAnnualized
-    ? { low: 10, medium: 30, high: 60 }
-    : { low: 0.5, medium: 1.5, high: 3.0 };
+    ? { low: 25, medium: 60, high: 90 }
+    : { low: 1.31, medium: 3.14, high: 4.71 };
 
   if (volatility >= thresholds.high)
     return { level: "Extreme", color: "#EA3943" };

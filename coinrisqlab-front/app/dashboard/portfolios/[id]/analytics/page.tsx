@@ -57,9 +57,10 @@ const COLORS = [
 function getRiskLevel(
   annualizedVol: number,
 ): "low" | "medium" | "high" | "extreme" {
-  if (annualizedVol < 30) return "low";
+  // Annualized volatility scale: <25 low, 25-60 medium, 60-90 high, ≥90 extreme
+  if (annualizedVol < 25) return "low";
   if (annualizedVol < 60) return "medium";
-  if (annualizedVol < 100) return "high";
+  if (annualizedVol < 90) return "high";
 
   return "extreme";
 }

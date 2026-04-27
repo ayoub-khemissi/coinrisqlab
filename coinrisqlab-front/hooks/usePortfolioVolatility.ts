@@ -226,11 +226,16 @@ export function calculateRiskContributions(
 export function getRiskLevel(
   volatility: number,
 ): "low" | "medium" | "high" | "extreme" {
+  // Annualized volatility scale (decimal in, %-thresholds):
+  //   < 25%     low (faible)
+  //   25-60%    medium (modérée)
+  //   60-90%    high (élevée)
+  //   ≥ 90%     extreme
   const volPercentage = volatility * 100;
 
-  if (volPercentage < 10) return "low";
-  if (volPercentage < 30) return "medium";
-  if (volPercentage < 60) return "high";
+  if (volPercentage < 25) return "low";
+  if (volPercentage < 60) return "medium";
+  if (volPercentage < 90) return "high";
 
   return "extreme";
 }
@@ -245,13 +250,13 @@ export function getRiskLevelColor(
 ): "success" | "warning" | "danger" | "default" {
   switch (level) {
     case "low":
-      return "success"; // Green (< 10%)
+      return "success"; // Green (< 25%)
     case "medium":
-      return "warning"; // Yellow (10-30%)
+      return "warning"; // Yellow (25-60%)
     case "high":
-      return "warning"; // Orange (30-60%) - Note: HeroUI has no native orange, uses warning
+      return "warning"; // Orange (60-90%) — HeroUI has no native orange, uses warning
     case "extreme":
-      return "danger"; // Red (≥ 60%)
+      return "danger"; // Red (≥ 90%)
     default:
       return "default";
   }
