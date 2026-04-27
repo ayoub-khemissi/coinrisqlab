@@ -43,11 +43,27 @@ export interface PortfolioVolatilityResponse {
   };
 }
 
+export interface DiversificationBenefit {
+  portfolioVolatility: number;
+  weightedAverageVolatility: number;
+  benefitAbsolute: number;
+  benefitPercentage: number;
+}
+
+export interface RiskContribution extends PortfolioVolatilityConstituent {
+  riskContribution: number;
+  riskContributionPercentage: number;
+}
+
 /**
  * API Response for Portfolio Constituents Volatility
  */
 export interface PortfolioConstituentsVolatilityResponse {
-  data: PortfolioVolatilityConstituent[];
+  data: {
+    constituents: PortfolioVolatilityConstituent[];
+    diversificationBenefit: DiversificationBenefit | null;
+    riskContributions: RiskContribution[];
+  };
 }
 
 /**

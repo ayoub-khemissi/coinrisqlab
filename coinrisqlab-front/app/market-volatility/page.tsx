@@ -15,8 +15,6 @@ import { PageLoader } from "@/components/page-loader";
 import {
   usePortfolioVolatility,
   usePortfolioConstituentsVolatility,
-  calculateDiversificationBenefit,
-  calculateRiskContributions,
   getRiskLevel,
   getRiskLevelColorClass,
 } from "@/hooks/usePortfolioVolatility";
@@ -94,21 +92,11 @@ export default function MarketVolatilityPage() {
     }
   }, []);
 
-  // Calculate derived data
-  const diversificationBenefit = useMemo(() => {
-    if (!volatilityData?.current || !constituentsData) return null;
-
-    return calculateDiversificationBenefit(
-      volatilityData.current.annualized_volatility,
-      constituentsData,
-    );
-  }, [volatilityData, constituentsData]);
-
-  const riskContributions = useMemo(() => {
-    if (!constituentsData) return [];
-
-    return calculateRiskContributions(constituentsData);
-  }, [constituentsData]);
+  // Diversification benefit + risk contributions are computed server-side
+  // and read straight from the API — the front never derives metrics.
+  const diversificationBenefit = constituentsData?.diversificationBenefit ?? null;
+  const riskContributions = constituentsData?.riskContributions ?? [];
+  const constituentsList = constituentsData?.constituents ?? [];
 
   const riskLevel = useMemo(() => {
     if (!volatilityData?.current) return null;
@@ -324,7 +312,7 @@ export default function MarketVolatilityPage() {
         {/* Correlation */}
         <Card>
           <CardBody className="p-6">
-            <CorrelationCard constituents={constituentsData} />
+            <CorrelationCard constituents={constituentsList} />
           </CardBody>
         </Card>
 
@@ -453,7 +441,7 @@ export default function MarketVolatilityPage() {
                     }
                   }}
                 >
-                  {(constituentsData || []).map((c) => (
+                  {constituentsList.map((c) => (
                     <SelectItem key={c.coingecko_id} textValue={c.symbol}>
                       <div className="flex items-center gap-2">
                         <span className="font-medium">{c.symbol}</span>
@@ -521,13 +509,13 @@ export default function MarketVolatilityPage() {
             Distribution of individual constituent volatilities
           </p>
           <VolatilityDistribution
-            constituents={constituentsData}
+            constituents={constituentsList}
             height={isMobile ? 250 : 350}
             portfolioVolatility={current.annualized_volatility}
           />
-          {constituentsData && (
+          {constituentsList.length > 0 && (
             <p className="text-xs text-default-400 mt-2 text-right">
-              {constituentsData.length} constituents
+              {constituentsList.length} constituents
             </p>
           )}
         </CardBody>

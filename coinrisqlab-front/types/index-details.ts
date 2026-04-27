@@ -32,10 +32,18 @@ export interface IndexHistoryPoint {
   timestamp: string;
 }
 
+export interface IndexChanges {
+  "1h": number | null;
+  "24h": number | null;
+  "7d": number | null;
+  "30d": number | null;
+}
+
 export interface IndexDetailsResponse {
   data: {
     current: IndexCurrent | null;
     historicalValues: HistoricalValues;
+    changes: IndexChanges;
     history: IndexHistoryPoint[];
     constituents: IndexConstituent[];
   };

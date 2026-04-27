@@ -133,17 +133,13 @@ export default function IndexPage() {
     return <PageLoader message="Loading index data..." />;
   }
 
-  const { current, historicalValues, history, constituents } = data;
+  const { current, historicalValues, changes, history, constituents } = data;
   const isAbove100 = current && current.index_level >= 100;
 
-  // Calculate percentage change from current value
-  const calculateChange = (historicalValue: number | null) => {
-    if (!historicalValue || !current) return null;
-    const change =
-      ((current.index_level - historicalValue) / historicalValue) * 100;
-
-    return change;
-  };
+  // Read precomputed changes from the API; never derive front-side.
+  const change24h = typeof changes?.["24h"] === "number" ? changes["24h"] : null;
+  const change7d = typeof changes?.["7d"] === "number" ? changes["7d"] : null;
+  const change30d = typeof changes?.["30d"] === "number" ? changes["30d"] : null;
 
   return (
     <BinancePricesProvider symbols={symbols}>
@@ -211,32 +207,22 @@ export default function IndexPage() {
                           Yesterday
                         </span>
                         <div className="flex items-center gap-2">
-                          {historicalValues.yesterday &&
-                            calculateChange(historicalValues.yesterday) !==
-                              null && (
-                              <Chip
-                                color={
-                                  calculateChange(historicalValues.yesterday)! >
-                                  0
-                                    ? "success"
-                                    : "danger"
-                                }
-                                size="sm"
-                                startContent={
-                                  calculateChange(historicalValues.yesterday)! >
-                                  0 ? (
-                                    <TrendingUp size={12} />
-                                  ) : (
-                                    <TrendingDown size={12} />
-                                  )
-                                }
-                                variant="flat"
-                              >
-                                {formatPercentage(
-                                  calculateChange(historicalValues.yesterday)!,
-                                )}
-                              </Chip>
-                            )}
+                          {change24h !== null && (
+                            <Chip
+                              color={change24h > 0 ? "success" : "danger"}
+                              size="sm"
+                              startContent={
+                                change24h > 0 ? (
+                                  <TrendingUp size={12} />
+                                ) : (
+                                  <TrendingDown size={12} />
+                                )
+                              }
+                              variant="flat"
+                            >
+                              {formatPercentage(change24h)}
+                            </Chip>
+                          )}
                           <span className="text-sm font-medium">
                             {historicalValues.yesterday
                               ? historicalValues.yesterday.toFixed(2)
@@ -249,32 +235,22 @@ export default function IndexPage() {
                           Last Week
                         </span>
                         <div className="flex items-center gap-2">
-                          {historicalValues.lastWeek &&
-                            calculateChange(historicalValues.lastWeek) !==
-                              null && (
-                              <Chip
-                                color={
-                                  calculateChange(historicalValues.lastWeek)! >
-                                  0
-                                    ? "success"
-                                    : "danger"
-                                }
-                                size="sm"
-                                startContent={
-                                  calculateChange(historicalValues.lastWeek)! >
-                                  0 ? (
-                                    <TrendingUp size={12} />
-                                  ) : (
-                                    <TrendingDown size={12} />
-                                  )
-                                }
-                                variant="flat"
-                              >
-                                {formatPercentage(
-                                  calculateChange(historicalValues.lastWeek)!,
-                                )}
-                              </Chip>
-                            )}
+                          {change7d !== null && (
+                            <Chip
+                              color={change7d > 0 ? "success" : "danger"}
+                              size="sm"
+                              startContent={
+                                change7d > 0 ? (
+                                  <TrendingUp size={12} />
+                                ) : (
+                                  <TrendingDown size={12} />
+                                )
+                              }
+                              variant="flat"
+                            >
+                              {formatPercentage(change7d)}
+                            </Chip>
+                          )}
                           <span className="text-sm font-medium">
                             {historicalValues.lastWeek
                               ? historicalValues.lastWeek.toFixed(2)
@@ -287,32 +263,22 @@ export default function IndexPage() {
                           Last Month
                         </span>
                         <div className="flex items-center gap-2">
-                          {historicalValues.lastMonth &&
-                            calculateChange(historicalValues.lastMonth) !==
-                              null && (
-                              <Chip
-                                color={
-                                  calculateChange(historicalValues.lastMonth)! >
-                                  0
-                                    ? "success"
-                                    : "danger"
-                                }
-                                size="sm"
-                                startContent={
-                                  calculateChange(historicalValues.lastMonth)! >
-                                  0 ? (
-                                    <TrendingUp size={12} />
-                                  ) : (
-                                    <TrendingDown size={12} />
-                                  )
-                                }
-                                variant="flat"
-                              >
-                                {formatPercentage(
-                                  calculateChange(historicalValues.lastMonth)!,
-                                )}
-                              </Chip>
-                            )}
+                          {change30d !== null && (
+                            <Chip
+                              color={change30d > 0 ? "success" : "danger"}
+                              size="sm"
+                              startContent={
+                                change30d > 0 ? (
+                                  <TrendingUp size={12} />
+                                ) : (
+                                  <TrendingDown size={12} />
+                                )
+                              }
+                              variant="flat"
+                            >
+                              {formatPercentage(change30d)}
+                            </Chip>
+                          )}
                           <span className="text-sm font-medium">
                             {historicalValues.lastMonth
                               ? historicalValues.lastMonth.toFixed(2)

@@ -134,7 +134,21 @@ api.get('/index-details', async (req, res) => {
 
     const percent_change_1h = current && current.previous_level_1h
       ? ((current.index_level - current.previous_level_1h) / current.previous_level_1h * 100)
-      : 0;
+      : null;
+
+    // Backend-computed percent changes — front never derives metrics.
+    // Returns null per period when the historical anchor isn't available.
+    const computeChange = (anchor) => {
+      if (!current || !anchor || anchor <= 0) return null;
+      return ((current.index_level - anchor) / anchor) * 100;
+    };
+
+    const changes = {
+      '1h': percent_change_1h,
+      '24h': computeChange(historicalValues.yesterday),
+      '7d': computeChange(historicalValues.lastWeek),
+      '30d': computeChange(historicalValues.lastMonth),
+    };
 
     res.json({
       data: {
@@ -143,6 +157,7 @@ api.get('/index-details', async (req, res) => {
           percent_change_1h
         },
         historicalValues,
+        changes,
         history: indexHistory,
         constituents
       }

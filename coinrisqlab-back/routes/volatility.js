@@ -64,7 +64,7 @@ api.get('/volatility/portfolio/constituents', async (req, res) => {
   try {
     // 1. Get the latest portfolio volatility record
     const [pvRecords] = await Database.execute(`
-      SELECT pv.id, pv.date
+      SELECT pv.id, pv.date, pv.annualized_volatility AS portfolio_annualized_vol
       FROM portfolio_volatility pv
       INNER JOIN index_config ic ON pv.index_config_id = ic.id
       WHERE ic.index_name = 'CoinRisqLab 80'
@@ -73,13 +73,13 @@ api.get('/volatility/portfolio/constituents', async (req, res) => {
     `);
 
     if (pvRecords.length === 0) {
-      return res.json({ data: [] });
+      return res.json({ data: { constituents: [], diversificationBenefit: null, riskContributions: [] } });
     }
 
-    const { id: pvId } = pvRecords[0];
+    const { id: pvId, portfolio_annualized_vol: portfolioAnnualizedVol } = pvRecords[0];
 
     // 2. Get calculated constituents directly
-    const [constituents] = await Database.execute(`
+    const [rawConstituents] = await Database.execute(`
       SELECT
         pvc.crypto_id,
         c.coingecko_id,
@@ -96,8 +96,51 @@ api.get('/volatility/portfolio/constituents', async (req, res) => {
       ORDER BY pvc.weight DESC
     `, [pvId]);
 
+    const constituents = rawConstituents.map(c => ({
+      ...c,
+      weight: parseFloat(c.weight),
+      daily_volatility: parseFloat(c.daily_volatility),
+      annualized_volatility: parseFloat(c.annualized_volatility),
+      market_cap_usd: parseFloat(c.market_cap_usd),
+    }));
+
+    // 3. Diversification benefit (server-side — front never derives metrics)
+    const portfolioVol = parseFloat(portfolioAnnualizedVol);
+    const weightedAverageVolatility = constituents.reduce(
+      (sum, c) => sum + c.weight * c.annualized_volatility,
+      0,
+    );
+    const benefitAbsolute = weightedAverageVolatility - portfolioVol;
+    const benefitPercentage = weightedAverageVolatility > 0
+      ? (benefitAbsolute / weightedAverageVolatility) * 100
+      : 0;
+    const diversificationBenefit = {
+      portfolioVolatility: portfolioVol,
+      weightedAverageVolatility,
+      benefitAbsolute,
+      benefitPercentage,
+    };
+
+    // 4. Per-constituent risk contribution
+    const totalRisk = weightedAverageVolatility;
+    const riskContributions = constituents.map(c => {
+      const riskContribution = c.weight * c.annualized_volatility;
+      const riskContributionPercentage = totalRisk > 0
+        ? (riskContribution / totalRisk) * 100
+        : 0;
+      return {
+        ...c,
+        riskContribution,
+        riskContributionPercentage,
+      };
+    });
+
     res.json({
-      data: constituents
+      data: {
+        constituents,
+        diversificationBenefit,
+        riskContributions,
+      }
     });
 
     log.debug(`Fetched portfolio volatility constituents (${constituents.length})`);
