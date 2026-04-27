@@ -218,11 +218,12 @@ api.get('/user/portfolios/:id/volatility', authenticateUser, async (req, res) =>
       };
     });
 
-    // Portfolio beta: weighted sum of individual betas
+    // Portfolio beta: weighted sum of individual statistical betas (log returns)
     const [betaRows] = await Database.execute(
-      `SELECT crypto_id, beta FROM crypto_beta
+      `SELECT crypto_id, beta FROM crypto_beta cb_outer
        WHERE crypto_id IN (${cryptoIds.map(() => '?').join(',')})
-         AND date = (SELECT MAX(date) FROM crypto_beta WHERE crypto_id = crypto_beta.crypto_id)`,
+         AND return_type = 'log'
+         AND date = (SELECT MAX(date) FROM crypto_beta WHERE crypto_id = cb_outer.crypto_id AND return_type = 'log')`,
       cryptoIds
     );
 
@@ -616,8 +617,10 @@ api.get('/user/portfolios/:id/stress-test', authenticateUser, requirePro, async 
        INNER JOIN (
          SELECT crypto_id, MAX(date) AS max_date FROM crypto_beta
          WHERE crypto_id IN (${cryptoIds.map(() => '?').join(',')})
+           AND return_type = 'log'
          GROUP BY crypto_id
-       ) latest ON cb.crypto_id = latest.crypto_id AND cb.date = latest.max_date`,
+       ) latest ON cb.crypto_id = latest.crypto_id AND cb.date = latest.max_date
+       WHERE cb.return_type = 'log'`,
       cryptoIds
     );
 

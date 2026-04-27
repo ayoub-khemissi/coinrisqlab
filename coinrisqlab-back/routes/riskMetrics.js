@@ -698,6 +698,7 @@ async function getHistorizedBetaStats(cryptoId, windowDays = null) {
       date
     FROM crypto_beta
     WHERE crypto_id = ?
+      AND return_type = 'log'
   `;
   const params = [cryptoId];
 

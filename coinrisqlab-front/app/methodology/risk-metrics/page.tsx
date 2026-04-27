@@ -230,10 +230,18 @@ export default function RiskMetricsMethodologyPage() {
                 Metrics use different calculation windows based on their
                 purpose: <strong>Volatility uses a 90-day window</strong> for
                 recent risk assessment,{" "}
-                <strong>VaR, Beta, and Sharpe Ratio use 365 days</strong> for
-                more stable risk estimates, while{" "}
+                <strong>VaR and Sharpe Ratio use 365 days</strong> for more
+                stable risk estimates, while{" "}
                 <strong>Skewness, Kurtosis, and SML use 90 days</strong> to
                 capture recent distribution characteristics.
+              </p>
+              <p className="text-default-600 mb-4">
+                <strong>Beta is computed in two flavours</strong> persisted
+                side-by-side: a <em>statistical</em> beta on log returns over
+                a 365-day window (used everywhere a market-sensitivity number
+                is displayed), and an <em>economic</em> beta on simple
+                returns over a 90-day window (consumed by the SML formula
+                so β and the market return live in the same return space).
               </p>
               <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mt-6">
                 <div className="text-center p-4 bg-success/10 rounded-lg">
@@ -1743,7 +1751,7 @@ export default function RiskMetricsMethodologyPage() {
                         </Chip>
                       </td>
                       <td className="py-3 px-4 text-default-600">
-                        Volatility, skewness, kurtosis, beta, correlation, Sharpe
+                        Volatility, skewness, kurtosis, beta (statistical, 365d), correlation, Sharpe
                       </td>
                     </tr>
                     <tr className="border-b border-default-200">
@@ -1756,7 +1764,7 @@ export default function RiskMetricsMethodologyPage() {
                         </Chip>
                       </td>
                       <td className="py-3 px-4 text-default-600">
-                        VaR, CVaR, SML, min/max/mean return
+                        VaR, CVaR, SML (uses beta simple, 90d), min/max/mean return
                       </td>
                     </tr>
                     <tr className="border-b border-default-200">

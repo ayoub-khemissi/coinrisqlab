@@ -302,6 +302,7 @@ export async function getBetaAlpha(
   from: string,
   to: string,
   windowDays: number,
+  returnType: "log" | "simple",
   limit: number,
   offset: number,
 ) {
@@ -309,13 +310,13 @@ export async function getBetaAlpha(
   const dateParams = [from || "2000-01-01", to || "2099-12-31"];
 
   const [rows] = await db.execute<RowDataPacket[]>(
-    `SELECT c.symbol, c.name, cb.date, cb.window_days, cb.beta, cb.alpha, cb.r_squared, cb.correlation, cb.num_observations
+    `SELECT c.symbol, c.name, cb.date, cb.window_days, cb.return_type, cb.beta, cb.alpha, cb.r_squared, cb.correlation, cb.num_observations
      FROM crypto_beta cb
      INNER JOIN cryptocurrencies c ON cb.crypto_id = c.id
-     WHERE cb.date >= ? AND cb.date <= ? AND cb.window_days = ? ${clause}
+     WHERE cb.date >= ? AND cb.date <= ? AND cb.window_days = ? AND cb.return_type = ? ${clause}
      ORDER BY c.symbol ASC, cb.date DESC
      ${limit > 0 ? `LIMIT ${limit} OFFSET ${offset}` : ""}`,
-    [...dateParams, windowDays, ...params],
+    [...dateParams, windowDays, returnType, ...params],
   );
 
   return rows;
@@ -326,6 +327,7 @@ export async function getBetaAlphaCount(
   from: string,
   to: string,
   windowDays: number,
+  returnType: "log" | "simple",
 ) {
   const { clause, params } = buildCryptoFilter(cryptos, "c");
   const dateParams = [from || "2000-01-01", to || "2099-12-31"];
@@ -333,8 +335,8 @@ export async function getBetaAlphaCount(
   const [rows] = await db.execute<RowDataPacket[]>(
     `SELECT COUNT(*) as total FROM crypto_beta cb
      INNER JOIN cryptocurrencies c ON cb.crypto_id = c.id
-     WHERE cb.date >= ? AND cb.date <= ? AND cb.window_days = ? ${clause}`,
-    [...dateParams, windowDays, ...params],
+     WHERE cb.date >= ? AND cb.date <= ? AND cb.window_days = ? AND cb.return_type = ? ${clause}`,
+    [...dateParams, windowDays, returnType, ...params],
   );
 
   return rows[0].total as number;

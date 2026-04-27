@@ -182,8 +182,10 @@ export async function getLatestBetaMap(cryptoIds) {
      INNER JOIN (
        SELECT crypto_id, MAX(date) AS max_date FROM crypto_beta
        WHERE crypto_id IN (${cryptoIds.map(() => '?').join(',')})
+         AND return_type = 'log'
        GROUP BY crypto_id
-     ) latest ON cb.crypto_id = latest.crypto_id AND cb.date = latest.max_date`,
+     ) latest ON cb.crypto_id = latest.crypto_id AND cb.date = latest.max_date
+     WHERE cb.return_type = 'log'`,
     cryptoIds
   );
 

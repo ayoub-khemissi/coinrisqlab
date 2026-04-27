@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Tabs, Tab } from "@heroui/tabs";
+import { Select, SelectItem } from "@heroui/select";
 
 import { DataFilters } from "@/components/admin/data-validation/data-filters";
 import { DataTable } from "@/components/admin/data-validation/data-table";
@@ -11,6 +12,7 @@ const BETA_COLUMNS = [
   { key: "name", label: "Name" },
   { key: "date", label: "Date" },
   { key: "window_days", label: "Window" },
+  { key: "return_type", label: "Return" },
   { key: "beta", label: "Beta" },
   { key: "alpha", label: "Alpha" },
   { key: "r_squared", label: "R-squared" },
@@ -34,6 +36,7 @@ const PAGE_SIZE = 50;
 
 export default function BetaSmlPage() {
   const [tab, setTab] = useState("beta");
+  const [returnType, setReturnType] = useState<"log" | "simple">("log");
   const [rows, setRows] = useState<Record<string, unknown>[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
@@ -77,6 +80,7 @@ export default function BetaSmlPage() {
     if (filters.from) params.from = filters.from;
     if (filters.to) params.to = filters.to;
     params.window = String(filters.window);
+    if (tab === "beta") params.returnType = returnType;
     setCurrentParams(params);
     setPage(1);
     fetchData(params, 1);
@@ -101,11 +105,28 @@ export default function BetaSmlPage() {
         <Tab key="beta" title="Beta / Alpha" />
         <Tab key="sml" title="SML (CAPM)" />
       </Tabs>
+      {tab === "beta" && (
+        <Select
+          aria-label="Beta return type"
+          className="max-w-xs"
+          label="Return type"
+          selectedKeys={[returnType]}
+          size="sm"
+          onChange={(e) => {
+            const v = e.target.value;
+
+            if (v === "log" || v === "simple") setReturnType(v);
+          }}
+        >
+          <SelectItem key="log">log (statistical, max 365d)</SelectItem>
+          <SelectItem key="simple">simple (SML, max 90d)</SelectItem>
+        </Select>
+      )}
       <DataFilters
         showWindowSelector
         csvEndpoint={endpoint}
         csvFilename={`${tab}_export.csv`}
-        defaultWindow={365}
+        defaultWindow={tab === "beta" && returnType === "simple" ? 90 : 365}
         loading={loading}
         onSearch={handleSearch}
       />

@@ -96,21 +96,25 @@ api.get('/cryptocurrencies', async (req, res) => {
           AND cma2.window_days = 90
       ) cma ON c.id = cma.crypto_id
       LEFT JOIN (
+        -- Statistical beta (log returns) for the public crypto table
         SELECT cb2.crypto_id, cb2.beta
         FROM crypto_beta cb2
         INNER JOIN (
           SELECT crypto_id, MAX(date) as max_date
           FROM crypto_beta
+          WHERE return_type = 'log'
           GROUP BY crypto_id
         ) cb_latest ON cb2.crypto_id = cb_latest.crypto_id
           AND cb2.date = cb_latest.max_date
         INNER JOIN (
           SELECT crypto_id, date, MAX(window_days) as max_window
           FROM crypto_beta
+          WHERE return_type = 'log'
           GROUP BY crypto_id, date
         ) cb_max ON cb2.crypto_id = cb_max.crypto_id
           AND cb2.date = cb_max.date
           AND cb2.window_days = cb_max.max_window
+        WHERE cb2.return_type = 'log'
       ) cb ON c.id = cb.crypto_id
       LEFT JOIN (
         -- Latest 14-day RSI per crypto (Wilder smoothing, computed nightly)

@@ -16,7 +16,10 @@ export async function GET(request: NextRequest) {
   const cryptos = sp.get("cryptos")?.split(",").filter(Boolean) || [];
   const from = sp.get("from") || "";
   const to = sp.get("to") || "";
-  const windowDays = parseInt(sp.get("window") || "90");
+  const windowDays = parseInt(sp.get("window") || "365");
+  const returnTypeParam = sp.get("returnType");
+  const returnType: "log" | "simple" =
+    returnTypeParam === "simple" ? "simple" : "log";
   const limit = parseInt(sp.get("limit") || "50");
   const offset = parseInt(sp.get("offset") || "0");
   const format = sp.get("format");
@@ -26,6 +29,7 @@ export async function GET(request: NextRequest) {
     from,
     to,
     windowDays,
+    returnType,
     format === "csv" ? 0 : limit,
     format === "csv" ? 0 : offset,
   );
@@ -36,6 +40,7 @@ export async function GET(request: NextRequest) {
       "name",
       "date",
       "window_days",
+      "return_type",
       "beta",
       "alpha",
       "r_squared",
@@ -51,7 +56,7 @@ export async function GET(request: NextRequest) {
     });
   }
 
-  const total = await getBetaAlphaCount(cryptos, from, to, windowDays);
+  const total = await getBetaAlphaCount(cryptos, from, to, windowDays, returnType);
 
   return NextResponse.json({ rows, total, limit, offset });
 }

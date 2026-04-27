@@ -368,6 +368,10 @@ CREATE TABLE IF NOT EXISTS `crypto_beta` (
     `crypto_id` INT UNSIGNED NOT NULL,
     `date` DATE NOT NULL COMMENT 'Date for which beta is calculated',
     `window_days` INT UNSIGNED NOT NULL DEFAULT 90 COMMENT 'Rolling window size in days',
+    -- Two betas are persisted side-by-side per (crypto, date, window):
+    --   'log'    → log returns, max 365 days → statistical/descriptive metric
+    --   'simple' → simple returns, max 90 days → economic metric used by SML
+    `return_type` ENUM('log','simple') NOT NULL DEFAULT 'log',
     `beta` DECIMAL(20, 12) NOT NULL COMMENT 'Beta coefficient (market sensitivity)',
     `alpha` DECIMAL(20, 12) NOT NULL COMMENT 'Alpha (regression intercept)',
     `r_squared` DECIMAL(20, 12) NOT NULL COMMENT 'R-squared (coefficient of determination)',
@@ -375,9 +379,8 @@ CREATE TABLE IF NOT EXISTS `crypto_beta` (
     `num_observations` INT UNSIGNED NOT NULL COMMENT 'Number of aligned data points used',
     `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY `fk_beta_crypto_idx` (`crypto_id`) REFERENCES `cryptocurrencies`(`id`) ON DELETE CASCADE,
-    UNIQUE KEY `idx_crypto_date_window` (`crypto_id`, `date`, `window_days`),
+    UNIQUE KEY `idx_crypto_date_window_type` (`crypto_id`, `date`, `window_days`, `return_type`),
     KEY `idx_date` (`date`)
-    -- idx_beta removed: value only displayed, never filtered/sorted on
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 DROP TABLE IF EXISTS `crypto_sml`;

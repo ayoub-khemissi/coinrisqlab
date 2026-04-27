@@ -1,7 +1,6 @@
 import Database from '../lib/database.js';
 import log from '../lib/log.js';
 import {
-  calculateBetaAlpha,
   calculateSML,
   calculateAnnualizedReturn,
 } from '../utils/riskMetrics.js';
@@ -198,13 +197,27 @@ async function calculateSMLForCrypto(cryptoId, symbol, indexReturnsByDate) {
       continue;
     }
 
-    // Get window of aligned returns
+    // Read beta from crypto_beta (simple returns, same window) — single
+    // source of truth, populated by calculateBetaStats.js earlier in the
+    // pipeline. Skip if the matching beta hasn't been computed yet.
+    const [betaRows] = await Database.execute(
+      `SELECT beta FROM crypto_beta
+       WHERE crypto_id = ? AND date = ? AND window_days = ? AND return_type = 'simple'
+       LIMIT 1`,
+      [cryptoId, currentDate, actualWindowDays],
+    );
+
+    if (betaRows.length === 0) {
+      skipped++;
+      continue;
+    }
+
+    const beta = parseFloat(betaRows[0].beta);
+
+    // Window of aligned returns still needed for the annualized return calc
     const windowDates = allDates.slice(i - actualWindowDays + 1, i + 1);
     const cryptoReturns = windowDates.map((d) => cryptoReturnsByDate.get(d).return);
     const marketReturns = windowDates.map((d) => indexReturnsByDate.get(d));
-
-    // Calculate beta
-    const { beta } = calculateBetaAlpha(cryptoReturns, marketReturns);
 
     // Calculate annualized returns
     const cryptoAnnualReturn = calculateAnnualizedReturn(cryptoReturns);

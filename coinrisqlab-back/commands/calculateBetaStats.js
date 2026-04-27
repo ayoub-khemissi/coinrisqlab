@@ -1,25 +1,28 @@
 import Database from '../lib/database.js';
 import log from '../lib/log.js';
 import { calculateBetaAlpha } from '../utils/riskMetrics.js';
+import { simpleReturn } from '../utils/statistics.js';
 
-const MAX_WINDOW_DAYS = 365;
 const MINIMUM_WINDOW_DAYS = 7;
 
-/**
- * Calculate and store Beta/Alpha statistics for cryptocurrencies
- * Uses up to 365 days of historical data
- * Stores one entry per crypto per date
- */
+// Two betas are persisted side-by-side, distinguished by `return_type`:
+//   - 'log'    : log returns, max 365 days → descriptive statistical metric
+//   - 'simple' : simple returns, max 90 days → economic metric, used by SML
+const PASSES = [
+  { returnType: 'log', maxWindow: 365, table: 'crypto_log_returns', col: 'log_return' },
+  { returnType: 'simple', maxWindow: 90, table: 'crypto_simple_returns', col: 'simple_return' },
+];
+
 async function calculateBetaStats() {
   const startTime = Date.now();
 
   try {
-    log.info('Starting Beta statistics calculation...');
+    log.info('Starting Beta statistics calculation (dual-pass: log/365 + simple/90)...');
 
     await ensureTableExists();
 
-    // Get all index log returns first (needed for all crypto calculations)
-    const [indexReturns] = await Database.execute(`
+    // Index returns: log version (for the log pass)
+    const [indexLogReturns] = await Database.execute(`
       SELECT
         date,
         LN(index_level / LAG(index_level) OVER (ORDER BY date)) as log_return
@@ -36,50 +39,93 @@ async function calculateBetaStats() {
       ORDER BY date ASC
     `);
 
-    const indexReturnsByDate = new Map();
-    for (const r of indexReturns) {
+    const indexLogByDate = new Map();
+
+    for (const r of indexLogReturns) {
       if (r.log_return !== null) {
-        indexReturnsByDate.set(r.date.toISOString().split('T')[0], parseFloat(r.log_return));
+        indexLogByDate.set(r.date.toISOString().split('T')[0], parseFloat(r.log_return));
       }
     }
 
-    log.info(`Loaded ${indexReturnsByDate.size} index return days`);
+    // Index returns: simple version (for the simple pass) — computed from
+    // consecutive index levels so we apply the same filter as the SML script.
+    const [indexLevels] = await Database.execute(`
+      SELECT
+        DATE(snapshot_date) as date,
+        SUBSTRING_INDEX(GROUP_CONCAT(index_level ORDER BY snapshot_date DESC), ',', 1) + 0 as index_level
+      FROM index_history ih
+      INNER JOIN index_config ic ON ih.index_config_id = ic.id
+      WHERE ic.index_name = 'CoinRisqLab 80'
+        AND DATE(snapshot_date) < CURDATE()
+      GROUP BY DATE(snapshot_date)
+      ORDER BY date ASC
+    `);
 
-    if (indexReturnsByDate.size < MINIMUM_WINDOW_DAYS) {
+    const indexSimpleByDate = new Map();
+
+    for (let i = 1; i < indexLevels.length; i++) {
+      const curr = parseFloat(indexLevels[i].index_level);
+      const prev = parseFloat(indexLevels[i - 1].index_level);
+
+      if (curr > 0 && prev > 0) {
+        indexSimpleByDate.set(
+          indexLevels[i].date.toISOString().split('T')[0],
+          simpleReturn(curr, prev),
+        );
+      }
+    }
+
+    log.info(`Loaded ${indexLogByDate.size} log + ${indexSimpleByDate.size} simple index return days`);
+
+    if (indexLogByDate.size < MINIMUM_WINDOW_DAYS) {
       log.warn('Insufficient index data for beta calculation');
       return;
     }
 
-    const [cryptos] = await Database.execute(`
-      SELECT DISTINCT c.id, c.symbol, c.name
-      FROM cryptocurrencies c
-      INNER JOIN crypto_log_returns clr ON c.id = clr.crypto_id
-      GROUP BY c.id, c.symbol, c.name
-      HAVING COUNT(*) >= ?
-      ORDER BY c.symbol
-    `, [MINIMUM_WINDOW_DAYS]);
+    for (const pass of PASSES) {
+      log.info(`\n--- Pass: ${pass.returnType} returns, window up to ${pass.maxWindow} days ---`);
 
-    log.info(`Found ${cryptos.length} cryptocurrencies with sufficient data`);
+      const indexByDate = pass.returnType === 'log' ? indexLogByDate : indexSimpleByDate;
 
-    let totalCalculated = 0;
-    let totalSkipped = 0;
-    let errors = 0;
+      const [cryptos] = await Database.execute(
+        `SELECT DISTINCT c.id, c.symbol, c.name
+         FROM cryptocurrencies c
+         INNER JOIN ${pass.table} r ON c.id = r.crypto_id
+         GROUP BY c.id, c.symbol, c.name
+         HAVING COUNT(*) >= ?
+         ORDER BY c.symbol`,
+        [MINIMUM_WINDOW_DAYS],
+      );
 
-    for (const crypto of cryptos) {
-      try {
-        const calculated = await calculateBetaForCrypto(crypto.id, crypto.symbol, indexReturnsByDate);
-        totalCalculated += calculated.inserted;
-        totalSkipped += calculated.skipped;
-      } catch (error) {
-        log.error(`Error calculating Beta for ${crypto.symbol}: ${error.message}`);
-        errors++;
+      log.info(`${pass.returnType}: ${cryptos.length} cryptocurrencies with sufficient data`);
+
+      let totalCalculated = 0;
+      let totalSkipped = 0;
+      let errors = 0;
+
+      for (const crypto of cryptos) {
+        try {
+          const result = await calculateBetaForCrypto(
+            crypto.id,
+            crypto.symbol,
+            indexByDate,
+            pass,
+          );
+
+          totalCalculated += result.inserted;
+          totalSkipped += result.skipped;
+        } catch (error) {
+          log.error(`${pass.returnType} ${crypto.symbol}: ${error.message}`);
+          errors++;
+        }
       }
+
+      log.info(`${pass.returnType}: calculated=${totalCalculated}, skipped=${totalSkipped}, errors=${errors}`);
     }
 
     const duration = Date.now() - startTime;
-    log.info(`Beta calculation completed in ${duration}ms`);
-    log.info(`Total calculated: ${totalCalculated}, Skipped: ${totalSkipped}, Errors: ${errors}`);
 
+    log.info(`\nBeta calculation completed in ${duration}ms`);
   } catch (error) {
     log.error(`Error in calculateBetaStats: ${error.message}`);
     throw error;
@@ -94,13 +140,14 @@ async function ensureTableExists() {
         crypto_id INT UNSIGNED NOT NULL,
         date DATE NOT NULL,
         window_days INT UNSIGNED NOT NULL DEFAULT 90,
+        return_type ENUM('log','simple') NOT NULL DEFAULT 'log',
         beta DECIMAL(20, 12) NOT NULL,
         alpha DECIMAL(20, 12) NOT NULL,
         r_squared DECIMAL(20, 12) NOT NULL,
         correlation DECIMAL(20, 12) NOT NULL,
         num_observations INT UNSIGNED NOT NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        UNIQUE KEY idx_crypto_date_window (crypto_id, date, window_days),
+        UNIQUE KEY idx_crypto_date_window_type (crypto_id, date, window_days, return_type),
         KEY idx_date (date)
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     `);
@@ -111,32 +158,31 @@ async function ensureTableExists() {
   }
 }
 
-async function calculateBetaForCrypto(cryptoId, symbol, indexReturnsByDate) {
-  const [logReturns] = await Database.execute(`
-    SELECT date, log_return
-    FROM crypto_log_returns
-    WHERE crypto_id = ?
-      AND date < CURDATE()
-    ORDER BY date ASC
-  `, [cryptoId]);
+async function calculateBetaForCrypto(cryptoId, symbol, indexByDate, pass) {
+  const [returns] = await Database.execute(
+    `SELECT date, ${pass.col} AS r
+     FROM ${pass.table}
+     WHERE crypto_id = ?
+       AND date < CURDATE()
+     ORDER BY date ASC`,
+    [cryptoId],
+  );
 
-  if (logReturns.length < MINIMUM_WINDOW_DAYS) {
+  if (returns.length < MINIMUM_WINDOW_DAYS) {
     return { inserted: 0, skipped: 0 };
   }
 
-  // Build crypto returns by date
-  const cryptoReturnsByDate = new Map();
-  for (const r of logReturns) {
-    const dateStr = r.date.toISOString().split('T')[0];
-    cryptoReturnsByDate.set(dateStr, {
+  const cryptoByDate = new Map();
+
+  for (const r of returns) {
+    cryptoByDate.set(r.date.toISOString().split('T')[0], {
       date: r.date,
-      return: parseFloat(r.log_return)
+      return: parseFloat(r.r),
     });
   }
 
-  // Get all dates where we have both crypto and index returns
-  const allDates = [...cryptoReturnsByDate.keys()]
-    .filter(date => indexReturnsByDate.has(date))
+  const allDates = [...cryptoByDate.keys()]
+    .filter((d) => indexByDate.has(d))
     .sort();
 
   if (allDates.length < MINIMUM_WINDOW_DAYS) {
@@ -146,20 +192,17 @@ async function calculateBetaForCrypto(cryptoId, symbol, indexReturnsByDate) {
   let inserted = 0;
   let skipped = 0;
 
-  // Calculate beta for each date with enough data (backfill)
   for (let i = MINIMUM_WINDOW_DAYS - 1; i < allDates.length; i++) {
     const currentDateStr = allDates[i];
-    const currentDate = cryptoReturnsByDate.get(currentDateStr).date;
+    const currentDate = cryptoByDate.get(currentDateStr).date;
 
-    // Window: up to MAX_WINDOW_DAYS aligned dates ending at current date
-    const windowStart = Math.max(0, i - MAX_WINDOW_DAYS + 1);
+    const windowStart = Math.max(0, i - pass.maxWindow + 1);
     const windowDates = allDates.slice(windowStart, i + 1);
     const windowDays = windowDates.length;
 
-    // Check if already exists
     const [existing] = await Database.execute(
-      'SELECT id FROM crypto_beta WHERE crypto_id = ? AND date = ? AND window_days = ?',
-      [cryptoId, currentDate, windowDays]
+      'SELECT id FROM crypto_beta WHERE crypto_id = ? AND date = ? AND window_days = ? AND return_type = ?',
+      [cryptoId, currentDate, windowDays, pass.returnType],
     );
 
     if (existing.length > 0) {
@@ -167,23 +210,19 @@ async function calculateBetaForCrypto(cryptoId, symbol, indexReturnsByDate) {
       continue;
     }
 
-    // Get aligned returns for the window
-    const cryptoReturns = windowDates.map(d => cryptoReturnsByDate.get(d).return);
-    const marketReturns = windowDates.map(d => indexReturnsByDate.get(d));
+    const cryptoReturns = windowDates.map((d) => cryptoByDate.get(d).return);
+    const marketReturns = windowDates.map((d) => indexByDate.get(d));
 
     const { beta, alpha, rSquared, correlation } = calculateBetaAlpha(cryptoReturns, marketReturns);
 
-    await Database.execute(`
-      INSERT INTO crypto_beta
-      (crypto_id, date, window_days, beta, alpha, r_squared, correlation, num_observations)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-    `, [cryptoId, currentDate, windowDays, beta, alpha, rSquared, correlation, windowDays]);
+    await Database.execute(
+      `INSERT INTO crypto_beta
+       (crypto_id, date, window_days, return_type, beta, alpha, r_squared, correlation, num_observations)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [cryptoId, currentDate, windowDays, pass.returnType, beta, alpha, rSquared, correlation, windowDays],
+    );
 
     inserted++;
-  }
-
-  if (inserted > 0) {
-    log.debug(`${symbol}: Calculated ${inserted} Beta points, skipped ${skipped}`);
   }
 
   return { inserted, skipped };
