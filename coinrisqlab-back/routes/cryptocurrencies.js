@@ -20,6 +20,7 @@ api.get('/cryptocurrencies', async (req, res) => {
       'symbol',
       'name',
       'ma_90d',
+      'rsi_14d',
       'beta'
     ];
 
@@ -42,6 +43,7 @@ api.get('/cryptocurrencies', async (req, res) => {
     const sortByMap = {
       'market_cap_usd': '(md.price_usd * md.circulating_supply)',
       'ma_90d': 'cma.moving_average',
+      'rsi_14d': 'cr.rsi',
       'beta': 'cb.beta',
     };
     const orderByClause = `ORDER BY ${sortByMap[sortBy] || sortBy} ${sortOrder}`;
