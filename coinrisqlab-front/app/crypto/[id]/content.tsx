@@ -109,7 +109,11 @@ export default function CryptoDetailContent() {
 
   // Panel state
   const [activePanel, setActivePanel] = useState<RiskPanel>(initialPanel);
-  const [period, setPeriod] = useState<RiskPeriod>("90d");
+  // Each panel keeps its own timeframe state — Price supports 24h while
+  // Volatility doesn't, so a shared state would render an empty/broken
+  // chart when switching from Price 24h → Volatility.
+  const [pricePeriod, setPricePeriod] = useState<RiskPeriod>("90d");
+  const [volatilityPeriod, setVolatilityPeriod] = useState<RiskPeriod>("90d");
 
   // Sidebar period is fixed — must not follow the chart's timeframe,
   // otherwise switching Price History to 24h wipes sidebar metrics.
@@ -236,17 +240,17 @@ export default function CryptoDetailContent() {
         return (
           <PricePanel
             cryptoId={id}
-            period={period}
+            period={pricePeriod}
             symbol={basic.symbol}
-            onPeriodChange={setPeriod}
+            onPeriodChange={setPricePeriod}
           />
         );
       case "volatility":
         return (
           <VolatilityPanel
             cryptoId={id}
-            period={period}
-            onPeriodChange={setPeriod}
+            period={volatilityPeriod}
+            onPeriodChange={setVolatilityPeriod}
           />
         );
       case "stress-test":
