@@ -67,6 +67,11 @@ export interface CryptoVolatility {
 /**
  * API Response for Individual Crypto Volatility
  */
+export interface VolatilityChangeBucket {
+  daily: number | null;
+  annualized: number | null;
+}
+
 export interface CryptoVolatilityResponse {
   data: {
     crypto: {
@@ -76,6 +81,12 @@ export interface CryptoVolatilityResponse {
     };
     latest: CryptoVolatility | null;
     history: CryptoVolatility[];
+    changes?: {
+      "24h": VolatilityChangeBucket;
+      "7d": VolatilityChangeBucket;
+      "30d": VolatilityChangeBucket;
+      "90d": VolatilityChangeBucket;
+    };
   };
 }
 

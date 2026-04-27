@@ -14,7 +14,7 @@ import {
   CartesianGrid,
   ReferenceLine,
 } from "recharts";
-import { useState, useMemo } from "react";
+import { useState } from "react";
 
 import { MethodologyLink } from "./MethodologyLink";
 
@@ -72,96 +72,8 @@ function getRiskLevel(volatility: number, isAnnualized: boolean) {
   return { level: "Low", color: "#16C784" };
 }
 
-function calculateVolatilityChanges(
-  history: CryptoVolatility[],
-  currentVol: CryptoVolatility | null,
-  mode: "annualized" | "daily",
-): Record<string, number | null> {
-  if (!currentVol || history.length === 0) return {};
-
-  const changes: Record<string, number | null> = {};
-  const periods = {
-    "24h": 1,
-    "7d": 7,
-    "30d": 30,
-    "90d": 90,
-  };
-
-  const currentValue =
-    mode === "annualized"
-      ? Number(currentVol.annualized_volatility) * 100
-      : Number(currentVol.daily_volatility) * 100;
-
-  const targetDate = new Date(currentVol.date);
-
-  for (const [key, days] of Object.entries(periods)) {
-    // Backend logic often looks back 'days' exactly.
-    // If not found, it finds the closest date.
-
-    // Calculate target past date
-    const pastTargetDate = new Date(targetDate);
-
-    pastTargetDate.setDate(pastTargetDate.getDate() - days);
-
-    // Find entry with date <= pastTargetDate (closest to it)
-    // History is usually sorted desc? or asc? Backend sorts DESC in SQL normally for limit 1,
-    // but history array might be ASC for chart.
-    // Let's assume history might be unsorted or ASC.
-    // Let's sort to be safe if needed, or scan.
-
-    // Actually efficient way: find entry closest to pastTargetDate
-    let closestEntry: CryptoVolatility | null = null;
-    let minDiff = Infinity;
-
-    for (const entry of history) {
-      const entryDate = new Date(entry.date);
-      // We want the entry that is AT or BEFORE the target date (to capture the full period change)
-      // OR just closest absolute difference?
-      // "24h change" means Price(Now) vs Price(Now - 24h).
-      // So we want the entry closest to (Now - 24h).
-
-      const diff = Math.abs(entryDate.getTime() - pastTargetDate.getTime());
-
-      if (diff < minDiff) {
-        minDiff = diff;
-        closestEntry = entry;
-      }
-    }
-
-    // Backend tolerance might be strict or loose.
-    // If we want to math Sidebar (backend calculated), we should replicate backend logic.
-    // Backend usually does:
-    // SELECT ... WHERE timestamp <= NOW() - INTERVAL '...' ORDER BY timestamp DESC LIMIT 1
-    // This finds the closest data point in the PAST relative to the target window.
-    // My previous logic was absolute diff.
-
-    if (closestEntry) {
-      // Tolerance check? If closest data is 1 month away for 24h change, it's invalid.
-      // Let's use 2 day tolerance for short periods, and more for long?
-      // Let's stick to 2 days for now as strictly simpler check.
-      if (minDiff <= 2 * 24 * 60 * 60 * 1000) {
-        // For 30d/90d allow larger gap if data is sparse?
-        // Actually, if we use closest absolute, it handles weekends well.
-        const pastValue =
-          mode === "annualized"
-            ? Number(closestEntry.annualized_volatility) * 100
-            : Number(closestEntry.daily_volatility) * 100;
-
-        if (pastValue !== 0) {
-          changes[key] = ((currentValue - pastValue) / pastValue) * 100;
-        } else {
-          changes[key] = null;
-        }
-      } else {
-        changes[key] = null;
-      }
-    } else {
-      changes[key] = null;
-    }
-  }
-
-  return changes;
-}
+// Volatility delta percentages come from the backend's `changes` object —
+// the front never derives them. Missing values surface as "no data".
 
 export function VolatilityPanel({
   cryptoId,
@@ -213,10 +125,13 @@ export function VolatilityPanel({
   const riskZones =
     mode === "annualized" ? RISK_ZONES_ANNUAL : RISK_ZONES_DAILY;
 
-  const volatilityChanges = useMemo(
-    () => calculateVolatilityChanges(infoHistory, currentVol ?? null, mode),
-    [infoHistory, currentVol, mode],
-  );
+  const apiChanges = infoVolatilityData?.changes;
+  const volatilityChanges: Record<string, number | null> = {
+    "24h": apiChanges?.["24h"]?.[mode] ?? null,
+    "7d": apiChanges?.["7d"]?.[mode] ?? null,
+    "30d": apiChanges?.["30d"]?.[mode] ?? null,
+    "90d": apiChanges?.["90d"]?.[mode] ?? null,
+  };
 
   return (
     <div className="flex flex-col gap-4">

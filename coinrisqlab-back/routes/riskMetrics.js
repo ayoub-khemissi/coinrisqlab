@@ -180,6 +180,23 @@ api.get('/risk/crypto/:id/price-history', async (req, res) => {
       LIMIT 1
     `, [crypto.id]);
 
+    // CoinGecko exposes 1h/24h/7d/30d but not 90d. Compute it server-side
+    // from the ohlc table so the front never has to derive a metric:
+    //   change_90d = (close[N-1] / close[N-91]) - 1
+    const [r90Rows] = await Database.execute(`
+      SELECT (o1.close / NULLIF(o2.close, 0)) - 1 AS change_90d
+      FROM ohlc o1
+      LEFT JOIN ohlc o2 ON o2.crypto_id = o1.crypto_id
+                       AND o2.timestamp = DATE_SUB(o1.timestamp, INTERVAL 90 DAY)
+      WHERE o1.crypto_id = ?
+      ORDER BY o1.timestamp DESC
+      LIMIT 1
+    `, [crypto.id]);
+
+    const change90d = r90Rows.length > 0 && r90Rows[0].change_90d !== null
+      ? parseFloat(r90Rows[0].change_90d) * 100
+      : null;
+
     res.json({
       data: {
         crypto: crypto,
@@ -193,7 +210,8 @@ api.get('/risk/crypto/:id/price-history', async (req, res) => {
             '1h': latest[0].percent_change_1h ? parseFloat(latest[0].percent_change_1h) : null,
             '24h': latest[0].percent_change_24h ? parseFloat(latest[0].percent_change_24h) : null,
             '7d': latest[0].percent_change_7d ? parseFloat(latest[0].percent_change_7d) : null,
-            '30d': latest[0].percent_change_30d ? parseFloat(latest[0].percent_change_30d) : null
+            '30d': latest[0].percent_change_30d ? parseFloat(latest[0].percent_change_30d) : null,
+            '90d': change90d
           }
         } : null,
         period,
@@ -323,8 +341,8 @@ api.get('/risk/crypto/:id/beta', async (req, res) => {
     // Prepare scatter data for visualization
     const scatterData = alignedData.map(d => ({
       date: d.date,
-      marketReturn: Number((d.marketReturn * 100).toFixed(4)),
-      cryptoReturn: Number((d.cryptoReturn * 100).toFixed(4))
+      marketReturn: (d.marketReturn * 100),
+      cryptoReturn: (d.cryptoReturn * 100)
     }));
 
     // Calculate regression line endpoints for visualization
@@ -354,7 +372,7 @@ api.get('/risk/crypto/:id/beta', async (req, res) => {
       data: {
         crypto: crypto,
         beta,
-        alpha: Number((alpha * 100).toFixed(4)),
+        alpha: (alpha * 100),
         rSquared,
         correlation,
         sharpeRatio,
@@ -470,27 +488,27 @@ api.get('/risk/crypto/:id/var', async (req, res) => {
       const binEnd = histogram.bins[i + 1];
       const binCenter = (binStart + binEnd) / 2;
       histogramData.push({
-        binStart: Number((binStart * 100).toFixed(4)),
-        binEnd: Number((binEnd * 100).toFixed(4)),
-        binCenter: Number((binCenter * 100).toFixed(4)),
+        binStart: (binStart * 100),
+        binEnd: (binEnd * 100),
+        binCenter: (binCenter * 100),
         count: histogram.counts[i],
-        percentage: Number(((histogram.counts[i] / totalCount) * 100).toFixed(2))
+        percentage: ((histogram.counts[i] / totalCount) * 100)
       });
     }
 
     res.json({
       data: {
         crypto: crypto,
-        var95: Number((var95 * 100).toFixed(4)),
-        var99: Number((var99 * 100).toFixed(4)),
-        cvar95: Number((cvar95 * 100).toFixed(4)),
-        cvar99: Number((cvar99 * 100).toFixed(4)),
+        var95: (var95 * 100),
+        var99: (var99 * 100),
+        cvar95: (cvar95 * 100),
+        cvar99: (cvar99 * 100),
         histogram: histogramData,
         statistics: {
-          mean: Number((meanReturn * 100).toFixed(4)),
-          stdDev: Number((stdDev * 100).toFixed(4)),
-          min: Number((minReturn * 100).toFixed(4)),
-          max: Number((maxReturn * 100).toFixed(4))
+          mean: (meanReturn * 100),
+          stdDev: (stdDev * 100),
+          min: (minReturn * 100),
+          max: (maxReturn * 100)
         },
         period,
         dataPoints,
@@ -591,7 +609,7 @@ api.get('/risk/crypto/:id/stress-test', async (req, res) => {
       data: {
         crypto: crypto,
         currentPrice: currentPrice,
-        beta: Number(beta.toFixed(4)),
+        beta: beta,
         scenarios,
         priceHistory: priceHistory.map(p => ({
           date: p.date,
@@ -828,18 +846,18 @@ api.get('/risk/crypto/:id/distribution', async (req, res) => {
       const normalY = normalCurve.find(p => Math.abs(p.x - binCenter) < histogram.binWidth / 2);
 
       histogramData.push({
-        binStart: Number((binStart * 100).toFixed(4)),
-        binEnd: Number((binEnd * 100).toFixed(4)),
-        binCenter: Number((binCenter * 100).toFixed(4)),
+        binStart: (binStart * 100),
+        binEnd: (binEnd * 100),
+        binCenter: (binCenter * 100),
         count: histogram.counts[i],
-        density: Number(((histogram.counts[i] / totalCount) / histogram.binWidth).toFixed(4)),
+        density: ((histogram.counts[i] / totalCount) / histogram.binWidth),
         normalDensity: normalY ? normalY.y : 0
       });
     }
 
     // Scale normal curve to match histogram scale
     const normalCurveScaled = normalCurve.map(p => ({
-      x: Number((p.x * 100).toFixed(4)),
+      x: (p.x * 100),
       y: p.y
     }));
 
@@ -848,8 +866,8 @@ api.get('/risk/crypto/:id/distribution', async (req, res) => {
         crypto: crypto,
         skewness,
         kurtosis,
-        mean: Number((mu * 100).toFixed(4)),
-        stdDev: Number((sigma * 100).toFixed(4)),
+        mean: (mu * 100),
+        stdDev: (sigma * 100),
         histogram: histogramData,
         normalCurve: normalCurveScaled,
         interpretation: {
@@ -916,16 +934,16 @@ api.get('/risk/crypto/:id/sml', async (req, res) => {
         for (let b = 0; b <= 2.5; b += 0.1) {
           const expReturn = b * marketReturn;
           smlLine.push({
-            beta: Number(b.toFixed(1)),
-            expectedReturn: Number(expReturn.toFixed(4))
+            beta: b,
+            expectedReturn: expReturn
           });
         }
 
         smlData = {
-          cryptoBeta: Number(beta.toFixed(4)),
-          cryptoExpectedReturn: Number(expectedReturn.toFixed(4)),
-          cryptoActualReturn: Number(actualReturn.toFixed(4)),
-          alpha: Number(alpha.toFixed(4)),
+          cryptoBeta: beta,
+          cryptoExpectedReturn: expectedReturn,
+          cryptoActualReturn: actualReturn,
+          alpha: alpha,
           isOvervalued: historizedStats.is_overvalued === 1,
           smlLine
         };
@@ -987,7 +1005,7 @@ api.get('/risk/crypto/:id/sml', async (req, res) => {
 
       // Calculate SML data (Rf = 0)
       smlData = calculateSML(beta, cryptoAnnualReturn, marketAnnualReturn, 0);
-      marketReturn = Number((marketAnnualReturn * 100).toFixed(4));
+      marketReturn = (marketAnnualReturn * 100);
       dataPoints = alignedCrypto.length;
       log.debug(`Calculated SML on-the-fly for ${coingeckoId}`);
     }
@@ -1125,7 +1143,7 @@ api.get('/risk/crypto/:id/summary', async (req, res) => {
     const betaStats = await getHistorizedBetaStats(crypto.id, 365);
     if (betaStats) {
       beta = parseFloat(betaStats.beta);
-      alpha = Number((parseFloat(betaStats.alpha) * 100).toFixed(4));
+      alpha = (parseFloat(betaStats.alpha) * 100);
     }
 
     // SML always uses 90 days
@@ -1154,7 +1172,7 @@ api.get('/risk/crypto/:id/summary', async (req, res) => {
       if (alignedCrypto.length >= 7) {
         const result = calculateBetaAlpha(alignedCrypto, alignedMarket);
         beta = result.beta;
-        alpha = Number((result.alpha * 100).toFixed(4));
+        alpha = (result.alpha * 100);
 
         // SML fallback still uses the current period returns (usually 90d) if requested, 
         // but if no smlData from 90d historized, we'll use whatever returns we have.
@@ -1176,9 +1194,9 @@ api.get('/risk/crypto/:id/summary', async (req, res) => {
       const covidScenario = scenarios.find(s => s.id === 'covid-19');
       if (covidScenario) {
         stressTest = {
-          newPrice: Number(covidScenario.newPrice.toFixed(2)),
-          priceChange: Number(covidScenario.priceChange.toFixed(2)),
-          impactPercentage: Number(covidScenario.expectedImpact.toFixed(2))
+          newPrice: covidScenario.newPrice,
+          priceChange: covidScenario.priceChange,
+          impactPercentage: covidScenario.expectedImpact
         };
       }
     }
@@ -1218,7 +1236,7 @@ api.get('/risk/crypto/:id/summary', async (req, res) => {
         if (pastAnnualized === 0) return null;
 
         // Return relative percentage change (e.g. 0.05 for 5%)
-        return Number(((currentAnnualized - pastAnnualized) / pastAnnualized).toFixed(4));
+        return ((currentAnnualized - pastAnnualized) / pastAnnualized);
       };
 
       volChanges = {
@@ -1238,13 +1256,13 @@ api.get('/risk/crypto/:id/summary', async (req, res) => {
           changes: priceChanges
         },
         volatility: currentVol ? {
-          daily: Number((parseFloat(currentVol.daily_volatility) * 100).toFixed(2)),
-          annualized: Number((parseFloat(currentVol.annualized_volatility) * 100).toFixed(2)),
+          daily: (parseFloat(currentVol.daily_volatility) * 100),
+          annualized: (parseFloat(currentVol.annualized_volatility) * 100),
           changes: volChanges ? {
-            '24h': volChanges['24h'] ? Number((volChanges['24h'] * 100).toFixed(2)) : null,
-            '7d': volChanges['7d'] ? Number((volChanges['7d'] * 100).toFixed(2)) : null,
-            '30d': volChanges['30d'] ? Number((volChanges['30d'] * 100).toFixed(2)) : null,
-            '90d': volChanges['90d'] ? Number((volChanges['90d'] * 100).toFixed(2)) : null
+            '24h': volChanges['24h'] ? (volChanges['24h'] * 100) : null,
+            '7d': volChanges['7d'] ? (volChanges['7d'] * 100) : null,
+            '30d': volChanges['30d'] ? (volChanges['30d'] * 100) : null,
+            '90d': volChanges['90d'] ? (volChanges['90d'] * 100) : null
           } : null
         } : null,
         beta,
@@ -1253,9 +1271,9 @@ api.get('/risk/crypto/:id/summary', async (req, res) => {
           alpha: smlData.alpha, // Jensen's Alpha
           isOvervalued: smlData.isOvervalued
         } : null,
-        var95: Number((var95 * 100).toFixed(2)),
-        var99: Number((var99 * 100).toFixed(2)),
-        cvar99: Number((cvar99 * 100).toFixed(2)),
+        var95: (var95 * 100),
+        var99: (var99 * 100),
+        cvar99: (cvar99 * 100),
         stressTest,
         skewness,
         kurtosis,

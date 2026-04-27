@@ -353,10 +353,10 @@ export function computeAnalyticsBundle({
         symbol: h.symbol,
         name: h.crypto_name,
         image_url: h.image_url,
-        weight: Number(h.weight.toFixed(4)),
-        daily_volatility: Number(indivDailyVol.toFixed(6)),
-        annualized_volatility: Number((indivAnnualVol * 100).toFixed(2)),
-        current_value: Number((h.current_value || 0).toFixed(2)),
+        weight: h.weight,
+        daily_volatility: indivDailyVol,
+        annualized_volatility: (indivAnnualVol * 100),
+        current_value: (h.current_value || 0),
       });
       constituentsRaw.push({
         crypto_id: h.crypto_id,
@@ -379,13 +379,13 @@ export function computeAnalyticsBundle({
     );
     const diversificationBenefit =
       weightedAvgVol > 0
-        ? Number((((weightedAvgVol - dailyVol) / weightedAvgVol) * 100).toFixed(2))
+        ? (((weightedAvgVol - dailyVol) / weightedAvgVol) * 100)
         : 0;
 
     bundle.volatility = {
-      dailyVolatility: Number(dailyVol.toFixed(6)),
-      annualizedVolatility: Number((annualVol * 100).toFixed(2)),
-      beta: Number(portfolioBeta.toFixed(4)),
+      dailyVolatility: dailyVol,
+      annualizedVolatility: (annualVol * 100),
+      beta: portfolioBeta,
       holdingCount: holdings.length,
       dataPoints: alignedDates.length,
       diversificationBenefit,
@@ -449,25 +449,25 @@ export function computeAnalyticsBundle({
       const betaAlpha = calculateBetaAlpha(alignedP, alignedM);
 
       bundle.riskMetrics = {
-        var95: Number((var95 * 100).toFixed(4)),
-        var99: Number((var99 * 100).toFixed(4)),
-        cvar95: Number((cvar95 * 100).toFixed(4)),
-        cvar99: Number((cvar99 * 100).toFixed(4)),
-        sharpe: Number(sharpe.toFixed(4)),
+        var95: (var95 * 100),
+        var99: (var99 * 100),
+        cvar95: (cvar95 * 100),
+        cvar99: (cvar99 * 100),
+        sharpe: sharpe,
         beta: betaAlpha.beta,
-        alpha: Number((betaAlpha.alpha * 36500).toFixed(4)),
+        alpha: (betaAlpha.alpha * 36500),
         skewness,
         kurtosis,
         returnStats: {
-          meanDaily: Number((meanReturn * 100).toFixed(4)),
-          annualized: Number((meanReturn * 36500).toFixed(2)),
-          dailyStd: Number((dailyStd * 100).toFixed(4)),
-          min: Number((minReturn * 100).toFixed(4)),
-          max: Number((maxReturn * 100).toFixed(4)),
+          meanDaily: (meanReturn * 100),
+          annualized: (meanReturn * 36500),
+          dailyStd: (dailyStd * 100),
+          min: (minReturn * 100),
+          max: (maxReturn * 100),
         },
         diversificationBenefit,
-        dailyVolatility: Number(dailyVol.toFixed(6)),
-        annualizedVolatility: Number((annualVol * 100).toFixed(2)),
+        dailyVolatility: dailyVol,
+        annualizedVolatility: (annualVol * 100),
         dataPoints: alignedDates.length,
       };
 
@@ -508,7 +508,7 @@ export function computeAnalyticsBundle({
               );
               const std1 = standardDeviation(returnsByCryptoLog[cryptoIds[i]]);
               const std2 = standardDeviation(returnsByCryptoLog[cryptoIds[j]]);
-              matrix[i][j] = std1 > 0 && std2 > 0 ? Number((cov / (std1 * std2)).toFixed(4)) : 0;
+              matrix[i][j] = std1 > 0 && std2 > 0 ? (cov / (std1 * std2)) : 0;
             }
           }
         }
@@ -556,8 +556,8 @@ export function computeAnalyticsBundle({
       };
     });
     bundle.stressTest = {
-      portfolioBeta: Number(portfolioBeta.toFixed(4)),
-      totalValue: Number(totalValue.toFixed(2)),
+      portfolioBeta: portfolioBeta,
+      totalValue: totalValue,
       portfolioScenarios: stressResults,
       holdingImpacts,
     };

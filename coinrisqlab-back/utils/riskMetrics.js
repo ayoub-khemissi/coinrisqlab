@@ -49,10 +49,10 @@ export function calculateBetaAlpha(cryptoReturns, marketReturns) {
   const rSquared = correlation * correlation;
 
   return {
-    beta: Number(beta.toFixed(4)),
-    alpha: Number(alpha.toFixed(6)),
-    rSquared: Number(rSquared.toFixed(4)),
-    correlation: Number(correlation.toFixed(4))
+    beta: beta,
+    alpha: alpha,
+    rSquared: rSquared,
+    correlation: correlation
   };
 }
 
@@ -134,7 +134,7 @@ export function calculateSkewness(values) {
   // Apply bias correction for sample skewness
   const skewness = (n / ((n - 1) * (n - 2))) * m3;
 
-  return Number(skewness.toFixed(4));
+  return skewness;
 }
 
 /**
@@ -169,7 +169,7 @@ export function calculateKurtosis(values) {
   const kurtosis = ((n + 1) * n / ((n - 1) * (n - 2) * (n - 3))) * m4 -
                    (3 * (n - 1) * (n - 1)) / ((n - 2) * (n - 3));
 
-  return Number(kurtosis.toFixed(4));
+  return kurtosis;
 }
 
 /**
@@ -196,7 +196,7 @@ export function generateHistogramBins(values, numBins = 30) {
 
   // Create bin edges
   for (let i = 0; i <= numBins; i++) {
-    bins.push(Number((min + i * binWidth).toFixed(6)));
+    bins.push((min + i * binWidth));
   }
 
   // Count values in each bin
@@ -212,9 +212,9 @@ export function generateHistogramBins(values, numBins = 30) {
   return {
     bins,
     counts,
-    binWidth: Number(binWidth.toFixed(6)),
-    min: Number(min.toFixed(6)),
-    max: Number(max.toFixed(6))
+    binWidth: binWidth,
+    min: min,
+    max: max
   };
 }
 
@@ -243,8 +243,8 @@ export function generateNormalCurve(mu, sigma, min, max, points = 100) {
     const y = (1 / (sigma * Math.sqrt(2 * Math.PI))) * Math.exp(exponent);
 
     curve.push({
-      x: Number(x.toFixed(6)),
-      y: Number(y.toFixed(6))
+      x: x,
+      y: y
     });
   }
 
@@ -318,8 +318,8 @@ export function calculateStressTest(beta, currentPrice, scenarios = null) {
     return {
       id: scenario.id,
       name: scenario.name,
-      marketShock: Number((scenario.shock * 100).toFixed(2)),
-      expectedImpact: Number((expectedImpact * 100).toFixed(2)),
+      marketShock: (scenario.shock * 100),
+      expectedImpact: (expectedImpact * 100),
       newPrice: newPrice,
       priceChange: priceChange,
       startDate: scenario.startDate,
@@ -356,16 +356,16 @@ export function calculateSML(cryptoBeta, cryptoActualReturn, marketReturn, riskF
   for (let beta = 0; beta <= 2.5; beta += 0.1) {
     const expectedReturn = riskFreeRate + beta * (marketReturn - riskFreeRate);
     smlLine.push({
-      beta: Number(beta.toFixed(1)),
-      expectedReturn: Number((expectedReturn * 100).toFixed(4))
+      beta: beta,
+      expectedReturn: (expectedReturn * 100)
     });
   }
 
   return {
-    cryptoBeta: Number(cryptoBeta.toFixed(4)),
-    cryptoExpectedReturn: Number((cryptoExpectedReturn * 100).toFixed(4)),
-    cryptoActualReturn: Number((cryptoActualReturn * 100).toFixed(4)),
-    alpha: Number((alpha * 100).toFixed(4)),
+    cryptoBeta: cryptoBeta,
+    cryptoExpectedReturn: (cryptoExpectedReturn * 100),
+    cryptoActualReturn: (cryptoActualReturn * 100),
+    alpha: (alpha * 100),
     isOvervalued,
     smlLine
   };
@@ -410,7 +410,7 @@ export function calculateSharpeRatio(logReturns, riskFreeRate = 0) {
   const dailyRf = riskFreeRate / 365;
 
   // Sharpe = (mean daily return - daily Rf) / daily std * √365
-  return Number((((meanReturn - dailyRf) / stdReturn) * Math.sqrt(365)).toFixed(4));
+  return (((meanReturn - dailyRf) / stdReturn) * Math.sqrt(365));
 }
 
 /**

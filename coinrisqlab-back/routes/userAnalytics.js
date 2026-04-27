@@ -97,16 +97,16 @@ api.get('/user/portfolios/:id/overview', authenticateUser, async (req, res) => {
       name: h.crypto_name,
       image_url: h.image_url,
       value: h.current_value,
-      weight: Number((h.weight * 100).toFixed(2)),
+      weight: (h.weight * 100),
       pnl: h.current_value - h.quantity * h.avg_buy_price,
     }));
 
     res.json({
       data: {
-        totalValue: Number(totalValue.toFixed(2)),
-        totalCost: Number(totalCost.toFixed(2)),
-        totalPnl: Number(totalPnl.toFixed(2)),
-        pnlPercent: Number(pnlPercent.toFixed(2)),
+        totalValue: totalValue,
+        totalCost: totalCost,
+        totalPnl: totalPnl,
+        pnlPercent: pnlPercent,
         holdingCount: holdings.length,
         allocation,
       },
@@ -211,10 +211,10 @@ api.get('/user/portfolios/:id/volatility', authenticateUser, async (req, res) =>
         symbol: h.symbol,
         name: h.crypto_name,
         image_url: h.image_url,
-        weight: Number(h.weight.toFixed(4)),
-        daily_volatility: Number(indivDailyVol.toFixed(6)),
-        annualized_volatility: Number((indivAnnualVol * 100).toFixed(2)),
-        current_value: Number((h.current_value || 0).toFixed(2)),
+        weight: h.weight,
+        daily_volatility: indivDailyVol,
+        annualized_volatility: (indivAnnualVol * 100),
+        current_value: (h.current_value || 0),
       };
     });
 
@@ -244,14 +244,14 @@ api.get('/user/portfolios/:id/volatility', authenticateUser, async (req, res) =>
 
     const diversificationBenefit =
       weightedAvgVol > 0
-        ? Number((((weightedAvgVol - dailyVol) / weightedAvgVol) * 100).toFixed(2))
+        ? (((weightedAvgVol - dailyVol) / weightedAvgVol) * 100)
         : 0;
 
     res.json({
       data: {
-        dailyVolatility: Number(dailyVol.toFixed(6)),
-        annualizedVolatility: Number((annualVol * 100).toFixed(2)),
-        beta: Number(portfolioBeta.toFixed(4)),
+        dailyVolatility: dailyVol,
+        annualizedVolatility: (annualVol * 100),
+        beta: portfolioBeta,
         holdingCount: holdings.length,
         dataPoints: alignedDates.length,
         diversificationBenefit,
@@ -347,7 +347,7 @@ api.get('/user/portfolios/:id/performance', authenticateUser, async (req, res) =
       snapshots.length > 0
         ? snapshots.map((s) => ({
             date: s.snapshot_date,
-            value: Number(((s.total_value_usd / snapshots[0].total_value_usd) * 100).toFixed(2)),
+            value: ((s.total_value_usd / snapshots[0].total_value_usd) * 100),
           }))
         : [];
 
@@ -355,7 +355,7 @@ api.get('/user/portfolios/:id/performance', authenticateUser, async (req, res) =
       indexHistory.length > 0
         ? indexHistory.map((h) => ({
             date: h.snapshot_date,
-            value: Number(((h.index_level / indexHistory[0].index_level) * 100).toFixed(2)),
+            value: ((h.index_level / indexHistory[0].index_level) * 100),
           }))
         : [];
 
@@ -365,26 +365,22 @@ api.get('/user/portfolios/:id/performance', authenticateUser, async (req, res) =
         benchmark: indexNormalized,
         portfolioReturn:
           snapshots.length >= 2
-            ? Number(
-                (
+            ? (
                   (snapshots[snapshots.length - 1].total_value_usd / snapshots[0].total_value_usd -
                     1) *
                   100
-                ).toFixed(2)
-              )
+                )
             : 0,
         benchmarkReturn:
           indexHistory.length >= 2
-            ? Number(
-                (
+            ? (
                   (indexHistory[indexHistory.length - 1].index_level / indexHistory[0].index_level -
                     1) *
                   100
-                ).toFixed(2)
-              )
+                )
             : 0,
-        portfolio24hReturn: Number(portfolio24hReturn.toFixed(2)),
-        benchmark24hReturn: Number(benchmark24hReturn.toFixed(2)),
+        portfolio24hReturn: portfolio24hReturn,
+        benchmark24hReturn: benchmark24hReturn,
       },
     });
   } catch (error) {
@@ -508,30 +504,30 @@ api.get('/user/portfolios/:id/risk-metrics', authenticateUser, requirePro, async
 
     const diversificationBenefit =
       weightedAvgVol > 0
-        ? Number((((weightedAvgVol - portfolioDailyVol) / weightedAvgVol) * 100).toFixed(2))
+        ? (((weightedAvgVol - portfolioDailyVol) / weightedAvgVol) * 100)
         : 0;
 
     res.json({
       data: {
-        var95: Number((var95 * 100).toFixed(4)),
-        var99: Number((var99 * 100).toFixed(4)),
-        cvar95: Number((cvar95 * 100).toFixed(4)),
-        cvar99: Number((cvar99 * 100).toFixed(4)),
-        sharpe: Number(sharpe.toFixed(4)),
+        var95: (var95 * 100),
+        var99: (var99 * 100),
+        cvar95: (cvar95 * 100),
+        cvar99: (cvar99 * 100),
+        sharpe: sharpe,
         beta: betaAlpha.beta,
-        alpha: Number((betaAlpha.alpha * 36500).toFixed(4)), // annualized alpha in %
+        alpha: (betaAlpha.alpha * 36500), // annualized alpha in %
         skewness,
         kurtosis,
         returnStats: {
-          meanDaily: Number((meanReturn * 100).toFixed(4)),
-          annualized: Number((annualizedReturn * 100).toFixed(2)),
-          dailyStd: Number((dailyStd * 100).toFixed(4)),
-          min: Number((minReturn * 100).toFixed(4)),
-          max: Number((maxReturn * 100).toFixed(4)),
+          meanDaily: (meanReturn * 100),
+          annualized: (annualizedReturn * 100),
+          dailyStd: (dailyStd * 100),
+          min: (minReturn * 100),
+          max: (maxReturn * 100),
         },
         diversificationBenefit,
-        dailyVolatility: Number(portfolioDailyVol.toFixed(6)),
-        annualizedVolatility: Number((annualizeVolatility(portfolioDailyVol) * 100).toFixed(2)),
+        dailyVolatility: portfolioDailyVol,
+        annualizedVolatility: (annualizeVolatility(portfolioDailyVol) * 100),
         dataPoints: alignedDates.length,
       },
     });
@@ -580,7 +576,7 @@ api.get('/user/portfolios/:id/correlation', authenticateUser, requirePro, async 
           );
           const std1 = standardDeviation(returnsByCryptoLog[cryptoIds[i]]);
           const std2 = standardDeviation(returnsByCryptoLog[cryptoIds[j]]);
-          matrix[i][j] = std1 > 0 && std2 > 0 ? Number((cov / (std1 * std2)).toFixed(4)) : 0;
+          matrix[i][j] = std1 > 0 && std2 > 0 ? (cov / (std1 * std2)) : 0;
         }
       }
     }
@@ -655,8 +651,8 @@ api.get('/user/portfolios/:id/stress-test', authenticateUser, requirePro, async 
 
     res.json({
       data: {
-        portfolioBeta: Number(portfolioBeta.toFixed(4)),
-        totalValue: Number(totalValue.toFixed(2)),
+        portfolioBeta: portfolioBeta,
+        totalValue: totalValue,
         portfolioScenarios: stressResults,
         holdingImpacts,
       },
@@ -775,7 +771,7 @@ api.get('/user/portfolios/:id/analytics-bundle', authenticateUser, async (req, r
             const curr = parseFloat(s.total_value_usd);
             const prev = parseFloat(snapshots[i - 1].total_value_usd);
             const pct = curr > 0 ? ((curr - prev) / curr) * 100 : 0;
-            return { date: s.snapshot_date, pct: Number(pct.toFixed(4)) };
+            return { date: s.snapshot_date, pct: pct };
           })
         : [];
 
@@ -786,7 +782,7 @@ api.get('/user/portfolios/:id/analytics-bundle', authenticateUser, async (req, r
             const curr = parseFloat(h.index_level);
             const prev = parseFloat(indexHistory[i - 1].index_level);
             const pct = curr > 0 ? ((curr - prev) / curr) * 100 : 0;
-            return { date: h.snapshot_date, pct: Number(pct.toFixed(4)) };
+            return { date: h.snapshot_date, pct: pct };
           })
         : [];
 
@@ -795,38 +791,34 @@ api.get('/user/portfolios/:id/analytics-bundle', authenticateUser, async (req, r
         snapshots.length > 0
           ? snapshots.map((s) => ({
               date: s.snapshot_date,
-              value: Number(((s.total_value_usd / snapshots[0].total_value_usd) * 100).toFixed(2)),
+              value: ((s.total_value_usd / snapshots[0].total_value_usd) * 100),
             }))
           : [],
       benchmark:
         indexHistory.length > 0
           ? indexHistory.map((h) => ({
               date: h.snapshot_date,
-              value: Number(((h.index_level / indexHistory[0].index_level) * 100).toFixed(2)),
+              value: ((h.index_level / indexHistory[0].index_level) * 100),
             }))
           : [],
       portfolioReturn:
         snapshots.length >= 2
-          ? Number(
-              (
+          ? (
                 (snapshots[snapshots.length - 1].total_value_usd / snapshots[0].total_value_usd -
                   1) *
                 100
-              ).toFixed(2)
-            )
+              )
           : 0,
       benchmarkReturn:
         indexHistory.length >= 2
-          ? Number(
-              (
+          ? (
                 (indexHistory[indexHistory.length - 1].index_level / indexHistory[0].index_level -
                   1) *
                 100
-              ).toFixed(2)
-            )
+              )
           : 0,
-      portfolio24hReturn: Number(portfolio24hReturn.toFixed(2)),
-      benchmark24hReturn: Number(benchmark24hReturn.toFixed(2)),
+      portfolio24hReturn: portfolio24hReturn,
+      benchmark24hReturn: benchmark24hReturn,
       portfolio24hSeries,
       benchmark24hSeries,
     };

@@ -155,7 +155,7 @@ api.get('/user/holdings/all', authenticateUser, async (req, res) => {
     const data = holdings.map(h => ({
       ...h,
       allocation_pct: totalValue > 0
-        ? Number(((parseFloat(h.current_value) || 0) / totalValue * 100).toFixed(2))
+        ? ((parseFloat(h.current_value) || 0) / totalValue * 100)
         : 0,
     }));
 
@@ -209,7 +209,7 @@ api.get('/user/portfolios/:id/holdings', authenticateUser, async (req, res) => {
     const totalValue = holdings.reduce((sum, h) => sum + (h.current_value || 0), 0);
     const data = holdings.map(h => ({
       ...h,
-      allocation_pct: totalValue > 0 ? Number(((h.current_value / totalValue) * 100).toFixed(2)) : 0,
+      allocation_pct: totalValue > 0 ? ((h.current_value / totalValue) * 100) : 0,
     }));
 
     res.json({ data, totalValue });

@@ -33,63 +33,6 @@ interface PricePanelProps {
 
 const PERIODS: RiskPeriod[] = ["24h", "7d", "30d", "90d", "all"];
 
-// Helper to calculate changes from history (fallback for API values)
-function calculatePriceChanges(
-  history: { date: string; price: number }[],
-  currentPrice: number,
-): Record<string, number | null> {
-  if (!currentPrice || history.length === 0) return {};
-
-  const changes: Record<string, number | null> = {};
-  const periods = {
-    "24h": 1,
-    "7d": 7,
-    "30d": 30,
-    "90d": 90,
-  };
-
-  const targetDate = new Date();
-
-  for (const [key, days] of Object.entries(periods)) {
-    const pastTargetDate = new Date(targetDate);
-
-    pastTargetDate.setDate(pastTargetDate.getDate() - days);
-
-    // Find closest entry
-    let closestEntry: { date: string; price: number } | null = null;
-    let minDiff = Infinity;
-
-    for (const entry of history) {
-      const entryDate = new Date(entry.date);
-      const diff = Math.abs(entryDate.getTime() - pastTargetDate.getTime());
-
-      if (diff < minDiff) {
-        minDiff = diff;
-        closestEntry = entry;
-      }
-    }
-
-    if (closestEntry) {
-      // Tolerance check (2 days)
-      if (minDiff <= 2 * 24 * 60 * 60 * 1000) {
-        const pastValue = closestEntry.price;
-
-        if (pastValue !== 0) {
-          changes[key] = ((currentPrice - pastValue) / pastValue) * 100;
-        } else {
-          changes[key] = null;
-        }
-      } else {
-        changes[key] = null;
-      }
-    } else {
-      changes[key] = null;
-    }
-  }
-
-  return changes;
-}
-
 export function PricePanel({
   cryptoId,
   symbol,
@@ -121,21 +64,18 @@ export function PricePanel({
       }),
     })) || [];
 
-  // Calculate changes from stable 90d history as fallback
-  const history = infoData?.prices || [];
-  const computedChanges = calculatePriceChanges(history, currentPrice);
-
-  // Merge: computed as fallback, API non-null values take priority
-  const displayChanges: Record<string, number | null> = {};
-
-  for (const [key, value] of Object.entries(computedChanges)) {
-    if (typeof value === "number") displayChanges[key] = value;
-  }
-  if (infoData?.current?.changes) {
-    for (const [key, value] of Object.entries(infoData.current.changes)) {
-      if (typeof value === "number") displayChanges[key] = value;
-    }
-  }
+  // Display percent changes straight from the API — never computed front-side.
+  // Missing values surface as "no data" rather than a derived approximation.
+  const apiChanges = (infoData?.current?.changes ?? {}) as Record<
+    string,
+    number | null | undefined
+  >;
+  const displayChanges: Record<string, number | null> = {
+    "24h": typeof apiChanges["24h"] === "number" ? apiChanges["24h"] : null,
+    "7d": typeof apiChanges["7d"] === "number" ? apiChanges["7d"] : null,
+    "30d": typeof apiChanges["30d"] === "number" ? apiChanges["30d"] : null,
+    "90d": typeof apiChanges["90d"] === "number" ? apiChanges["90d"] : null,
+  };
 
   return (
     <div className="flex flex-col gap-4">

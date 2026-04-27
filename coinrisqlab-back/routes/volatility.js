@@ -158,11 +158,56 @@ api.get('/volatility/crypto/:id', async (req, res) => {
       ORDER BY date ASC
     `, [cryptoId]);
 
+    // Backend-computed deltas — the front never derives metrics, it just
+    // reads `changes`. Returns null per period when the historical window
+    // doesn't reach back that far; the UI surfaces "no data" in that case.
+    const computeDelta = async (days) => {
+      const [rows] = await Database.execute(`
+        SELECT cv_now.daily_volatility AS daily_now,
+               cv_now.annualized_volatility AS ann_now,
+               cv_past.daily_volatility AS daily_past,
+               cv_past.annualized_volatility AS ann_past
+        FROM crypto_volatility cv_now
+        LEFT JOIN crypto_volatility cv_past
+          ON cv_past.crypto_id = cv_now.crypto_id
+         AND cv_past.date = DATE_SUB(cv_now.date, INTERVAL ? DAY)
+        WHERE cv_now.crypto_id = ?
+        ORDER BY cv_now.date DESC
+        LIMIT 1
+      `, [days, cryptoId]);
+
+      if (rows.length === 0 || rows[0].daily_past === null) {
+        return { daily: null, annualized: null };
+      }
+      const dNow = parseFloat(rows[0].daily_now);
+      const dPast = parseFloat(rows[0].daily_past);
+      const aNow = parseFloat(rows[0].ann_now);
+      const aPast = parseFloat(rows[0].ann_past);
+
+      return {
+        daily: dPast > 0 ? ((dNow - dPast) / dPast) * 100 : null,
+        annualized: aPast > 0 ? ((aNow - aPast) / aPast) * 100 : null,
+      };
+    };
+
+    const [d24, d7, d30, d90] = await Promise.all([
+      computeDelta(1),
+      computeDelta(7),
+      computeDelta(30),
+      computeDelta(90),
+    ]);
+
     res.json({
       data: {
         crypto: crypto[0],
         latest: latest[0] || null,
-        history: history
+        history: history,
+        changes: {
+          '24h': d24,
+          '7d': d7,
+          '30d': d30,
+          '90d': d90,
+        },
       }
     });
 
