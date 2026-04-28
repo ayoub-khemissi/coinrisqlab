@@ -25,6 +25,7 @@ import {
   StressScenarioId,
   STRESS_SCENARIO_COLORS,
   StressScenario,
+  getBetaInterpretation,
 } from "@/types/risk-metrics";
 
 interface StressTestPanelProps {
@@ -276,11 +277,9 @@ export function StressTestPanel({ cryptoId, symbol }: StressTestPanelProps) {
               </p>
               <Chip
                 color={
-                  data?.beta && data.beta > 1.5
-                    ? "danger"
-                    : data?.beta && data.beta > 1
-                      ? "warning"
-                      : "success"
+                  data?.beta != null
+                    ? getBetaInterpretation(data.beta).color
+                    : "default"
                 }
                 size="lg"
                 variant="flat"
@@ -472,11 +471,11 @@ export function StressTestPanel({ cryptoId, symbol }: StressTestPanelProps) {
               {data?.beta?.toFixed(4) || "1.0000"} means this crypto
               {data?.beta != null && data.beta < 0
                 ? " typically moves opposite to the market — but in a crisis all betas tend toward 1, so we apply the raw market shock here"
-                : data?.beta != null && data.beta > 1
-                  ? ` amplifies market movements by ${((data.beta - 1) * 100).toFixed(0)}%`
-                  : data?.beta != null && data.beta < 1
-                    ? ` dampens market movements by ${((1 - data.beta) * 100).toFixed(0)}%`
-                    : " moves exactly like the market"}
+                : data?.beta != null && data.beta > 1.05
+                  ? ` amplifies market movements by ${((data.beta - 1) * 100).toFixed(2)}%`
+                  : data?.beta != null && data.beta < 0.95
+                    ? ` dampens market movements by ${((1 - data.beta) * 100).toFixed(2)}%`
+                    : " moves essentially in line with the market"}
               .
             </p>
             <MethodologyLink section="stress-test" variant="full" />

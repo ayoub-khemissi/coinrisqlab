@@ -359,13 +359,15 @@ export function BetaPanel({
                   {betaInterpretation.description}
                 </p>
                 <p className="text-sm text-default-500 mt-2">
-                  {data?.beta && data.beta > 1
-                    ? `When the market moves 1%, ${symbol.toUpperCase()} is expected to move ${data.beta.toFixed(4)}%`
-                    : data?.beta && data.beta < 1 && data.beta > 0
-                      ? `When the market moves 1%, ${symbol.toUpperCase()} is expected to move only ${data.beta.toFixed(4)}%`
-                      : data?.beta && data.beta < 0
-                        ? `When the market moves 1%, ${symbol.toUpperCase()} tends to move ${Math.abs(data.beta).toFixed(4)}% in the opposite direction`
-                        : `${symbol.toUpperCase()} moves in line with the market`}
+                  {data?.beta != null && betaInterpretation?.category === "market"
+                    ? `When the market moves 1%, ${symbol.toUpperCase()} moves roughly ${data.beta.toFixed(4)}% — essentially in line with the market.`
+                    : data?.beta != null && data.beta > 1.05
+                      ? `When the market moves 1%, ${symbol.toUpperCase()} is expected to move ${data.beta.toFixed(4)}%.`
+                      : data?.beta != null && data.beta >= 0 && data.beta < 0.95
+                        ? `When the market moves 1%, ${symbol.toUpperCase()} is expected to move only ${data.beta.toFixed(4)}%.`
+                        : data?.beta != null && data.beta < 0
+                          ? `When the market moves 1%, ${symbol.toUpperCase()} tends to move ${Math.abs(data.beta).toFixed(4)}% in the opposite direction.`
+                          : `${symbol.toUpperCase()} moves in line with the market.`}
                 </p>
               </div>
             </div>

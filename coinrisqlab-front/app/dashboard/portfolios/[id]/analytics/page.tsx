@@ -34,7 +34,11 @@ import {
   Cell as RechartsCell,
 } from "recharts";
 
-import { StressScenarioId, STRESS_SCENARIO_COLORS } from "@/types/risk-metrics";
+import {
+  StressScenarioId,
+  STRESS_SCENARIO_COLORS,
+  getBetaInterpretation,
+} from "@/types/risk-metrics";
 import { formatCryptoPrice } from "@/lib/formatters";
 import { API_BASE_URL } from "@/config/constants";
 import { useUserAuth } from "@/lib/user-auth-context";
@@ -587,11 +591,7 @@ export default function PortfolioAnalyticsPage() {
                 </div>
                 <p className="text-3xl font-bold">{volatility.beta}</p>
                 <p className="text-xs text-default-400 mt-1">
-                  {volatility.beta > 1
-                    ? "More volatile than market"
-                    : volatility.beta < 1
-                      ? "Less volatile than market"
-                      : "Market-neutral"}
+                  {getBetaInterpretation(Number(volatility.beta)).description}
                 </p>
               </CardBody>
             </Card>
@@ -913,9 +913,11 @@ export default function PortfolioAnalyticsPage() {
                       {riskMetrics.beta ?? volatility?.beta ?? "—"}
                     </p>
                     <p className="text-xs text-default-400 mt-2">
-                      {(riskMetrics.beta ?? volatility?.beta ?? 1) > 1
-                        ? "Amplifies market moves"
-                        : "Dampens market moves"}
+                      {
+                        getBetaInterpretation(
+                          Number(riskMetrics.beta ?? volatility?.beta ?? 1),
+                        ).description
+                      }
                     </p>
                   </CardBody>
                 </Card>
@@ -1201,16 +1203,13 @@ export default function PortfolioAnalyticsPage() {
                           </p>
                           <Chip
                             color={
-                              stressTest.portfolioBeta > 1.5
-                                ? "danger"
-                                : stressTest.portfolioBeta > 1
-                                  ? "warning"
-                                  : "success"
+                              getBetaInterpretation(stressTest.portfolioBeta)
+                                .color
                             }
                             size="lg"
                             variant="flat"
                           >
-                            {stressTest.portfolioBeta.toFixed(2)}
+                            {stressTest.portfolioBeta.toFixed(4)}
                           </Chip>
                         </div>
                       </div>
