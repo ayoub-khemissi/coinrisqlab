@@ -8,6 +8,7 @@ import { Chip } from "@heroui/chip";
 import {
   Shield,
   TrendingUp,
+  TrendingDown,
   BarChart2,
   GitBranch,
   GitCompare,
@@ -16,6 +17,7 @@ import {
   AlertTriangle,
   Target,
   Activity,
+  Gauge,
 } from "lucide-react";
 
 import { Math } from "@/components/math";
@@ -36,6 +38,8 @@ const RISK_METRICS_SECTIONS = [
   "skewness",
   "kurtosis",
   "stress-test",
+  "moving-average",
+  "rsi",
   "parameters",
 ];
 
@@ -194,6 +198,24 @@ export default function RiskMetricsMethodologyPage() {
                   onPress={() => scrollToSection("stress-test")}
                 >
                   Stress Test
+                </Button>
+                <Button
+                  className="justify-start"
+                  size="sm"
+                  variant={
+                    activeSection === "moving-average" ? "flat" : "light"
+                  }
+                  onPress={() => scrollToSection("moving-average")}
+                >
+                  Moving Average (90d)
+                </Button>
+                <Button
+                  className="justify-start"
+                  size="sm"
+                  variant={activeSection === "rsi" ? "flat" : "light"}
+                  onPress={() => scrollToSection("rsi")}
+                >
+                  RSI (14d)
                 </Button>
                 <Button
                   className="justify-start"
@@ -1695,6 +1717,241 @@ export default function RiskMetricsMethodologyPage() {
             </CardBody>
           </Card>
 
+          {/* Moving Average Section */}
+          <Card id="moving-average">
+            <CardBody className="p-8">
+              <div className="flex items-center justify-center sm:justify-start gap-3 mb-4">
+                <TrendingDown className="w-6 h-6 text-success" />
+                <h2 className="text-2xl font-bold text-center sm:text-left">
+                  Moving Average (90d)
+                </h2>
+              </div>
+              <p className="text-default-600 mb-6">
+                The 90-day Simple Moving Average (SMA) smooths daily close
+                prices into a single trend line. It is used as a long-term
+                trend filter: a price trading above its 90d MA signals a
+                bullish regime, below it a bearish regime.
+              </p>
+
+              <div className="space-y-6">
+                <div className="bg-success/5 p-6 rounded-lg border-l-4 border-success">
+                  <h3 className="text-xl font-bold mb-3">Formula</h3>
+                  <div className="bg-content1 p-4 rounded-lg">
+                    <Math display>
+                      {
+                        "\\text{SMA}_n(t) = \\frac{1}{n} \\sum_{i=0}^{n-1} P_{t-i}"
+                      }
+                    </Math>
+                    <div className="text-xs text-default-500 mt-2">
+                      Where <Math>{"P_t"}</Math> = OHLC close price at day{" "}
+                      <Math>{"t"}</Math>, <Math>{"n = 90"}</Math> trading days.
+                    </div>
+                  </div>
+                  <p className="text-default-600 mt-4 text-sm">
+                    The first MA is computed once a crypto has at least
+                    <strong> 7 daily closes</strong>, with the window growing
+                    from 7 up to 90 days as history accumulates and then
+                    staying capped at 90. The actual window used for each
+                    point is persisted alongside the value in{" "}
+                    <code>crypto_moving_averages.window_days</code>, so a
+                    young crypto&apos;s early MA can be told apart from a
+                    fully-seeded one.
+                  </p>
+                </div>
+
+                <div className="bg-default-50 p-6 rounded-lg">
+                  <h3 className="text-xl font-bold mb-3">Interpretation</h3>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b border-default-200">
+                          <th className="text-left py-2 px-3">Signal</th>
+                          <th className="text-left py-2 px-3">Meaning</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr className="border-b border-default-100">
+                          <td className="py-2 px-3">
+                            <Chip color="success" size="sm" variant="flat">
+                              Price &gt; MA 90d
+                            </Chip>
+                          </td>
+                          <td className="py-2 px-3 text-default-600">
+                            Price trades above its long-term trend — bullish
+                            regime
+                          </td>
+                        </tr>
+                        <tr className="border-b border-default-100">
+                          <td className="py-2 px-3">
+                            <Chip color="danger" size="sm" variant="flat">
+                              Price &lt; MA 90d
+                            </Chip>
+                          </td>
+                          <td className="py-2 px-3 text-default-600">
+                            Price trades below its long-term trend — bearish
+                            regime
+                          </td>
+                        </tr>
+                        <tr>
+                          <td className="py-2 px-3">
+                            <Chip color="default" size="sm" variant="flat">
+                              Crossover
+                            </Chip>
+                          </td>
+                          <td className="py-2 px-3 text-default-600">
+                            Price crosses the MA — potential trend change
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                <div className="bg-warning/5 p-6 rounded-lg border-l-4 border-warning">
+                  <h3 className="text-xl font-bold mb-3">Caveats</h3>
+                  <p className="text-default-600 text-sm">
+                    The SMA is a <strong>lagging</strong> indicator: it
+                    reacts to past prices, not future ones, and never spots a
+                    turning point in real time. It also gives equal weight to
+                    each of the 90 days, so a single old day still influences
+                    today&apos;s value as much as yesterday&apos;s.
+                  </p>
+                </div>
+              </div>
+            </CardBody>
+          </Card>
+
+          {/* RSI Section */}
+          <Card id="rsi">
+            <CardBody className="p-8">
+              <div className="flex items-center justify-center sm:justify-start gap-3 mb-4">
+                <Gauge className="w-6 h-6 text-warning" />
+                <h2 className="text-2xl font-bold text-center sm:text-left">
+                  RSI (14d)
+                </h2>
+              </div>
+              <p className="text-default-600 mb-6">
+                The Relative Strength Index (Wilder, 1978) is a momentum
+                oscillator bounded between 0 and 100. It compares the
+                magnitude of recent gains to recent losses over a 14-day
+                window and is the standard short-term overbought / oversold
+                indicator.
+              </p>
+
+              <div className="space-y-6">
+                <div className="bg-warning/5 p-6 rounded-lg border-l-4 border-warning">
+                  <h3 className="text-xl font-bold mb-3">Formula</h3>
+                  <p className="text-default-600 mb-3 text-sm">
+                    For each day, split the daily price change into a gain
+                    and a loss component:
+                  </p>
+                  <div className="bg-content1 p-4 rounded-lg mb-3">
+                    <Math display>
+                      {
+                        "\\Delta_t = P_t - P_{t-1}, \\quad g_t = \\max(\\Delta_t, 0), \\quad l_t = \\max(-\\Delta_t, 0)"
+                      }
+                    </Math>
+                  </div>
+                  <p className="text-default-600 mb-3 text-sm">
+                    Seed the average gain and loss with a 14-day simple
+                    average, then apply Wilder&apos;s smoothing
+                    (exponential, recursion of order 14):
+                  </p>
+                  <div className="bg-content1 p-4 rounded-lg mb-3">
+                    <Math display>
+                      {
+                        "\\overline{g}_t = \\frac{(n-1) \\cdot \\overline{g}_{t-1} + g_t}{n}, \\quad \\overline{l}_t = \\frac{(n-1) \\cdot \\overline{l}_{t-1} + l_t}{n}"
+                      }
+                    </Math>
+                  </div>
+                  <p className="text-default-600 mb-3 text-sm">
+                    Compute the relative strength and the RSI:
+                  </p>
+                  <div className="bg-content1 p-4 rounded-lg">
+                    <Math display>
+                      {
+                        "\\text{RS}_t = \\frac{\\overline{g}_t}{\\overline{l}_t}, \\quad \\text{RSI}_t = 100 - \\frac{100}{1 + \\text{RS}_t}"
+                      }
+                    </Math>
+                    <div className="text-xs text-default-500 mt-2">
+                      Where <Math>{"n = 14"}</Math> trading days. The first
+                      RSI requires <strong>15 daily closes</strong> (14 daily
+                      changes for the seed + 1 prior price). Edge cases:
+                      when both averages are zero (flat price across the
+                      window) the RSI defaults to <strong>50</strong>; when
+                      only <Math>{"\\overline{l}_t = 0"}</Math> it saturates
+                      at <strong>100</strong>; when only{" "}
+                      <Math>{"\\overline{g}_t = 0"}</Math> it saturates at{" "}
+                      <strong>0</strong>.
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-default-50 p-6 rounded-lg">
+                  <h3 className="text-xl font-bold mb-3">Interpretation</h3>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b border-default-200">
+                          <th className="text-left py-2 px-3">RSI Range</th>
+                          <th className="text-left py-2 px-3">Zone</th>
+                          <th className="text-left py-2 px-3">Meaning</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr className="border-b border-default-100">
+                          <td className="py-2 px-3">{"RSI < 30"}</td>
+                          <td className="py-2 px-3">
+                            <Chip color="success" size="sm" variant="flat">
+                              Oversold
+                            </Chip>
+                          </td>
+                          <td className="py-2 px-3 text-default-600">
+                            Recent losses dominate — possible buying
+                            opportunity (mean reversion)
+                          </td>
+                        </tr>
+                        <tr className="border-b border-default-100">
+                          <td className="py-2 px-3">{"30 ≤ RSI ≤ 70"}</td>
+                          <td className="py-2 px-3">
+                            <Chip color="default" size="sm" variant="flat">
+                              Neutral
+                            </Chip>
+                          </td>
+                          <td className="py-2 px-3 text-default-600">
+                            Balanced gains and losses — no extreme momentum
+                          </td>
+                        </tr>
+                        <tr>
+                          <td className="py-2 px-3">{"RSI > 70"}</td>
+                          <td className="py-2 px-3">
+                            <Chip color="warning" size="sm" variant="flat">
+                              Overbought
+                            </Chip>
+                          </td>
+                          <td className="py-2 px-3 text-default-600">
+                            Recent gains dominate — possible pullback
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                <div className="bg-default-50 p-6 rounded-lg">
+                  <h3 className="text-xl font-bold mb-3">Caveats</h3>
+                  <p className="text-default-600 text-sm">
+                    In a strong trend the RSI can stay above 70 (or below 30)
+                    for weeks without a reversal — the &quot;overbought&quot;
+                    label does not mean &quot;sell now.&quot; The RSI works
+                    best in range-bound markets and as a confirmation signal
+                    alongside trend-following indicators (e.g. the 90d MA).
+                  </p>
+                </div>
+              </div>
+            </CardBody>
+          </Card>
+
           {/* Parameters Section */}
           <Card id="parameters">
             <CardBody className="p-8">
@@ -1738,6 +1995,30 @@ export default function RiskMetricsMethodologyPage() {
                       </td>
                       <td className="py-3 px-4 text-default-600">
                         Shorter window to capture recent distribution
+                      </td>
+                    </tr>
+                    <tr className="border-b border-default-200">
+                      <td className="py-3 px-4 font-semibold">
+                        Moving Average Window
+                      </td>
+                      <td className="py-3 px-4">
+                        <Chip color="warning" size="sm">
+                          90 days
+                        </Chip>
+                      </td>
+                      <td className="py-3 px-4 text-default-600">
+                        Long-term trend filter on close prices
+                      </td>
+                    </tr>
+                    <tr className="border-b border-default-200">
+                      <td className="py-3 px-4 font-semibold">RSI Window</td>
+                      <td className="py-3 px-4">
+                        <Chip color="warning" size="sm">
+                          14 days
+                        </Chip>
+                      </td>
+                      <td className="py-3 px-4 text-default-600">
+                        Standard Wilder smoothing window for momentum
                       </td>
                     </tr>
                     <tr className="border-b border-default-200">
