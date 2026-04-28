@@ -343,19 +343,19 @@ api.get('/user/portfolios/:id/performance', authenticateUser, async (req, res) =
     // 5-day-old portfolio would show its 5d return next to a 30d index
     // return, which is not a fair comparison.
     const portfolioStartDate = twr.series.length > 0 ? twr.series[0].date : null;
-    const clippedIndex = portfolioStartDate
-      ? indexHistory.filter((h) => {
-          const d = h.snapshot_date instanceof Date
-            ? h.snapshot_date.toISOString().slice(0, 10)
-            : String(h.snapshot_date);
-          return d >= portfolioStartDate;
-        })
-      : indexHistory;
+    const toIsoDate = (d) =>
+      d instanceof Date ? d.toISOString().slice(0, 10) : String(d).slice(0, 10);
+    const clippedIndex = (portfolioStartDate
+      ? indexHistory.filter((h) => toIsoDate(h.snapshot_date) >= portfolioStartDate)
+      : indexHistory).map((h) => ({
+        date: toIsoDate(h.snapshot_date),
+        index_level: parseFloat(h.index_level),
+      }));
 
     const indexNormalized =
       clippedIndex.length > 0
         ? clippedIndex.map((h) => ({
-            date: h.snapshot_date,
+            date: h.date,
             value: ((h.index_level / clippedIndex[0].index_level) * 100),
           }))
         : [];
@@ -755,27 +755,29 @@ api.get('/user/portfolios/:id/analytics-bundle', authenticateUser, async (req, r
     }
 
     // Clip the index series to the portfolio's actual lifetime so the
-    // cumulative chips compare like-for-like windows.
+    // cumulative chips compare like-for-like windows. Normalise dates to
+    // 'YYYY-MM-DD' strings so they align with the TWR helper's output —
+    // otherwise the front's date Map can't intersect the two series.
     const portfolioStartDate = twr.series.length > 0 ? twr.series[0].date : null;
-    const clippedIndex = portfolioStartDate
-      ? indexHistory.filter((h) => {
-          const d = h.snapshot_date instanceof Date
-            ? h.snapshot_date.toISOString().slice(0, 10)
-            : String(h.snapshot_date);
-          return d >= portfolioStartDate;
-        })
-      : indexHistory;
+    const toIsoDate = (d) =>
+      d instanceof Date ? d.toISOString().slice(0, 10) : String(d).slice(0, 10);
+    const clippedIndex = (portfolioStartDate
+      ? indexHistory.filter((h) => toIsoDate(h.snapshot_date) >= portfolioStartDate)
+      : indexHistory).map((h) => ({
+        date: toIsoDate(h.snapshot_date),
+        index_level: parseFloat(h.index_level),
+      }));
 
     // 24h rolling: portfolio side comes from the TWR helper (proper daily
     // weighted simple return), index side from successive index_level diffs.
     const benchmark24hSeries =
       clippedIndex.length >= 2
         ? clippedIndex.map((h, i) => {
-            if (i === 0) return { date: h.snapshot_date, pct: null };
-            const curr = parseFloat(h.index_level);
-            const prev = parseFloat(clippedIndex[i - 1].index_level);
+            if (i === 0) return { date: h.date, pct: null };
+            const curr = h.index_level;
+            const prev = clippedIndex[i - 1].index_level;
             const pct = prev > 0 ? ((curr - prev) / prev) * 100 : 0;
-            return { date: h.snapshot_date, pct: pct };
+            return { date: h.date, pct: pct };
           })
         : [];
 
@@ -784,7 +786,7 @@ api.get('/user/portfolios/:id/analytics-bundle', authenticateUser, async (req, r
       benchmark:
         clippedIndex.length > 0
           ? clippedIndex.map((h) => ({
-              date: h.snapshot_date,
+              date: h.date,
               value: ((h.index_level / clippedIndex[0].index_level) * 100),
             }))
           : [],
