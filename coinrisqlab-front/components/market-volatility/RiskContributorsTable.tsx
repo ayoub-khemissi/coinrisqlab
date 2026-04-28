@@ -291,7 +291,7 @@ export function RiskContributorsTable({
               <TableCell>
                 <div className="text-right">
                   <p className="font-semibold text-primary">
-                    {item.riskContributionPercentage.toFixed(1)}%
+                    {item.riskContributionPercentage.toFixed(2)}%
                   </p>
                   <p className="text-xs text-default-500">
                     {(item.riskContribution * 100).toFixed(2)}% gross

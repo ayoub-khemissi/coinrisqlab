@@ -277,7 +277,7 @@ export default function PortfolioAnalyticsPage() {
                   variant="flat"
                 >
                   Portfolio: {performance.portfolioReturn >= 0 ? "+" : ""}
-                  {performance.portfolioReturn}%
+                  {Number(performance.portfolioReturn).toFixed(2)}%
                 </Chip>
                 <Chip
                   color={
@@ -287,7 +287,7 @@ export default function PortfolioAnalyticsPage() {
                   variant="flat"
                 >
                   Index: {performance.benchmarkReturn >= 0 ? "+" : ""}
-                  {performance.benchmarkReturn}%
+                  {Number(performance.benchmarkReturn).toFixed(2)}%
                 </Chip>
               </div>
             </div>
@@ -305,7 +305,7 @@ export default function PortfolioAnalyticsPage() {
                 >
                   Portfolio:{" "}
                   {(performance.portfolio24hReturn || 0) >= 0 ? "+" : ""}
-                  {performance.portfolio24hReturn || 0}%
+                  {Number(performance.portfolio24hReturn || 0).toFixed(2)}%
                 </Chip>
                 <Chip
                   color={
@@ -317,7 +317,7 @@ export default function PortfolioAnalyticsPage() {
                   variant="flat"
                 >
                   Index: {(performance.benchmark24hReturn || 0) >= 0 ? "+" : ""}
-                  {performance.benchmark24hReturn || 0}%
+                  {Number(performance.benchmark24hReturn || 0).toFixed(2)}%
                 </Chip>
               </div>
             )}
@@ -726,8 +726,8 @@ export default function PortfolioAnalyticsPage() {
                         <TableCell>{(c.weight * 100).toFixed(2)}%</TableCell>
                         <TableCell>
                           {volatilityMode === "daily"
-                            ? `${(c.daily_volatility * 100).toFixed(3)}%`
-                            : `${c.annualized_volatility}%`}
+                            ? `${(c.daily_volatility * 100).toFixed(2)}%`
+                            : `${Number(c.annualized_volatility).toFixed(2)}%`}
                         </TableCell>
                         <TableCell>
                           <div className="flex items-center gap-2">
@@ -746,7 +746,7 @@ export default function PortfolioAnalyticsPage() {
                               />
                             </div>
                             <span className="text-xs">
-                              {(c.riskContribution * 100).toFixed(3)}%
+                              {(c.riskContribution * 100).toFixed(2)}%
                             </span>
                           </div>
                         </TableCell>
@@ -1167,7 +1167,7 @@ export default function PortfolioAnalyticsPage() {
 
                             return (
                               <td key={j} className={`p-2 text-center ${bg}`}>
-                                {val.toFixed(2)}
+                                {val.toFixed(4)}
                               </td>
                             );
                           })}
