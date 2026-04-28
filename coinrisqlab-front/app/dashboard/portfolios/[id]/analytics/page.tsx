@@ -547,7 +547,7 @@ export default function PortfolioAnalyticsPage() {
                     >
                       {volatilityMode === "daily"
                         ? `${(volatility.dailyVolatility * 100).toFixed(3)}%`
-                        : `${volatility.annualizedVolatility}%`}
+                        : `${Number(volatility.annualizedVolatility).toFixed(2)}%`}
                     </p>
                     <p className="text-xs text-default-500">
                       {volatilityMode === "daily" ? "Daily" : "Annualized"}
@@ -589,7 +589,9 @@ export default function PortfolioAnalyticsPage() {
                     window="365 days"
                   />
                 </div>
-                <p className="text-3xl font-bold">{volatility.beta}</p>
+                <p className="text-3xl font-bold">
+                  {Number(volatility.beta).toFixed(4)}
+                </p>
                 <p className="text-xs text-default-400 mt-1">
                   {getBetaInterpretation(Number(volatility.beta)).description}
                 </p>
@@ -611,7 +613,7 @@ export default function PortfolioAnalyticsPage() {
                   />
                 </div>
                 <p className="text-3xl font-bold">
-                  {volatility.diversificationBenefit || 0}%
+                  {(volatility.diversificationBenefit ?? 0).toFixed(2)}%
                 </p>
                 <div className="flex items-center gap-3 mt-2">
                   <div className="flex-1 bg-default-100 rounded-full h-2">
@@ -838,7 +840,7 @@ export default function PortfolioAnalyticsPage() {
                                 : "text-danger",
                             )}
                           >
-                            -{item.value}%
+                            -{Number(item.value).toFixed(2)}%
                           </p>
                           {portfolioValue > 0 && (
                             <p
@@ -877,7 +879,9 @@ export default function PortfolioAnalyticsPage() {
                         window="365 days"
                       />
                     </p>
-                    <p className="text-4xl font-bold">{riskMetrics.sharpe}</p>
+                    <p className="text-4xl font-bold">
+                      {Number(riskMetrics.sharpe).toFixed(2)}
+                    </p>
                     <Chip
                       className="mt-2 mx-auto"
                       color={
@@ -910,7 +914,11 @@ export default function PortfolioAnalyticsPage() {
                       />
                     </p>
                     <p className="text-4xl font-bold">
-                      {riskMetrics.beta ?? volatility?.beta ?? "—"}
+                      {(() => {
+                        const b = riskMetrics.beta ?? volatility?.beta;
+
+                        return b != null ? Number(b).toFixed(4) : "—";
+                      })()}
                     </p>
                     <p className="text-xs text-default-400 mt-2">
                       {
@@ -943,7 +951,7 @@ export default function PortfolioAnalyticsPage() {
                       )}
                     >
                       {(riskMetrics.alpha || 0) >= 0 ? "+" : ""}
-                      {riskMetrics.alpha || 0}%
+                      {Number(riskMetrics.alpha || 0).toFixed(4)}%
                     </p>
                     <p className="text-xs text-default-400 mt-2">
                       {(riskMetrics.alpha || 0) > 0
@@ -971,7 +979,7 @@ export default function PortfolioAnalyticsPage() {
                         {[
                           {
                             label: "Annualized Return",
-                            value: `${riskMetrics.returnStats.annualized >= 0 ? "+" : ""}${riskMetrics.returnStats.annualized}%`,
+                            value: `${riskMetrics.returnStats.annualized >= 0 ? "+" : ""}${Number(riskMetrics.returnStats.annualized).toFixed(2)}%`,
                             color:
                               riskMetrics.returnStats.annualized >= 0
                                 ? "text-success"
@@ -979,7 +987,7 @@ export default function PortfolioAnalyticsPage() {
                           },
                           {
                             label: "Mean Daily Return",
-                            value: `${riskMetrics.returnStats.meanDaily >= 0 ? "+" : ""}${riskMetrics.returnStats.meanDaily}%`,
+                            value: `${riskMetrics.returnStats.meanDaily >= 0 ? "+" : ""}${Number(riskMetrics.returnStats.meanDaily).toFixed(4)}%`,
                             color:
                               riskMetrics.returnStats.meanDaily >= 0
                                 ? "text-success"
@@ -987,17 +995,17 @@ export default function PortfolioAnalyticsPage() {
                           },
                           {
                             label: "Daily Std Dev",
-                            value: `${riskMetrics.returnStats.dailyStd}%`,
+                            value: `${Number(riskMetrics.returnStats.dailyStd).toFixed(4)}%`,
                             color: "",
                           },
                           {
                             label: `Best Day (${riskMetrics.dataPoints}d)`,
-                            value: `+${riskMetrics.returnStats.max}%`,
+                            value: `+${Number(riskMetrics.returnStats.max).toFixed(2)}%`,
                             color: "text-success",
                           },
                           {
                             label: `Worst Day (${riskMetrics.dataPoints}d)`,
-                            value: `${riskMetrics.returnStats.min}%`,
+                            value: `${Number(riskMetrics.returnStats.min).toFixed(2)}%`,
                             color: "text-danger",
                           },
                         ].map((item) => (
@@ -1044,7 +1052,9 @@ export default function PortfolioAnalyticsPage() {
                             Skewness
                           </span>
                           <span className="text-sm font-semibold">
-                            {riskMetrics.skewness ?? "—"}
+                            {riskMetrics.skewness != null
+                              ? Number(riskMetrics.skewness).toFixed(2)
+                              : "—"}
                           </span>
                         </div>
                         <p className="text-xs text-default-400">
@@ -1061,7 +1071,9 @@ export default function PortfolioAnalyticsPage() {
                             Excess Kurtosis
                           </span>
                           <span className="text-sm font-semibold">
-                            {riskMetrics.kurtosis ?? "—"}
+                            {riskMetrics.kurtosis != null
+                              ? Number(riskMetrics.kurtosis).toFixed(2)
+                              : "—"}
                           </span>
                         </div>
                         <p className="text-xs text-default-400">
@@ -1078,7 +1090,10 @@ export default function PortfolioAnalyticsPage() {
                             Diversification
                           </span>
                           <span className="text-sm font-semibold">
-                            {riskMetrics.diversificationBenefit}%
+                            {Number(
+                              riskMetrics.diversificationBenefit ?? 0,
+                            ).toFixed(2)}
+                            %
                           </span>
                         </div>
                         <div className="flex items-center gap-3">
