@@ -347,7 +347,10 @@ export function BetaPanel({
           <CardBody className="p-4">
             <div className="flex items-start gap-4">
               <Chip
-                className="min-w-[100px] justify-center"
+                classNames={{
+                  base: "min-w-[110px]",
+                  content: "w-full text-center",
+                }}
                 color={betaInterpretation.color}
                 size="lg"
                 variant="flat"

@@ -531,7 +531,14 @@ export default function VolatilityMethodologyPage() {
               <div className="bg-default-50 p-6 rounded-lg">
                 <div className="flex flex-col gap-4">
                   <div className="flex flex-col sm:flex-row sm:items-center gap-3 items-center">
-                    <Chip className="min-w-16 w-fit" color="primary" size="lg">
+                    <Chip
+                      classNames={{
+                        base: "min-w-16 w-fit",
+                        content: "w-full text-center",
+                      }}
+                      color="primary"
+                      size="lg"
+                    >
                       Stage 1
                     </Chip>
                     <div className="text-center sm:text-left">
@@ -546,7 +553,14 @@ export default function VolatilityMethodologyPage() {
                     <div className="w-px h-8 bg-default-300" />
                   </div>
                   <div className="flex flex-col sm:flex-row sm:items-center gap-3 items-center">
-                    <Chip className="min-w-16 w-fit" color="success" size="lg">
+                    <Chip
+                      classNames={{
+                        base: "min-w-16 w-fit",
+                        content: "w-full text-center",
+                      }}
+                      color="success"
+                      size="lg"
+                    >
                       Stage 2
                     </Chip>
                     <div className="text-center sm:text-left">
