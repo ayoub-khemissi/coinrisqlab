@@ -997,7 +997,7 @@ export default function PortfolioAnalyticsPage() {
                           },
                           {
                             label: "Daily Std Dev",
-                            value: `${Number(riskMetrics.returnStats.dailyStd).toFixed(4)}%`,
+                            value: `${Number(riskMetrics.returnStats.dailyStd).toFixed(2)}%`,
                             color: "",
                           },
                           {
