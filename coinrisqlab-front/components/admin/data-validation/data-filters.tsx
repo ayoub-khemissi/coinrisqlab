@@ -235,19 +235,19 @@ export function DataFilters({
 
     if (showCryptoSearch2) {
       // Correlation: 2 cryptos required, 1 row per shared date
-      return `≈ ${dayCount} jours × 1 paire = ~${dayCount.toLocaleString("fr-FR")} lignes`;
+      return `≈ ${dayCount} days × 1 pair = ~${dayCount.toLocaleString("en-US")} rows`;
     }
     if (isPerCrypto) {
-      const multiplier = cryptoCount > 0 ? cryptoCount : "toutes les cryptos";
+      const multiplier = cryptoCount > 0 ? cryptoCount : "all cryptos";
       const total =
         cryptoCount > 0
-          ? `~${(dayCount * cryptoCount).toLocaleString("fr-FR")} lignes`
-          : `~${dayCount.toLocaleString("fr-FR")} lignes / crypto`;
+          ? `~${(dayCount * cryptoCount).toLocaleString("en-US")} rows`
+          : `~${dayCount.toLocaleString("en-US")} rows / crypto`;
 
-      return `≈ ${dayCount} jours × ${multiplier} = ${total}`;
+      return `≈ ${dayCount} days × ${multiplier} = ${total}`;
     }
 
-    return `≈ ${dayCount.toLocaleString("fr-FR")} lignes`;
+    return `≈ ${dayCount.toLocaleString("en-US")} rows`;
   })();
 
   const renderWindowField = () => {
@@ -260,7 +260,7 @@ export function DataFilters({
         <div className="flex flex-col">
           <span className="text-xs text-default-500 mb-1 px-1">Window</span>
           <Chip size="md" variant="flat">
-            {only} jours
+            {only} days
           </Chip>
         </div>
       );
@@ -280,8 +280,8 @@ export function DataFilters({
         }}
       >
         {windowMeta.windows.map((w) => (
-          <SelectItem key={String(w)} textValue={`${w} jours`}>
-            {w} jours{w === windowMeta.canonical ? " (méthodo)" : ""}
+          <SelectItem key={String(w)} textValue={`${w} days`}>
+            {w} days{w === windowMeta.canonical ? " (methodology)" : ""}
           </SelectItem>
         ))}
       </Select>
