@@ -27,6 +27,7 @@ import {
   getIndexLogReturnsMap,
   getAlignedReturns,
 } from '../utils/userPortfolioAnalytics.js';
+import { computePortfolioTWR } from '../utils/userPortfolioPerformance.js';
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -280,14 +281,9 @@ api.get('/user/portfolios/:id/performance', authenticateUser, async (req, res) =
 
     const dateFilter = getDateFilter(period, 'snapshot_date');
 
-    // Portfolio snapshots
-    const [snapshots] = await Database.execute(
-      `SELECT snapshot_date, total_value_usd
-       FROM user_portfolio_snapshots
-       WHERE portfolio_id = ? ${dateFilter}
-       ORDER BY snapshot_date ASC`,
-      [portfolioId]
-    );
+    // Portfolio time-weighted return series (replays transactions, isolates
+    // price effect from capital flows — see utils/userPortfolioPerformance.js)
+    const twr = await computePortfolioTWR(portfolioId, period);
 
     // Index history (one per day)
     const indexDateFilter = getDateFilter(period, 'snapshot_date');
@@ -342,15 +338,6 @@ api.get('/user/portfolios/:id/performance', authenticateUser, async (req, res) =
       benchmark24hReturn = prev > 0 ? ((latest - prev) / prev) * 100 : 0;
     }
 
-    // Normalize both to 100 at start
-    const portfolioNormalized =
-      snapshots.length > 0
-        ? snapshots.map((s) => ({
-            date: s.snapshot_date,
-            value: ((s.total_value_usd / snapshots[0].total_value_usd) * 100),
-          }))
-        : [];
-
     const indexNormalized =
       indexHistory.length > 0
         ? indexHistory.map((h) => ({
@@ -361,16 +348,9 @@ api.get('/user/portfolios/:id/performance', authenticateUser, async (req, res) =
 
     res.json({
       data: {
-        portfolio: portfolioNormalized,
+        portfolio: twr.series,
         benchmark: indexNormalized,
-        portfolioReturn:
-          snapshots.length >= 2
-            ? (
-                  (snapshots[snapshots.length - 1].total_value_usd / snapshots[0].total_value_usd -
-                    1) *
-                  100
-                )
-            : 0,
+        portfolioReturn: twr.totalReturn,
         benchmarkReturn:
           indexHistory.length >= 2
             ? (
@@ -720,16 +700,14 @@ api.get('/user/portfolios/:id/analytics-bundle', authenticateUser, async (req, r
     result.correlation = bundle.correlation;
     result.stressTest = bundle.stressTest;
 
-    // ── Performance (snapshots — lightweight) ───────────────────────────
+    // ── Performance (TWR series + index) ─────────────────────────────────
     let period = '30d';
     const dateFilter = getDateFilter(period, 'snapshot_date');
 
-    // Run snapshot + index queries in parallel
-    const [snapshotResult, indexResult, benchmarkResult] = await Promise.all([
-      Database.execute(
-        `SELECT snapshot_date, total_value_usd FROM user_portfolio_snapshots WHERE portfolio_id = ? ${dateFilter} ORDER BY snapshot_date ASC`,
-        [portfolioId]
-      ),
+    // Compute portfolio TWR (replays transactions, excludes capital flows)
+    // and fetch the matching index history in parallel.
+    const [twr, indexResult, benchmarkResult] = await Promise.all([
+      computePortfolioTWR(portfolioId, period),
       Database.execute(
         `SELECT snapshot_date, index_level FROM (
            SELECT snapshot_date, index_level, ROW_NUMBER() OVER (PARTITION BY snapshot_date ORDER BY timestamp DESC) AS rn
@@ -746,7 +724,6 @@ api.get('/user/portfolios/:id/analytics-bundle', authenticateUser, async (req, r
       ),
     ]);
 
-    const snapshots = snapshotResult[0];
     const indexHistory = indexResult[0];
     const benchmarkRows = benchmarkResult[0];
 
@@ -763,37 +740,21 @@ api.get('/user/portfolios/:id/analytics-bundle', authenticateUser, async (req, r
       benchmark24hReturn = prev > 0 ? ((latest - prev) / prev) * 100 : 0;
     }
 
-    // 24h rolling series: (close_t − close_{t-1}) / close_t × 100 for each day
-    const portfolio24hSeries =
-      snapshots.length >= 2
-        ? snapshots.map((s, i) => {
-            if (i === 0) return { date: s.snapshot_date, pct: null };
-            const curr = parseFloat(s.total_value_usd);
-            const prev = parseFloat(snapshots[i - 1].total_value_usd);
-            const pct = curr > 0 ? ((curr - prev) / curr) * 100 : 0;
-            return { date: s.snapshot_date, pct: pct };
-          })
-        : [];
-
+    // 24h rolling: portfolio side comes from the TWR helper (proper daily
+    // weighted simple return), index side from successive index_level diffs.
     const benchmark24hSeries =
       indexHistory.length >= 2
         ? indexHistory.map((h, i) => {
             if (i === 0) return { date: h.snapshot_date, pct: null };
             const curr = parseFloat(h.index_level);
             const prev = parseFloat(indexHistory[i - 1].index_level);
-            const pct = curr > 0 ? ((curr - prev) / curr) * 100 : 0;
+            const pct = prev > 0 ? ((curr - prev) / prev) * 100 : 0;
             return { date: h.snapshot_date, pct: pct };
           })
         : [];
 
     result.performance = {
-      portfolio:
-        snapshots.length > 0
-          ? snapshots.map((s) => ({
-              date: s.snapshot_date,
-              value: ((s.total_value_usd / snapshots[0].total_value_usd) * 100),
-            }))
-          : [],
+      portfolio: twr.series,
       benchmark:
         indexHistory.length > 0
           ? indexHistory.map((h) => ({
@@ -801,14 +762,7 @@ api.get('/user/portfolios/:id/analytics-bundle', authenticateUser, async (req, r
               value: ((h.index_level / indexHistory[0].index_level) * 100),
             }))
           : [],
-      portfolioReturn:
-        snapshots.length >= 2
-          ? (
-                (snapshots[snapshots.length - 1].total_value_usd / snapshots[0].total_value_usd -
-                  1) *
-                100
-              )
-          : 0,
+      portfolioReturn: twr.totalReturn,
       benchmarkReturn:
         indexHistory.length >= 2
           ? (
@@ -819,7 +773,7 @@ api.get('/user/portfolios/:id/analytics-bundle', authenticateUser, async (req, r
           : 0,
       portfolio24hReturn: portfolio24hReturn,
       benchmark24hReturn: benchmark24hReturn,
-      portfolio24hSeries,
+      portfolio24hSeries: twr.dailyReturns,
       benchmark24hSeries,
     };
 
