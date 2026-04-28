@@ -1218,15 +1218,22 @@ export default function PortfolioAnalyticsPage() {
                           <p className="text-sm text-default-500 mb-1">
                             Portfolio Beta
                           </p>
+                          <p className="text-3xl font-bold">
+                            {stressTest.portfolioBeta.toFixed(4)}
+                          </p>
                           <Chip
+                            className="mt-1"
                             color={
                               getBetaInterpretation(stressTest.portfolioBeta)
                                 .color
                             }
-                            size="lg"
+                            size="sm"
                             variant="flat"
                           >
-                            {stressTest.portfolioBeta.toFixed(4)}
+                            {
+                              getBetaInterpretation(stressTest.portfolioBeta)
+                                .label
+                            }
                           </Chip>
                         </div>
                       </div>
