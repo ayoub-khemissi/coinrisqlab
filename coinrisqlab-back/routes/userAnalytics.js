@@ -338,11 +338,25 @@ api.get('/user/portfolios/:id/performance', authenticateUser, async (req, res) =
       benchmark24hReturn = prev > 0 ? ((latest - prev) / prev) * 100 : 0;
     }
 
+    // Clip the index series to start on the same day as the portfolio
+    // series so both chips read over the same window — otherwise a
+    // 5-day-old portfolio would show its 5d return next to a 30d index
+    // return, which is not a fair comparison.
+    const portfolioStartDate = twr.series.length > 0 ? twr.series[0].date : null;
+    const clippedIndex = portfolioStartDate
+      ? indexHistory.filter((h) => {
+          const d = h.snapshot_date instanceof Date
+            ? h.snapshot_date.toISOString().slice(0, 10)
+            : String(h.snapshot_date);
+          return d >= portfolioStartDate;
+        })
+      : indexHistory;
+
     const indexNormalized =
-      indexHistory.length > 0
-        ? indexHistory.map((h) => ({
+      clippedIndex.length > 0
+        ? clippedIndex.map((h) => ({
             date: h.snapshot_date,
-            value: ((h.index_level / indexHistory[0].index_level) * 100),
+            value: ((h.index_level / clippedIndex[0].index_level) * 100),
           }))
         : [];
 
@@ -352,9 +366,9 @@ api.get('/user/portfolios/:id/performance', authenticateUser, async (req, res) =
         benchmark: indexNormalized,
         portfolioReturn: twr.totalReturn,
         benchmarkReturn:
-          indexHistory.length >= 2
+          clippedIndex.length >= 2
             ? (
-                  (indexHistory[indexHistory.length - 1].index_level / indexHistory[0].index_level -
+                  (clippedIndex[clippedIndex.length - 1].index_level / clippedIndex[0].index_level -
                     1) *
                   100
                 )
@@ -740,14 +754,26 @@ api.get('/user/portfolios/:id/analytics-bundle', authenticateUser, async (req, r
       benchmark24hReturn = prev > 0 ? ((latest - prev) / prev) * 100 : 0;
     }
 
+    // Clip the index series to the portfolio's actual lifetime so the
+    // cumulative chips compare like-for-like windows.
+    const portfolioStartDate = twr.series.length > 0 ? twr.series[0].date : null;
+    const clippedIndex = portfolioStartDate
+      ? indexHistory.filter((h) => {
+          const d = h.snapshot_date instanceof Date
+            ? h.snapshot_date.toISOString().slice(0, 10)
+            : String(h.snapshot_date);
+          return d >= portfolioStartDate;
+        })
+      : indexHistory;
+
     // 24h rolling: portfolio side comes from the TWR helper (proper daily
     // weighted simple return), index side from successive index_level diffs.
     const benchmark24hSeries =
-      indexHistory.length >= 2
-        ? indexHistory.map((h, i) => {
+      clippedIndex.length >= 2
+        ? clippedIndex.map((h, i) => {
             if (i === 0) return { date: h.snapshot_date, pct: null };
             const curr = parseFloat(h.index_level);
-            const prev = parseFloat(indexHistory[i - 1].index_level);
+            const prev = parseFloat(clippedIndex[i - 1].index_level);
             const pct = prev > 0 ? ((curr - prev) / prev) * 100 : 0;
             return { date: h.snapshot_date, pct: pct };
           })
@@ -756,17 +782,17 @@ api.get('/user/portfolios/:id/analytics-bundle', authenticateUser, async (req, r
     result.performance = {
       portfolio: twr.series,
       benchmark:
-        indexHistory.length > 0
-          ? indexHistory.map((h) => ({
+        clippedIndex.length > 0
+          ? clippedIndex.map((h) => ({
               date: h.snapshot_date,
-              value: ((h.index_level / indexHistory[0].index_level) * 100),
+              value: ((h.index_level / clippedIndex[0].index_level) * 100),
             }))
           : [],
       portfolioReturn: twr.totalReturn,
       benchmarkReturn:
-        indexHistory.length >= 2
+        clippedIndex.length >= 2
           ? (
-                (indexHistory[indexHistory.length - 1].index_level / indexHistory[0].index_level -
+                (clippedIndex[clippedIndex.length - 1].index_level / clippedIndex[0].index_level -
                   1) *
                 100
               )
