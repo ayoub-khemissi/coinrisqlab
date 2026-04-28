@@ -396,7 +396,7 @@ export function BetaPanel({
                   </td>
                 </tr>
                 <tr className="border-b border-default-100">
-                  <td className="py-2 px-3">0 - 1</td>
+                  <td className="py-2 px-3">{"0 ≤ β < 0.95"}</td>
                   <td className="py-2 px-3">
                     <Chip color="success" size="sm" variant="flat">
                       Defensive
@@ -407,7 +407,7 @@ export function BetaPanel({
                   </td>
                 </tr>
                 <tr className="border-b border-default-100">
-                  <td className="py-2 px-3">= 1</td>
+                  <td className="py-2 px-3">{"0.95 ≤ β ≤ 1.05"}</td>
                   <td className="py-2 px-3">
                     <Chip size="sm" variant="flat">
                       Market
@@ -418,7 +418,7 @@ export function BetaPanel({
                   </td>
                 </tr>
                 <tr className="border-b border-default-100">
-                  <td className="py-2 px-3">1 - 2</td>
+                  <td className="py-2 px-3">{"1.05 < β ≤ 2"}</td>
                   <td className="py-2 px-3">
                     <Chip color="warning" size="sm" variant="flat">
                       Aggressive
