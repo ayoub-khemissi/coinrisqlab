@@ -401,39 +401,47 @@ api.get('/user/portfolios/:id/risk-metrics', authenticateUser, requirePro, async
     const weights = holdings.map((h) => h.weight);
     const { returnsByCryptoLog, returnsByCryptoSimple, alignedDates } = await getAlignedReturns(
       cryptoIds,
-      '90d'
+      '365d'
     );
 
     if (alignedDates.length < 10) {
       return res.json({ data: null, msg: 'Not enough data points' });
     }
 
-    // Synthetic portfolio returns — dual series (see /methodology/risk-metrics):
-    //   log    → statistical metrics (skewness, kurtosis, beta regression)
-    //   simple → economic metrics (VaR, CVaR, Sharpe, min/max/mean)
-    const portfolioReturnsLog = alignedDates.map((_, dayIdx) => {
-      let dayReturn = 0;
-      for (let i = 0; i < cryptoIds.length; i++) {
-        dayReturn += weights[i] * returnsByCryptoLog[cryptoIds[i]][dayIdx];
-      }
-      return dayReturn;
-    });
-    const portfolioReturnsSimple = alignedDates.map((_, dayIdx) => {
-      let dayReturn = 0;
-      for (let i = 0; i < cryptoIds.length; i++) {
-        dayReturn += weights[i] * returnsByCryptoSimple[cryptoIds[i]][dayIdx];
-      }
-      return dayReturn;
-    });
+    // Window slicing per methodology:
+    //   - Vol / Skew / Kurto / Correlation: 90-day window
+    //   - Sharpe / VaR / CVaR / Beta-Alpha: 365-day window
+    // Aligned returns are fetched over 365 days; 90-day series is the tail.
+    const SHORT_WINDOW = 90;
+    const sliceLast = (arr, n) => (arr.length > n ? arr.slice(arr.length - n) : arr);
+    const log90Map = Object.fromEntries(
+      cryptoIds.map((id) => [id, sliceLast(returnsByCryptoLog[id] || [], SHORT_WINDOW)]),
+    );
+    const simple90Map = Object.fromEntries(
+      cryptoIds.map((id) => [id, sliceLast(returnsByCryptoSimple[id] || [], SHORT_WINDOW)]),
+    );
+    const dates90 = sliceLast(alignedDates, SHORT_WINDOW);
 
-    // VaR / CVaR (simple returns)
-    const var95 = calculateVaR(portfolioReturnsSimple, 95);
-    const var99 = calculateVaR(portfolioReturnsSimple, 99);
-    const cvar95 = calculateCVaR(portfolioReturnsSimple, 95);
-    const cvar99 = calculateCVaR(portfolioReturnsSimple, 99);
+    const buildSeries = (returnsByCrypto, dates) =>
+      dates.map((_, dayIdx) => {
+        let dayReturn = 0;
+        for (let i = 0; i < cryptoIds.length; i++) {
+          dayReturn += weights[i] * returnsByCrypto[cryptoIds[i]][dayIdx];
+        }
+        return dayReturn;
+      });
 
-    // Sharpe (log returns — descriptive distribution metric per methodology)
-    const sharpe = calculateSharpeRatio(portfolioReturnsLog);
+    const portfolioReturnsLog365 = buildSeries(returnsByCryptoLog, alignedDates);
+    const portfolioReturnsSimple365 = buildSeries(returnsByCryptoSimple, alignedDates);
+    const portfolioReturnsLog90 = buildSeries(log90Map, dates90);
+    const portfolioReturnsSimple90 = buildSeries(simple90Map, dates90);
+
+    // 365-day window (per methodology: VaR / Sharpe)
+    const var95 = calculateVaR(portfolioReturnsSimple365, 95);
+    const var99 = calculateVaR(portfolioReturnsSimple365, 99);
+    const cvar95 = calculateCVaR(portfolioReturnsSimple365, 95);
+    const cvar99 = calculateCVaR(portfolioReturnsSimple365, 99);
+    const sharpe = calculateSharpeRatio(portfolioReturnsLog365);
 
     // Alpha + Beta (portfolio vs market index)
     // Compute index log returns on-the-fly from index_history
@@ -464,33 +472,33 @@ api.get('/user/portfolios/:id/risk-metrics', authenticateUser, requirePro, async
       indexReturnMap[dateStr] = parseFloat(row.log_return);
     }
 
-    // Align portfolio log returns with market log returns for beta/alpha regression
+    // Beta/Alpha regression vs index — 365-day window both sides
     const alignedPortfolioReturns = [];
     const alignedMarketReturns = [];
     for (let i = 0; i < alignedDates.length; i++) {
       if (indexReturnMap[alignedDates[i]] !== undefined) {
-        alignedPortfolioReturns.push(portfolioReturnsLog[i]);
+        alignedPortfolioReturns.push(portfolioReturnsLog365[i]);
         alignedMarketReturns.push(indexReturnMap[alignedDates[i]]);
       }
     }
 
     const betaAlpha = calculateBetaAlpha(alignedPortfolioReturns, alignedMarketReturns);
 
-    // Skewness & Kurtosis (log returns — statistical distribution shape)
-    const skewness = calculateSkewness(portfolioReturnsLog);
-    const kurtosis = calculateKurtosis(portfolioReturnsLog);
+    // Skewness & Kurtosis (90-day log returns — per methodology)
+    const skewness = calculateSkewness(portfolioReturnsLog90);
+    const kurtosis = calculateKurtosis(portfolioReturnsLog90);
 
-    // Return statistics (simple returns — economic interpretation),
-    // except dailyStd which IS the daily portfolio volatility — log
-    // returns to match the Volatility card on the page.
-    const meanReturn = mean(portfolioReturnsSimple);
-    const dailyStd = standardDeviation(portfolioReturnsLog);
-    const minReturn = Math.min(...portfolioReturnsSimple);
-    const maxReturn = Math.max(...portfolioReturnsSimple);
+    // Return statistics (90-day simple returns), except dailyStd which IS
+    // the daily portfolio volatility — log returns to match the Volatility
+    // card on the page.
+    const meanReturn = mean(portfolioReturnsSimple90);
+    const dailyStd = standardDeviation(portfolioReturnsLog90);
+    const minReturn = Math.min(...portfolioReturnsSimple90);
+    const maxReturn = Math.max(...portfolioReturnsSimple90);
     const annualizedReturn = meanReturn * 365;
 
-    // Diversification benefit (log returns — volatility is statistical)
-    const assets = cryptoIds.map((id) => ({ id, returns: returnsByCryptoLog[id] }));
+    // Diversification benefit (90-day log returns — same window as Volatility)
+    const assets = cryptoIds.map((id) => ({ id, returns: log90Map[id] }));
     const covMatrix = buildCovarianceMatrix(assets);
     const portfolioDailyVol = calcPortfolioVol(weights, covMatrix);
 
@@ -549,7 +557,7 @@ api.get('/user/portfolios/:id/correlation', authenticateUser, requirePro, async 
 
     const cryptoIds = holdings.map((h) => h.crypto_id);
     const symbols = holdings.map((h) => h.symbol);
-    const { returnsByCryptoLog, alignedDates } = await getAlignedReturns(cryptoIds, '90d');
+    const { returnsByCryptoLog, alignedDates } = await getAlignedReturns(cryptoIds, '365d');
 
     if (alignedDates.length < 10) {
       return res.json({ data: null, msg: 'Not enough data points' });
@@ -692,7 +700,7 @@ api.get('/user/portfolios/:id/analytics-bundle', authenticateUser, async (req, r
     // Pro-only: fetch the index returns in parallel (needed for beta/alpha regression).
     const [{ returnsByCryptoLog, returnsByCryptoSimple, alignedDates }, betaMap, indexReturnMap] =
       await Promise.all([
-        getAlignedReturns(cryptoIds, '90d'),
+        getAlignedReturns(cryptoIds, '365d'),
         getLatestBetaMap(cryptoIds),
         isPro ? getIndexLogReturnsMap() : Promise.resolve({}),
       ]);

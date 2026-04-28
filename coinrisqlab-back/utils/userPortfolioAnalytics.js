@@ -335,8 +335,21 @@ export function computeAnalyticsBundle({
   raw.hasEnoughData = hasEnoughData;
 
   if (hasEnoughData) {
-    // ── Volatility (log returns — statistical stability) ──────────────────
-    const assets = cryptoIds.map((id) => ({ id, returns: returnsByCryptoLog[id] }));
+    // Window slicing per methodology:
+    //   - Volatility / Skewness / Kurtosis: 90-day window
+    //   - Sharpe / VaR / CVaR / Beta-Alpha:  365-day window
+    // Callers pass the 365-day series; we derive the 90-day slice as the
+    // last 90 days of the same series so a single fetch covers both.
+    const SHORT_WINDOW = 90;
+    const sliceLast = (arr, n) =>
+      arr.length > n ? arr.slice(arr.length - n) : arr;
+    const log90 = Object.fromEntries(
+      cryptoIds.map((id) => [id, sliceLast(returnsByCryptoLog[id] || [], SHORT_WINDOW)]),
+    );
+    const dates90 = sliceLast(alignedDates, SHORT_WINDOW);
+
+    // ── Volatility (log returns, 90d — statistical stability) ─────────────
+    const assets = cryptoIds.map((id) => ({ id, returns: log90[id] }));
     const covMatrix = buildCovarianceMatrix(assets);
     const dailyVol = calcPortfolioVol(weights, covMatrix);
     const annualVol = annualizeVolatility(dailyVol);
@@ -345,7 +358,7 @@ export function computeAnalyticsBundle({
     const constituentsRaw = [];
     for (let i = 0; i < holdings.length; i++) {
       const h = holdings[i];
-      const returns = returnsByCryptoLog[h.crypto_id] || [];
+      const returns = log90[h.crypto_id] || [];
       const indivDailyVol = standardDeviation(returns);
       const indivAnnualVol = annualizeVolatility(indivDailyVol);
       constituentsPublic.push({
@@ -387,7 +400,7 @@ export function computeAnalyticsBundle({
       annualizedVolatility: (annualVol * 100),
       beta: portfolioBeta,
       holdingCount: holdings.length,
-      dataPoints: alignedDates.length,
+      dataPoints: dates90.length,
       diversificationBenefit,
       constituents: constituentsPublic,
     };
@@ -400,52 +413,52 @@ export function computeAnalyticsBundle({
 
     if (computeProMetrics) {
       // ── Risk Metrics ────────────────────────────────────────────────────
-      // Build two parallel weighted portfolio return series:
-      //   - Log series feeds statistical metrics (skewness, kurtosis, beta
-      //     regression against the log-return market index).
-      //   - Simple series feeds economic metrics (VaR, CVaR, Sharpe, and
-      //     return stats: min/max/mean/dailyStd).
-      const portfolioReturnsLog = alignedDates.map((_, dayIdx) => {
-        let dayReturn = 0;
-        for (let i = 0; i < cryptoIds.length; i++) {
-          dayReturn += weights[i] * returnsByCryptoLog[cryptoIds[i]][dayIdx];
-        }
-        return dayReturn;
-      });
-      const portfolioReturnsSimple = alignedDates.map((_, dayIdx) => {
-        let dayReturn = 0;
-        for (let i = 0; i < cryptoIds.length; i++) {
-          dayReturn += weights[i] * returnsByCryptoSimple[cryptoIds[i]][dayIdx];
-        }
-        return dayReturn;
-      });
+      // Build weighted portfolio return series for both windows:
+      //   - 365-day log/simple series → Sharpe / VaR / CVaR / Beta-Alpha
+      //     (matches per-crypto pages; equality holds when 100% one asset)
+      //   - 90-day log series → Skewness / Kurtosis / dailyStd / volatility
+      //     (matches the methodology Parameters table)
+      const buildPortfolioSeries = (returnsByCrypto, dates) =>
+        dates.map((_, dayIdx) => {
+          let dayReturn = 0;
+          for (let i = 0; i < cryptoIds.length; i++) {
+            dayReturn += weights[i] * returnsByCrypto[cryptoIds[i]][dayIdx];
+          }
+          return dayReturn;
+        });
+      const simple90 = Object.fromEntries(
+        cryptoIds.map((id) => [id, sliceLast(returnsByCryptoSimple[id] || [], SHORT_WINDOW)]),
+      );
 
-      // Economic interpretation → simple returns
-      const var95 = calculateVaR(portfolioReturnsSimple, 95);
-      const var99 = calculateVaR(portfolioReturnsSimple, 99);
-      const cvar95 = calculateCVaR(portfolioReturnsSimple, 95);
-      const cvar99 = calculateCVaR(portfolioReturnsSimple, 99);
-      // Sharpe is computed on log returns per methodology (descriptive
-      // distribution metric, paired with the log-return volatility).
-      const sharpe = calculateSharpeRatio(portfolioReturnsLog);
-      const meanReturn = mean(portfolioReturnsSimple);
-      // Daily std dev IS the daily portfolio volatility — must be on log
-      // returns to match the value displayed in the Volatility card (which
-      // is computed from the covariance matrix of log returns).
-      const dailyStd = standardDeviation(portfolioReturnsLog);
-      const minReturn = Math.min(...portfolioReturnsSimple);
-      const maxReturn = Math.max(...portfolioReturnsSimple);
+      const portfolioReturnsLog365 = buildPortfolioSeries(returnsByCryptoLog, alignedDates);
+      const portfolioReturnsSimple365 = buildPortfolioSeries(returnsByCryptoSimple, alignedDates);
+      const portfolioReturnsLog90 = buildPortfolioSeries(log90, dates90);
+      const portfolioReturnsSimple90 = buildPortfolioSeries(simple90, dates90);
 
-      // Statistical distribution shape → log returns
-      const skewness = calculateSkewness(portfolioReturnsLog);
-      const kurtosis = calculateKurtosis(portfolioReturnsLog);
+      // 365-day window (per methodology: VaR / Beta / Sharpe)
+      const var95 = calculateVaR(portfolioReturnsSimple365, 95);
+      const var99 = calculateVaR(portfolioReturnsSimple365, 99);
+      const cvar95 = calculateCVaR(portfolioReturnsSimple365, 95);
+      const cvar99 = calculateCVaR(portfolioReturnsSimple365, 99);
+      const sharpe = calculateSharpeRatio(portfolioReturnsLog365);
 
-      // Beta/alpha regression vs index — both series in log returns
+      // 90-day window: returnStats live with their dispersion (dailyStd =
+      // 90d portfolio volatility), so mean/min/max stay on the same window.
+      const meanReturn = mean(portfolioReturnsSimple90);
+      const dailyStd = standardDeviation(portfolioReturnsLog90);
+      const minReturn = Math.min(...portfolioReturnsSimple90);
+      const maxReturn = Math.max(...portfolioReturnsSimple90);
+
+      // 90-day window (per methodology: Skewness / Kurtosis)
+      const skewness = calculateSkewness(portfolioReturnsLog90);
+      const kurtosis = calculateKurtosis(portfolioReturnsLog90);
+
+      // Beta/Alpha regression vs index — 365-day log series both sides
       const alignedP = [];
       const alignedM = [];
       for (let i = 0; i < alignedDates.length; i++) {
         if (indexReturnMap[alignedDates[i]] !== undefined) {
-          alignedP.push(portfolioReturnsLog[i]);
+          alignedP.push(portfolioReturnsLog365[i]);
           alignedM.push(indexReturnMap[alignedDates[i]]);
         }
       }
@@ -474,8 +487,8 @@ export function computeAnalyticsBundle({
         dataPoints: alignedDates.length,
       };
 
-      raw.portfolioReturns = portfolioReturnsSimple;
-      raw.portfolioReturnsLog = portfolioReturnsLog;
+      raw.portfolioReturns = portfolioReturnsSimple365;
+      raw.portfolioReturnsLog = portfolioReturnsLog365;
       raw.meanDailyReturn = meanReturn;
       raw.dailyStd = dailyStd;
       raw.minReturn = minReturn;
@@ -494,7 +507,7 @@ export function computeAnalyticsBundle({
       raw.correlationWithIndex = betaAlpha.correlation;
       raw.betaAlphaObservations = alignedP.length;
 
-      // ── Correlation matrix (log returns — statistical stability) ────────
+      // ── Correlation matrix (90d log returns — statistical stability) ───
       if (cryptoIds.length >= 2) {
         const n = cryptoIds.length;
         const matrix = Array(n)
@@ -505,12 +518,9 @@ export function computeAnalyticsBundle({
             if (i === j) {
               matrix[i][j] = 1;
             } else {
-              const cov = calcCovariance(
-                returnsByCryptoLog[cryptoIds[i]],
-                returnsByCryptoLog[cryptoIds[j]]
-              );
-              const std1 = standardDeviation(returnsByCryptoLog[cryptoIds[i]]);
-              const std2 = standardDeviation(returnsByCryptoLog[cryptoIds[j]]);
+              const cov = calcCovariance(log90[cryptoIds[i]], log90[cryptoIds[j]]);
+              const std1 = standardDeviation(log90[cryptoIds[i]]);
+              const std2 = standardDeviation(log90[cryptoIds[j]]);
               matrix[i][j] = std1 > 0 && std2 > 0 ? (cov / (std1 * std2)) : 0;
             }
           }
@@ -519,7 +529,7 @@ export function computeAnalyticsBundle({
         bundle.correlation = {
           symbols,
           matrix,
-          dataPoints: alignedDates.length,
+          dataPoints: dates90.length,
         };
         raw.correlationSymbols = symbols;
         raw.correlationMatrix = matrix;
