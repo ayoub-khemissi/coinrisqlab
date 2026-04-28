@@ -100,12 +100,7 @@ export function BetaPanel({
         <CardBody className="p-6">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div>
-              <div className="flex items-baseline gap-1.5 mb-1">
-                <p className="text-sm text-default-500">Beta</p>
-                <span className="text-[10px] text-default-400">
-                  365d · log returns
-                </span>
-              </div>
+              <p className="text-sm text-default-500 mb-1">Beta</p>
               <p className="text-4xl font-bold">
                 {data?.beta != null ? data.beta.toFixed(4) : "N/A"}
               </p>
@@ -188,7 +183,7 @@ export function BetaPanel({
               )}
             </div>
             <p className="text-sm text-default-500">
-              {symbol.toUpperCase()} vs CoinRisqLab 80 Index · 365d log returns
+              {symbol.toUpperCase()} vs CoinRisqLab 80 Index
             </p>
           </div>
         </CardHeader>
