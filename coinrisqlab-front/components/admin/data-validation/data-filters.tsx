@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { Input } from "@heroui/input";
 import { Button } from "@heroui/button";
 import { Chip } from "@heroui/chip";
@@ -8,25 +8,32 @@ import { Select, SelectItem } from "@heroui/select";
 import { Autocomplete, AutocompleteItem } from "@heroui/autocomplete";
 import { Listbox, ListboxItem } from "@heroui/listbox";
 import { Popover, PopoverTrigger, PopoverContent } from "@heroui/popover";
-import { Tooltip } from "@heroui/tooltip";
-import { Search, X, Info, ChevronDown } from "lucide-react";
+import { Search, X, ChevronDown } from "lucide-react";
 
-const WINDOW_MIN = 1;
-const WINDOW_MAX = 730;
+import type { CryptoOption } from "@/types/data-validation";
 
 import { CsvDownloadButton } from "./csv-download-button";
 
-import type { CryptoOption } from "@/types/data-validation";
+interface WindowMeta {
+  windows: number[];
+  canonical: number;
+  default: number;
+}
 
 interface DataFiltersProps {
   showCryptoSearch?: boolean;
   showCryptoSearch2?: boolean;
   showDateRange?: boolean;
-  showWindowSelector?: boolean;
   showPortfolioSelector?: boolean;
-  /** Default value for the free-input window field. Per methodology:
-   *  Volatility/Distribution/SML = 90, VaR/Beta/Sharpe = 365. */
-  defaultWindow?: number;
+  /** Number of days the default date range should span (to - from + 1). */
+  defaultDays?: number;
+  /** Metric key — when set, fetches DISTINCT window_days from BDD via
+   *  /api/admin/data/windows?metric=… and renders a Select. Omit when the
+   *  table has no window_days column (prices, returns, correlation, …). */
+  metric?: string;
+  /** Whether the metric is per-crypto (multiplies row count by # cryptos
+   *  in the live preview). Defaults to true when showCryptoSearch is on. */
+  perCrypto?: boolean;
   portfolios?: Array<{ id: number; name: string; email: string }>;
   csvEndpoint: string;
   csvFilename: string;
@@ -34,7 +41,7 @@ interface DataFiltersProps {
     cryptos: string[];
     from: string;
     to: string;
-    window: number;
+    window?: number;
     portfolioId?: number;
     crypto1?: string;
     crypto2?: string;
@@ -42,13 +49,28 @@ interface DataFiltersProps {
   loading?: boolean;
 }
 
+function isoDate(d: Date): string {
+  return d.toISOString().slice(0, 10);
+}
+
+function daysBetween(from: string, to: string): number {
+  if (!from || !to) return 0;
+  const f = new Date(`${from}T00:00:00Z`).getTime();
+  const t = new Date(`${to}T00:00:00Z`).getTime();
+
+  if (isNaN(f) || isNaN(t) || t < f) return 0;
+
+  return Math.round((t - f) / 86400000) + 1;
+}
+
 export function DataFilters({
   showCryptoSearch = true,
   showCryptoSearch2 = false,
   showDateRange = true,
-  showWindowSelector = false,
   showPortfolioSelector = false,
-  defaultWindow = 90,
+  defaultDays,
+  metric,
+  perCrypto,
   portfolios,
   csvEndpoint,
   csvFilename,
@@ -63,14 +85,13 @@ export function DataFilters({
   const [crypto2, setCrypto2] = useState<string>("");
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
-  const [windowDays, setWindowDays] = useState<number>(defaultWindow);
-  const [windowInput, setWindowInput] = useState<string>(String(defaultWindow));
+  const [windowMeta, setWindowMeta] = useState<WindowMeta | null>(null);
+  const [windowDays, setWindowDays] = useState<number | undefined>(undefined);
   const [portfolioId, setPortfolioId] = useState<number | undefined>(
     portfolios?.[0]?.id,
   );
   const [cryptoSearch, setCryptoSearch] = useState("");
 
-  // Case-insensitive symbol/name filter for the multi-select crypto picker.
   const filteredCryptos = useMemo(() => {
     const q = cryptoSearch.trim().toLowerCase();
 
@@ -83,6 +104,23 @@ export function DataFilters({
     );
   }, [allCryptos, cryptoSearch]);
 
+  // Initialize default date range: to = yesterday, from = to - defaultDays + 1
+  useEffect(() => {
+    if (!showDateRange) return;
+    if (from || to) return; // already set
+    const yesterday = new Date();
+
+    yesterday.setUTCHours(0, 0, 0, 0);
+    yesterday.setUTCDate(yesterday.getUTCDate() - 1);
+    const days = defaultDays && defaultDays > 0 ? defaultDays : 90;
+    const fromDate = new Date(yesterday);
+
+    fromDate.setUTCDate(fromDate.getUTCDate() - (days - 1));
+    setTo(isoDate(yesterday));
+    setFrom(isoDate(fromDate));
+  }, [defaultDays, showDateRange, from, to]);
+
+  // Fetch crypto list for the multi-pickers
   useEffect(() => {
     if (!showCryptoSearch && !showCryptoSearch2) return;
     fetch("/api/admin/data/cryptos?search=")
@@ -91,15 +129,68 @@ export function DataFilters({
       .catch(() => {});
   }, [showCryptoSearch, showCryptoSearch2]);
 
-  const handleAddCrypto = (coingeckoId: string) => {
-    if (selectedCryptoObjects.some((c) => c.coingecko_id === coingeckoId))
-      return;
-    const crypto = allCryptos.find((c) => c.coingecko_id === coingeckoId);
+  // Fetch available windows for this metric
+  useEffect(() => {
+    if (!metric) {
+      setWindowMeta(null);
+      setWindowDays(undefined);
 
-    if (crypto) {
-      setSelectedCryptoObjects((prev) => [...prev, crypto]);
+      return;
     }
-  };
+    fetch(`/api/admin/data/windows?metric=${encodeURIComponent(metric)}`)
+      .then((r) => r.json())
+      .then((d: WindowMeta) => {
+        if (d && Array.isArray(d.windows)) {
+          setWindowMeta(d);
+          setWindowDays(d.default);
+        }
+      })
+      .catch(() => {});
+  }, [metric]);
+
+  // Auto-fire search once defaults are in place. We track the last fired
+  // signature so we don't re-trigger on every state change.
+  const lastFiredRef = useRef<string>("");
+
+  useEffect(() => {
+    // Wait for date range to be set (when applicable)
+    if (showDateRange && (!from || !to)) return;
+    // Wait for window meta to load (when applicable)
+    if (metric && windowDays == null) return;
+    // Wait for portfolios to be loaded (when applicable)
+    if (showPortfolioSelector && !portfolioId) return;
+
+    const sig = JSON.stringify({
+      from,
+      to,
+      windowDays,
+      portfolioId,
+      // Cryptos and crypto1/2 are not part of the auto-search signature —
+      // first load fires with empty selection (server returns full set).
+    });
+
+    if (sig === lastFiredRef.current) return;
+    lastFiredRef.current = sig;
+
+    onSearch({
+      cryptos: selectedCryptoObjects.map((c) => c.coingecko_id),
+      from,
+      to,
+      window: windowDays,
+      portfolioId,
+      crypto1,
+      crypto2,
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    from,
+    to,
+    windowDays,
+    portfolioId,
+    metric,
+    showDateRange,
+    showPortfolioSelector,
+  ]);
 
   const handleRemoveCrypto = (coingeckoId: string) => {
     setSelectedCryptoObjects((prev) =>
@@ -128,10 +219,73 @@ export function DataFilters({
     if (crypto2) p.crypto2 = crypto2;
     if (from) p.from = from;
     if (to) p.to = to;
-    if (showWindowSelector) p.window = String(windowDays);
+    if (windowDays != null) p.window = String(windowDays);
     if (portfolioId) p.portfolioId = String(portfolioId);
 
     return p;
+  };
+
+  // Live row-count preview
+  const isPerCrypto = perCrypto ?? showCryptoSearch;
+  const dayCount = daysBetween(from, to);
+  const cryptoCount = selectedCryptoObjects.length;
+  const previewLine = (() => {
+    if (!showDateRange) return null;
+    if (dayCount === 0) return null;
+
+    if (showCryptoSearch2) {
+      // Correlation: 2 cryptos required, 1 row per shared date
+      return `≈ ${dayCount} jours × 1 paire = ~${dayCount.toLocaleString("fr-FR")} lignes`;
+    }
+    if (isPerCrypto) {
+      const multiplier = cryptoCount > 0 ? cryptoCount : "toutes les cryptos";
+      const total =
+        cryptoCount > 0
+          ? `~${(dayCount * cryptoCount).toLocaleString("fr-FR")} lignes`
+          : `~${dayCount.toLocaleString("fr-FR")} lignes / crypto`;
+
+      return `≈ ${dayCount} jours × ${multiplier} = ${total}`;
+    }
+
+    return `≈ ${dayCount.toLocaleString("fr-FR")} lignes`;
+  })();
+
+  const renderWindowField = () => {
+    if (!metric || !windowMeta) return null;
+
+    if (windowMeta.windows.length <= 1) {
+      const only = windowMeta.windows[0] ?? windowMeta.canonical;
+
+      return (
+        <div className="flex flex-col">
+          <span className="text-xs text-default-500 mb-1 px-1">Window</span>
+          <Chip size="md" variant="flat">
+            {only} jours
+          </Chip>
+        </div>
+      );
+    }
+
+    return (
+      <Select
+        aria-label="Window"
+        className="w-32"
+        label="Window"
+        selectedKeys={windowDays != null ? [String(windowDays)] : []}
+        size="sm"
+        onSelectionChange={(keys) => {
+          const k = Array.from(keys)[0];
+
+          if (k) setWindowDays(Number(k));
+        }}
+      >
+        {windowMeta.windows.map((w) => (
+          <SelectItem key={String(w)} textValue={`${w} jours`}>
+            {w} jours{w === windowMeta.canonical ? " (méthodo)" : ""}
+          </SelectItem>
+        ))}
+      </Select>
+    );
   };
 
   return (
@@ -149,7 +303,6 @@ export function DataFilters({
             <Popover
               placement="bottom-start"
               shouldCloseOnInteractOutside={(el) => {
-                // Don't close when clicking inside the popover content
                 return !el.closest("[data-crypto-picker-popover]");
               }}
             >
@@ -330,35 +483,7 @@ export function DataFilters({
           </>
         )}
 
-        {showWindowSelector && (
-          <Input
-            aria-label="Window"
-            className="w-36"
-            endContent={
-              <div className="flex items-center gap-1 text-default-400">
-                <span className="text-xs">days</span>
-                <Tooltip content={`${windowDays + 1} prices needed`}>
-                  <Info className="cursor-help" size={14} />
-                </Tooltip>
-              </div>
-            }
-            label="Window"
-            max={WINDOW_MAX}
-            min={WINDOW_MIN}
-            size="sm"
-            step={1}
-            type="number"
-            value={windowInput}
-            onValueChange={(v) => {
-              setWindowInput(v);
-              const n = parseInt(v, 10);
-
-              if (!isNaN(n) && n >= WINDOW_MIN && n <= WINDOW_MAX) {
-                setWindowDays(n);
-              }
-            }}
-          />
-        )}
+        {renderWindowField()}
 
         {showPortfolioSelector && portfolios && (
           <Select
@@ -396,6 +521,10 @@ export function DataFilters({
           params={buildParams()}
         />
       </div>
+
+      {previewLine && (
+        <p className="text-xs text-default-500 px-1">{previewLine}</p>
+      )}
 
       {/* Selected cryptos display */}
       {showCryptoSearch &&

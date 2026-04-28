@@ -69,6 +69,7 @@ export default function PricesPage() {
       <DataFilters
         csvEndpoint="/api/admin/data/prices"
         csvFilename="prices_export.csv"
+        defaultDays={90}
         loading={loading}
         onSearch={handleSearch}
       />

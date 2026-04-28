@@ -52,14 +52,14 @@ export default function DistributionPage() {
     cryptos: string[];
     from: string;
     to: string;
-    window: number;
+    window?: number;
   }) => {
     const params: Record<string, string> = {};
 
     if (filters.cryptos.length > 0) params.cryptos = filters.cryptos.join(",");
     if (filters.from) params.from = filters.from;
     if (filters.to) params.to = filters.to;
-    params.window = String(filters.window);
+    if (filters.window != null) params.window = String(filters.window);
     setCurrentParams(params);
     setPage(1);
     fetchData(params, 1);
@@ -74,11 +74,11 @@ export default function DistributionPage() {
     <div className="space-y-6">
       <h1 className="text-xl font-bold">Distribution Stats</h1>
       <DataFilters
-        showWindowSelector
         csvEndpoint="/api/admin/data/distribution"
         csvFilename="distribution_export.csv"
-        defaultWindow={90}
+        defaultDays={90}
         loading={loading}
+        metric="distribution"
         onSearch={handleSearch}
       />
       <DataTable

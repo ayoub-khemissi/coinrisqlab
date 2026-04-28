@@ -111,7 +111,9 @@ export default function IndexPage() {
           <DataFilters
             csvEndpoint="/api/admin/data/index-history"
             csvFilename="index_history_export.csv"
+            defaultDays={90}
             loading={historyLoading}
+            perCrypto={false}
             showCryptoSearch={false}
             onSearch={handleHistorySearch}
           />

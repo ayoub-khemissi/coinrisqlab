@@ -66,14 +66,14 @@ export default function VolatilityPage() {
     cryptos: string[];
     from: string;
     to: string;
-    window: number;
+    window?: number;
   }) => {
     const params: Record<string, string> = {};
 
     if (filters.cryptos.length > 0) params.cryptos = filters.cryptos.join(",");
     if (filters.from) params.from = filters.from;
     if (filters.to) params.to = filters.to;
-    params.window = String(filters.window);
+    if (filters.window != null) params.window = String(filters.window);
     setCurrentParams(params);
     setPage(1);
     fetchData(params, 1);
@@ -99,11 +99,12 @@ export default function VolatilityPage() {
         <Tab key="portfolio" title="Market Portfolio" />
       </Tabs>
       <DataFilters
-        showWindowSelector
         csvEndpoint={endpoint}
         csvFilename={`${tab}_volatility_export.csv`}
-        defaultWindow={90}
+        defaultDays={90}
         loading={loading}
+        metric={tab === "crypto" ? "volatility" : "portfolio-volatility"}
+        perCrypto={tab === "crypto"}
         showCryptoSearch={tab === "crypto"}
         onSearch={handleSearch}
       />

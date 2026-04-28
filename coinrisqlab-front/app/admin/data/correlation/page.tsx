@@ -66,6 +66,7 @@ export default function CorrelationPage() {
         showCryptoSearch2
         csvEndpoint="/api/admin/data/correlation"
         csvFilename="correlation_export.csv"
+        defaultDays={365}
         loading={loading}
         showCryptoSearch={false}
         onSearch={handleSearch}

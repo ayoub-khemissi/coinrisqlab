@@ -2,6 +2,66 @@ import { RowDataPacket } from "mysql2";
 
 import { db } from "@/lib/db";
 
+// ─── Metric Windows (DISTINCT window_days available in BDD) ───────────────
+// Lets the front populate a Select with only windows that actually exist,
+// so Ahmed doesn't pick a value that yields zero rows.
+
+const METRIC_WINDOWS_CONFIG: Record<
+  string,
+  { table: string; canonical: number; extraWhere?: string }
+> = {
+  volatility: { table: "crypto_volatility", canonical: 90 },
+  "portfolio-volatility": { table: "portfolio_volatility", canonical: 90 },
+  var: { table: "crypto_var", canonical: 365 },
+  sharpe: { table: "crypto_sharpe", canonical: 365 },
+  distribution: { table: "crypto_distribution_stats", canonical: 90 },
+  "beta-log": {
+    table: "crypto_beta",
+    canonical: 365,
+    extraWhere: "return_type = 'log'",
+  },
+  "beta-simple": {
+    table: "crypto_beta",
+    canonical: 90,
+    extraWhere: "return_type = 'simple'",
+  },
+  sml: { table: "crypto_sml", canonical: 90 },
+  ma: { table: "crypto_moving_averages", canonical: 90 },
+  rsi: { table: "crypto_rsi", canonical: 14 },
+  "portfolio-analytics": { table: "user_portfolio_analytics", canonical: 90 },
+};
+
+export async function getMetricWindows(metric: string) {
+  const cfg = METRIC_WINDOWS_CONFIG[metric];
+
+  if (!cfg) return null;
+
+  // Identifier whitelist — table name is concatenated, so guard against
+  // any sneaky chars. All known tables use [a-z_] only.
+  if (!/^[a-z_]+$/.test(cfg.table)) return null;
+
+  const where = cfg.extraWhere ? `WHERE ${cfg.extraWhere}` : "";
+  const [rows] = await db.execute<RowDataPacket[]>(
+    `SELECT DISTINCT window_days FROM \`${cfg.table}\` ${where} ORDER BY window_days ASC`,
+  );
+  const windows = rows.map((r) => Number(r.window_days));
+
+  // Resolve the default: canonical if present, else the largest available
+  // value <= canonical (so we stay close to methodology), else the max.
+  let defaultWindow = cfg.canonical;
+
+  if (!windows.includes(cfg.canonical)) {
+    const lower = windows.filter((w) => w <= cfg.canonical);
+
+    defaultWindow =
+      lower.length > 0
+        ? Math.max(...lower)
+        : (windows[windows.length - 1] ?? cfg.canonical);
+  }
+
+  return { windows, canonical: cfg.canonical, default: defaultWindow };
+}
+
 // ─── Crypto Search ──────────────────────────────────────────────────────────
 
 export async function searchCryptos(search: string) {
@@ -471,6 +531,96 @@ export async function getSharpeCount(
     `SELECT COUNT(*) as total FROM crypto_sharpe cs
      INNER JOIN cryptocurrencies c ON cs.crypto_id = c.id
      WHERE cs.date >= ? AND cs.date <= ? AND cs.window_days = ? ${clause}`,
+    [...dateParams, windowDays, ...params],
+  );
+
+  return rows[0].total as number;
+}
+
+// ─── Moving Averages ────────────────────────────────────────────────────────
+
+export async function getMovingAverages(
+  cryptos: string[],
+  from: string,
+  to: string,
+  windowDays: number,
+  limit: number,
+  offset: number,
+) {
+  const { clause, params } = buildCryptoFilter(cryptos, "c");
+  const dateParams = [from || "2000-01-01", to || "2099-12-31"];
+
+  const [rows] = await db.execute<RowDataPacket[]>(
+    `SELECT c.symbol, c.name, cma.date, cma.window_days, cma.moving_average, cma.num_observations
+     FROM crypto_moving_averages cma
+     INNER JOIN cryptocurrencies c ON cma.crypto_id = c.id
+     WHERE cma.date >= ? AND cma.date <= ? AND cma.window_days = ? ${clause}
+     ORDER BY c.symbol ASC, cma.date DESC
+     ${limit > 0 ? `LIMIT ${limit} OFFSET ${offset}` : ""}`,
+    [...dateParams, windowDays, ...params],
+  );
+
+  return rows;
+}
+
+export async function getMovingAveragesCount(
+  cryptos: string[],
+  from: string,
+  to: string,
+  windowDays: number,
+) {
+  const { clause, params } = buildCryptoFilter(cryptos, "c");
+  const dateParams = [from || "2000-01-01", to || "2099-12-31"];
+
+  const [rows] = await db.execute<RowDataPacket[]>(
+    `SELECT COUNT(*) as total FROM crypto_moving_averages cma
+     INNER JOIN cryptocurrencies c ON cma.crypto_id = c.id
+     WHERE cma.date >= ? AND cma.date <= ? AND cma.window_days = ? ${clause}`,
+    [...dateParams, windowDays, ...params],
+  );
+
+  return rows[0].total as number;
+}
+
+// ─── RSI ───────────────────────────────────────────────────────────────────
+
+export async function getRsi(
+  cryptos: string[],
+  from: string,
+  to: string,
+  windowDays: number,
+  limit: number,
+  offset: number,
+) {
+  const { clause, params } = buildCryptoFilter(cryptos, "c");
+  const dateParams = [from || "2000-01-01", to || "2099-12-31"];
+
+  const [rows] = await db.execute<RowDataPacket[]>(
+    `SELECT c.symbol, c.name, cr.date, cr.window_days, cr.rsi, cr.num_observations
+     FROM crypto_rsi cr
+     INNER JOIN cryptocurrencies c ON cr.crypto_id = c.id
+     WHERE cr.date >= ? AND cr.date <= ? AND cr.window_days = ? ${clause}
+     ORDER BY c.symbol ASC, cr.date DESC
+     ${limit > 0 ? `LIMIT ${limit} OFFSET ${offset}` : ""}`,
+    [...dateParams, windowDays, ...params],
+  );
+
+  return rows;
+}
+
+export async function getRsiCount(
+  cryptos: string[],
+  from: string,
+  to: string,
+  windowDays: number,
+) {
+  const { clause, params } = buildCryptoFilter(cryptos, "c");
+  const dateParams = [from || "2000-01-01", to || "2099-12-31"];
+
+  const [rows] = await db.execute<RowDataPacket[]>(
+    `SELECT COUNT(*) as total FROM crypto_rsi cr
+     INNER JOIN cryptocurrencies c ON cr.crypto_id = c.id
+     WHERE cr.date >= ? AND cr.date <= ? AND cr.window_days = ? ${clause}`,
     [...dateParams, windowDays, ...params],
   );
 

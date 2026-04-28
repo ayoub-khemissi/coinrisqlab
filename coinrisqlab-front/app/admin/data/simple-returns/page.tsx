@@ -73,6 +73,7 @@ export default function SimpleReturnsPage() {
       <DataFilters
         csvEndpoint="/api/admin/data/simple-returns"
         csvFilename="simple_returns_export.csv"
+        defaultDays={90}
         loading={loading}
         onSearch={handleSearch}
       />

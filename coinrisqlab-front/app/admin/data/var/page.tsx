@@ -53,14 +53,14 @@ export default function VarPage() {
     cryptos: string[];
     from: string;
     to: string;
-    window: number;
+    window?: number;
   }) => {
     const params: Record<string, string> = {};
 
     if (filters.cryptos.length > 0) params.cryptos = filters.cryptos.join(",");
     if (filters.from) params.from = filters.from;
     if (filters.to) params.to = filters.to;
-    params.window = String(filters.window);
+    if (filters.window != null) params.window = String(filters.window);
     setCurrentParams(params);
     setPage(1);
     fetchData(params, 1);
@@ -75,11 +75,11 @@ export default function VarPage() {
     <div className="space-y-6">
       <h1 className="text-xl font-bold">VaR / CVaR</h1>
       <DataFilters
-        showWindowSelector
         csvEndpoint="/api/admin/data/var"
         csvFilename="var_cvar_export.csv"
-        defaultWindow={365}
+        defaultDays={365}
         loading={loading}
+        metric="var"
         onSearch={handleSearch}
       />
       <DataTable

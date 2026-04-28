@@ -18,6 +18,8 @@ import {
   GitCompare,
   LineChart,
   Briefcase,
+  TrendingDown,
+  Gauge,
 } from "lucide-react";
 
 const NAV_ITEMS = [
@@ -30,6 +32,8 @@ const DATA_NAV_ITEMS = [
   { key: "Log Returns", href: "/data/log-returns", icon: TrendingUp },
   { key: "Simple Returns", href: "/data/simple-returns", icon: TrendingUp },
   { key: "Volatility", href: "/data/volatility", icon: Activity },
+  { key: "MA 90d", href: "/data/ma-90d", icon: TrendingDown },
+  { key: "RSI 14d", href: "/data/rsi-14d", icon: Gauge },
   { key: "VaR / CVaR", href: "/data/var", icon: Shield },
   { key: "Beta / SML", href: "/data/beta-sml", icon: BarChart3 },
   { key: "Distribution", href: "/data/distribution", icon: LineChart },

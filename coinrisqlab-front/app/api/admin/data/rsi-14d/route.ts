@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { verifyAdminSession } from "@/lib/admin-auth";
-import { getVarCvar, getVarCvarCount } from "@/lib/queries/data-validation";
+import { getRsi, getRsiCount } from "@/lib/queries/data-validation";
 import { toCsv } from "@/lib/csv-export";
 
 export const dynamic = "force-dynamic";
@@ -16,12 +16,12 @@ export async function GET(request: NextRequest) {
   const cryptos = sp.get("cryptos")?.split(",").filter(Boolean) || [];
   const from = sp.get("from") || "";
   const to = sp.get("to") || "";
-  const windowDays = parseInt(sp.get("window") || "365");
+  const windowDays = parseInt(sp.get("window") || "14");
   const limit = parseInt(sp.get("limit") || "50");
   const offset = parseInt(sp.get("offset") || "0");
   const format = sp.get("format");
 
-  const rows = await getVarCvar(
+  const rows = await getRsi(
     cryptos,
     from,
     to,
@@ -36,26 +36,19 @@ export async function GET(request: NextRequest) {
       "name",
       "date",
       "window_days",
-      "var_95",
-      "var_99",
-      "cvar_95",
-      "cvar_99",
-      "mean_return",
-      "std_dev",
-      "min_return",
-      "max_return",
+      "rsi",
       "num_observations",
     ]);
 
     return new NextResponse(csv, {
       headers: {
         "Content-Type": "text/csv; charset=utf-8",
-        "Content-Disposition": 'attachment; filename="var_cvar_export.csv"',
+        "Content-Disposition": 'attachment; filename="rsi_export.csv"',
       },
     });
   }
 
-  const total = await getVarCvarCount(cryptos, from, to, windowDays);
+  const total = await getRsiCount(cryptos, from, to, windowDays);
 
   return NextResponse.json({ rows, total, limit, offset });
 }

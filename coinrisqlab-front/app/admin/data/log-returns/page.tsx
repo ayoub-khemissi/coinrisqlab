@@ -73,6 +73,7 @@ export default function LogReturnsPage() {
       <DataFilters
         csvEndpoint="/api/admin/data/log-returns"
         csvFilename="log_returns_export.csv"
+        defaultDays={90}
         loading={loading}
         onSearch={handleSearch}
       />
