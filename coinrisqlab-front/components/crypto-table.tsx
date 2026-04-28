@@ -68,7 +68,7 @@ function CryptoTableComponent({
     { key: "volume_24h_usd", label: "24h Volume", sortable: true },
     { key: "ma_90d", label: "MA 90d", sortable: true },
     { key: "rsi_14d", label: "RSI 14d", sortable: true },
-    { key: "beta", label: "Beta", sortable: true },
+    { key: "beta", label: "Beta (365d log)", sortable: true },
   ];
 
   const renderCell = (crypto: Cryptocurrency, columnKey: React.Key) => {

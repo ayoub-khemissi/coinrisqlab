@@ -271,6 +271,9 @@ export function StressTestPanel({ cryptoId, symbol }: StressTestPanelProps) {
               <p className="text-sm text-default-500 mb-1">
                 Beta (vs CoinRisqLab 80)
               </p>
+              <p className="text-[10px] text-default-400 mb-1 -mt-1">
+                365d · log returns
+              </p>
               <Chip
                 color={
                   data?.beta && data.beta > 1.5
