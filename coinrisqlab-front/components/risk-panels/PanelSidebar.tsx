@@ -129,7 +129,7 @@ function formatMetricValue(
     case "beta":
       const betaValue = betaOverride ?? riskSummary?.beta;
 
-      return betaValue != null ? betaValue.toFixed(2) : null;
+      return betaValue != null ? betaValue.toFixed(4) : null;
     case "skew":
       const skewValue = skewnessOverride ?? riskSummary?.skewness;
 

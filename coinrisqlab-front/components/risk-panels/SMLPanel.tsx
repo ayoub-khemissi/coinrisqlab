@@ -321,7 +321,7 @@ export function SMLPanel({ cryptoId, symbol }: SMLPanelProps) {
                   }}
                 >
                   <p className="text-sm mb-1">
-                    Beta: {tooltip.points[0]?.beta?.toFixed(2)}
+                    Beta: {tooltip.points[0]?.beta?.toFixed(4)}
                   </p>
                   {tooltip.points.map((p) => (
                     <p
@@ -398,8 +398,8 @@ export function SMLPanel({ cryptoId, symbol }: SMLPanelProps) {
               </div>
               <p className="text-sm text-default-600">
                 {data?.isOvervalued
-                  ? `${symbol.toUpperCase()} is generating ${Math.abs(data?.alpha || 0).toFixed(4)}% less return than expected for its level of systematic risk (beta = ${data?.cryptoBeta?.toFixed(2)}). This suggests the asset may be overvalued or experiencing negative alpha.`
-                  : `${symbol.toUpperCase()} is generating ${Math.abs(data?.alpha || 0).toFixed(4)}% more return than expected for its level of systematic risk (beta = ${data?.cryptoBeta?.toFixed(2)}). This suggests the asset may be undervalued or the strategy is generating positive alpha.`}
+                  ? `${symbol.toUpperCase()} is generating ${Math.abs(data?.alpha || 0).toFixed(4)}% less return than expected for its level of systematic risk (beta = ${data?.cryptoBeta?.toFixed(4)}). This suggests the asset may be overvalued or experiencing negative alpha.`
+                  : `${symbol.toUpperCase()} is generating ${Math.abs(data?.alpha || 0).toFixed(4)}% more return than expected for its level of systematic risk (beta = ${data?.cryptoBeta?.toFixed(4)}). This suggests the asset may be undervalued or the strategy is generating positive alpha.`}
               </p>
             </div>
 

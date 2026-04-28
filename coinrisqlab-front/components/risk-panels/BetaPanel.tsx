@@ -102,7 +102,7 @@ export function BetaPanel({
             <div>
               <p className="text-sm text-default-500 mb-1">Beta</p>
               <p className="text-4xl font-bold">
-                {data?.beta != null ? data.beta.toFixed(2) : "N/A"}
+                {data?.beta != null ? data.beta.toFixed(4) : "N/A"}
               </p>
               {betaInterpretation && (
                 <Chip
@@ -213,7 +213,7 @@ export function BetaPanel({
                   <div className="bg-content1/80 backdrop-blur-sm rounded-lg px-2.5 py-1 border border-default-200 flex items-center gap-2 text-[11px]">
                     <span className="text-default-400">Beta</span>
                     <span className="font-semibold">
-                      {data.beta?.toFixed(2) ?? "—"}
+                      {data.beta?.toFixed(4) ?? "—"}
                     </span>
                     <span className="text-default-200">|</span>
                     <span className="text-default-400">Alpha</span>
@@ -355,11 +355,11 @@ export function BetaPanel({
                 </p>
                 <p className="text-sm text-default-500 mt-2">
                   {data?.beta && data.beta > 1
-                    ? `When the market moves 1%, ${symbol.toUpperCase()} is expected to move ${data.beta.toFixed(2)}%`
+                    ? `When the market moves 1%, ${symbol.toUpperCase()} is expected to move ${data.beta.toFixed(4)}%`
                     : data?.beta && data.beta < 1 && data.beta > 0
-                      ? `When the market moves 1%, ${symbol.toUpperCase()} is expected to move only ${data.beta.toFixed(2)}%`
+                      ? `When the market moves 1%, ${symbol.toUpperCase()} is expected to move only ${data.beta.toFixed(4)}%`
                       : data?.beta && data.beta < 0
-                        ? `When the market moves 1%, ${symbol.toUpperCase()} tends to move ${Math.abs(data.beta).toFixed(2)}% in the opposite direction`
+                        ? `When the market moves 1%, ${symbol.toUpperCase()} tends to move ${Math.abs(data.beta).toFixed(4)}% in the opposite direction`
                         : `${symbol.toUpperCase()} moves in line with the market`}
                 </p>
               </div>

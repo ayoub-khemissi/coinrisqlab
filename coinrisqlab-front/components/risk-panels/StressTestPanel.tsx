@@ -282,7 +282,7 @@ export function StressTestPanel({ cryptoId, symbol }: StressTestPanelProps) {
                 size="lg"
                 variant="flat"
               >
-                {data?.beta?.toFixed(2) || "N/A"}
+                {data?.beta?.toFixed(4) || "N/A"}
               </Chip>
             </div>
           </div>
@@ -466,7 +466,7 @@ export function StressTestPanel({ cryptoId, symbol }: StressTestPanelProps) {
               scenario, we select the relevant crisis window, compute the
               aggregate crypto market return over that period, and use the
               cumulative decline as the market shock. A beta of{" "}
-              {data?.beta?.toFixed(2) || "1.0"} means this crypto
+              {data?.beta?.toFixed(4) || "1.0000"} means this crypto
               {data?.beta != null && data.beta < 0
                 ? " typically moves opposite to the market — but in a crisis all betas tend toward 1, so we apply the raw market shock here"
                 : data?.beta != null && data.beta > 1

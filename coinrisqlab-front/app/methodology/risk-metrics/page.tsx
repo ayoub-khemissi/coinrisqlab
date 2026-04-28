@@ -814,7 +814,7 @@ export default function RiskMetricsMethodologyPage() {
                         <tr className="border-b border-default-200">
                           <td className="py-3 px-4">
                             <Chip color="success" size="sm">
-                              0 &lt; β &lt; 1
+                              0 ≤ β &lt; 0.95
                             </Chip>
                           </td>
                           <td className="py-3 px-4">Defensive</td>
@@ -825,18 +825,18 @@ export default function RiskMetricsMethodologyPage() {
                         <tr className="border-b border-default-200">
                           <td className="py-3 px-4">
                             <Chip color="default" size="sm">
-                              β = 1
+                              0.95 ≤ β ≤ 1.05
                             </Chip>
                           </td>
                           <td className="py-3 px-4">Market</td>
                           <td className="py-3 px-4 text-default-600">
-                            Moves exactly like the market
+                            Moves like the market
                           </td>
                         </tr>
                         <tr className="border-b border-default-200">
                           <td className="py-3 px-4">
                             <Chip color="warning" size="sm">
-                              1 &lt; β &lt; 2
+                              1.05 &lt; β ≤ 2
                             </Chip>
                           </td>
                           <td className="py-3 px-4">Aggressive</td>

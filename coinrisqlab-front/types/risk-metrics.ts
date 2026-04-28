@@ -391,11 +391,9 @@ export const PANEL_CONFIGS: PanelConfig[] = [
 
 export type BetaCategory =
   | "inverse"
-  | "uncorrelated"
   | "defensive"
   | "market"
   | "aggressive"
-  | "highly-volatile"
   | "speculative";
 
 export interface BetaInterpretation {
@@ -406,6 +404,12 @@ export interface BetaInterpretation {
 }
 
 export function getBetaInterpretation(beta: number): BetaInterpretation {
+  // Reference scale (per business spec):
+  //   β < 0           → Inverse
+  //   0 ≤ β < 0.95    → Defensive
+  //   0.95 ≤ β ≤ 1.05 → Market (moves like the market)
+  //   1.05 < β ≤ 2    → Aggressive
+  //   β > 2           → Speculative
   if (beta < 0) {
     return {
       category: "inverse",
@@ -414,15 +418,7 @@ export function getBetaInterpretation(beta: number): BetaInterpretation {
       color: "primary",
     };
   }
-  if (beta === 0) {
-    return {
-      category: "uncorrelated",
-      label: "Uncorrelated",
-      description: "Independent of market",
-      color: "default",
-    };
-  }
-  if (beta < 1) {
+  if (beta < 0.95) {
     return {
       category: "defensive",
       label: "Defensive",
@@ -430,28 +426,20 @@ export function getBetaInterpretation(beta: number): BetaInterpretation {
       color: "success",
     };
   }
-  if (beta === 1) {
+  if (beta <= 1.05) {
     return {
       category: "market",
-      label: "Market-Indexed",
+      label: "Market",
       description: "Moves like the market",
       color: "default",
     };
   }
-  if (beta < 2) {
+  if (beta <= 2) {
     return {
       category: "aggressive",
       label: "Aggressive",
       description: "Amplifies market movements",
       color: "warning",
-    };
-  }
-  if (beta === 2) {
-    return {
-      category: "highly-volatile",
-      label: "Highly Volatile",
-      description: "2x market movements",
-      color: "danger",
     };
   }
 

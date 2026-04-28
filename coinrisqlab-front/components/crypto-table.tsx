@@ -213,7 +213,7 @@ function CryptoTableComponent({
 
         return (
           <div className="font-mono">
-            {betaValue !== null ? betaValue.toFixed(2) : "—"}
+            {betaValue !== null ? betaValue.toFixed(4) : "—"}
           </div>
         );
       }
