@@ -285,13 +285,12 @@ export default function RiskMetricsMethodologyPage() {
                 </h2>
               </div>
               <p className="text-default-600 mb-6">
-                Les métriques descriptives de distribution (volatilité,
-                asymétrie, kurtosis, bêta statistique) sont estimées sur
-                rendements logarithmiques pour des raisons de stabilité
-                statistique. Les métriques d&apos;interprétation économique et
-                de risque portefeuille (performance, VaR, CVaR, stress tests,
-                SML) sont calculées en rendements simples ou en PnL afin de
-                conserver une lecture économique directement exploitable.
+                Descriptive distribution metrics (volatility, skewness,
+                kurtosis, statistical beta) are estimated on logarithmic
+                returns for statistical stability. Economic-interpretation
+                and portfolio-risk metrics (performance, VaR, CVaR, stress
+                tests, SML) are computed on simple returns or PnL so the
+                output reads as an actual gain or loss.
               </p>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
