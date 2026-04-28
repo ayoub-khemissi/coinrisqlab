@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo, useRef } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Input } from "@heroui/input";
 import { Button } from "@heroui/button";
 import { Chip } from "@heroui/chip";
@@ -147,50 +147,6 @@ export function DataFilters({
       })
       .catch(() => {});
   }, [metric]);
-
-  // Auto-fire search once defaults are in place. We track the last fired
-  // signature so we don't re-trigger on every state change.
-  const lastFiredRef = useRef<string>("");
-
-  useEffect(() => {
-    // Wait for date range to be set (when applicable)
-    if (showDateRange && (!from || !to)) return;
-    // Wait for window meta to load (when applicable)
-    if (metric && windowDays == null) return;
-    // Wait for portfolios to be loaded (when applicable)
-    if (showPortfolioSelector && !portfolioId) return;
-
-    const sig = JSON.stringify({
-      from,
-      to,
-      windowDays,
-      portfolioId,
-      // Cryptos and crypto1/2 are not part of the auto-search signature —
-      // first load fires with empty selection (server returns full set).
-    });
-
-    if (sig === lastFiredRef.current) return;
-    lastFiredRef.current = sig;
-
-    onSearch({
-      cryptos: selectedCryptoObjects.map((c) => c.coingecko_id),
-      from,
-      to,
-      window: windowDays,
-      portfolioId,
-      crypto1,
-      crypto2,
-    });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [
-    from,
-    to,
-    windowDays,
-    portfolioId,
-    metric,
-    showDateRange,
-    showPortfolioSelector,
-  ]);
 
   const handleRemoveCrypto = (coingeckoId: string) => {
     setSelectedCryptoObjects((prev) =>
