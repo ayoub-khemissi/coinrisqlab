@@ -429,7 +429,10 @@ export function computeAnalyticsBundle({
       // distribution metric, paired with the log-return volatility).
       const sharpe = calculateSharpeRatio(portfolioReturnsLog);
       const meanReturn = mean(portfolioReturnsSimple);
-      const dailyStd = standardDeviation(portfolioReturnsSimple);
+      // Daily std dev IS the daily portfolio volatility — must be on log
+      // returns to match the value displayed in the Volatility card (which
+      // is computed from the covariance matrix of log returns).
+      const dailyStd = standardDeviation(portfolioReturnsLog);
       const minReturn = Math.min(...portfolioReturnsSimple);
       const maxReturn = Math.max(...portfolioReturnsSimple);
 

@@ -480,9 +480,11 @@ api.get('/user/portfolios/:id/risk-metrics', authenticateUser, requirePro, async
     const skewness = calculateSkewness(portfolioReturnsLog);
     const kurtosis = calculateKurtosis(portfolioReturnsLog);
 
-    // Return statistics (simple returns — economic interpretation)
+    // Return statistics (simple returns — economic interpretation),
+    // except dailyStd which IS the daily portfolio volatility — log
+    // returns to match the Volatility card on the page.
     const meanReturn = mean(portfolioReturnsSimple);
-    const dailyStd = standardDeviation(portfolioReturnsSimple);
+    const dailyStd = standardDeviation(portfolioReturnsLog);
     const minReturn = Math.min(...portfolioReturnsSimple);
     const maxReturn = Math.max(...portfolioReturnsSimple);
     const annualizedReturn = meanReturn * 365;
