@@ -173,19 +173,21 @@ export default function PortfolioAnalyticsPage() {
   const volDistributionData = useMemo(() => {
     if (!volatility?.constituents) return [];
 
+    // Bars show each constituent's risk contribution (weight × volatility),
+    // matching the Risk Contributors table below. Same units, 2 decimals.
     return [...volatility.constituents]
-      .sort((a: any, b: any) =>
-        volatilityMode === "daily"
-          ? b.daily_volatility - a.daily_volatility
-          : b.annualized_volatility - a.annualized_volatility,
-      )
-      .map((c: any) => ({
-        name: c.symbol,
-        volatility:
+      .map((c: any) => {
+        const sigma =
           volatilityMode === "daily"
-            ? Number((c.daily_volatility * 100).toFixed(3))
-            : c.annualized_volatility,
-      }));
+            ? c.daily_volatility
+            : c.annualized_volatility / 100;
+
+        return {
+          name: c.symbol,
+          riskContribution: Number((c.weight * sigma * 100).toFixed(2)),
+        };
+      })
+      .sort((a, b) => b.riskContribution - a.riskContribution);
   }, [volatility, volatilityMode]);
 
   if (loading) {
@@ -670,7 +672,7 @@ export default function PortfolioAnalyticsPage() {
                                   {payload[0].payload.name}
                                 </p>
                                 <p className="text-sm text-default-500">
-                                  {payload[0].value}%
+                                  {Number(payload[0].value).toFixed(2)}%
                                 </p>
                               </div>
                             );
@@ -679,7 +681,7 @@ export default function PortfolioAnalyticsPage() {
                           return null;
                         }}
                       />
-                      <Bar dataKey="volatility" radius={[4, 4, 0, 0]}>
+                      <Bar dataKey="riskContribution" radius={[4, 4, 0, 0]}>
                         {volDistributionData.map((_: any, index: number) => (
                           <RechartsCell
                             key={index}
