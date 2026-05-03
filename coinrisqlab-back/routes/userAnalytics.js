@@ -26,6 +26,7 @@ import {
   getLatestBetaMap,
   getIndexLogReturnsMap,
   getAlignedReturns,
+  getAlignedReturnsFilled,
 } from '../utils/userPortfolioAnalytics.js';
 import { computePortfolioTWR } from '../utils/userPortfolioPerformance.js';
 
@@ -399,7 +400,11 @@ api.get('/user/portfolios/:id/risk-metrics', authenticateUser, requirePro, async
 
     const cryptoIds = holdings.map((h) => h.crypto_id);
     const weights = holdings.map((h) => h.weight);
-    const { returnsByCryptoLog, returnsByCryptoSimple, alignedDates } = await getAlignedReturns(
+    // Use the zero-fill variant so portfolios with one young crypto (e.g.
+    // RAVE with only 137 days) still get the full 365-day window for
+    // VaR / CVaR / Sharpe / Beta — see /methodology/risk-metrics and the
+    // Excel example sheet `Feuil1`.
+    const { returnsByCryptoLog, returnsByCryptoSimple, alignedDates } = await getAlignedReturnsFilled(
       cryptoIds,
       '365d'
     );
@@ -488,13 +493,14 @@ api.get('/user/portfolios/:id/risk-metrics', authenticateUser, requirePro, async
     const skewness = calculateSkewness(portfolioReturnsLog90);
     const kurtosis = calculateKurtosis(portfolioReturnsLog90);
 
-    // Return statistics (90-day simple returns), except dailyStd which IS
-    // the daily portfolio volatility — log returns to match the Volatility
-    // card on the page.
-    const meanReturn = mean(portfolioReturnsSimple90);
+    // Return statistics: Best/Worst/Mean/Annualized on the 365-day simple
+    // series so the labels "Best Day (Xd)" stay honest. dailyStd is the
+    // daily portfolio volatility (= 90d log std), kept aligned with the
+    // value displayed in the Volatility card.
+    const meanReturn = mean(portfolioReturnsSimple365);
     const dailyStd = standardDeviation(portfolioReturnsLog90);
-    const minReturn = Math.min(...portfolioReturnsSimple90);
-    const maxReturn = Math.max(...portfolioReturnsSimple90);
+    const minReturn = Math.min(...portfolioReturnsSimple365);
+    const maxReturn = Math.max(...portfolioReturnsSimple365);
     const annualizedReturn = meanReturn * 365;
 
     // Diversification benefit (90-day log returns — same window as Volatility)
@@ -557,7 +563,9 @@ api.get('/user/portfolios/:id/correlation', authenticateUser, requirePro, async 
 
     const cryptoIds = holdings.map((h) => h.crypto_id);
     const symbols = holdings.map((h) => h.symbol);
-    const { returnsByCryptoLog, alignedDates } = await getAlignedReturns(cryptoIds, '365d');
+    // Correlation between two cryptos requires both having data on the same
+    // day — use intersection (getAlignedReturns), not the zero-fill helper.
+    const { returnsByCryptoLog, alignedDates } = await getAlignedReturns(cryptoIds, '90d');
 
     if (alignedDates.length < 10) {
       return res.json({ data: null, msg: 'Not enough data points' });
@@ -700,7 +708,7 @@ api.get('/user/portfolios/:id/analytics-bundle', authenticateUser, async (req, r
     // Pro-only: fetch the index returns in parallel (needed for beta/alpha regression).
     const [{ returnsByCryptoLog, returnsByCryptoSimple, alignedDates }, betaMap, indexReturnMap] =
       await Promise.all([
-        getAlignedReturns(cryptoIds, '365d'),
+        getAlignedReturnsFilled(cryptoIds, '365d'),
         getLatestBetaMap(cryptoIds),
         isPro ? getIndexLogReturnsMap() : Promise.resolve({}),
       ]);

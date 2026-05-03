@@ -5,7 +5,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import {
   getPortfolioHoldings,
-  getAlignedReturns,
+  getAlignedReturnsFilled,
   getLatestBetaMap,
   getIndexLogReturnsMap,
   computeAnalyticsBundle,
@@ -77,7 +77,7 @@ async function exportUserPortfolioAnalyticsValidation(portfolioIdArg) {
     const cryptoIds = holdings.map((h) => h.crypto_id);
     const [{ returnsByCryptoLog, returnsByCryptoSimple, alignedDates }, betaMap, indexReturnMap] =
       await Promise.all([
-        getAlignedReturns(cryptoIds, '365d'),
+        getAlignedReturnsFilled(cryptoIds, '365d'),
         getLatestBetaMap(cryptoIds),
         getIndexLogReturnsMap(),
       ]);

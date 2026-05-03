@@ -171,6 +171,75 @@ export async function getAlignedReturns(cryptoIds, period = '90d') {
 }
 
 /**
+ * Same as getAlignedReturns but UNION of dates instead of INTERSECTION:
+ * for each (crypto, date) cell where the crypto has no return that day,
+ * fill with 0 instead of dropping the date entirely. This lets a portfolio
+ * containing a young crypto (e.g. RAVE with 137 days) still show 365 days
+ * of VaR/CVaR by treating the missing returns as 0% — same convention
+ * Ahmed used in the Excel example sheet `Feuil1`.
+ *
+ * Use this for portfolio-level VaR / CVaR / Sharpe / Beta. Per-pair
+ * metrics (correlation between two cryptos) should keep using
+ * getAlignedReturns (intersection), where dropping mismatched days is
+ * the right behaviour.
+ */
+export async function getAlignedReturnsFilled(cryptoIds, period = '365d') {
+  if (!cryptoIds || cryptoIds.length === 0) {
+    return {
+      alignedDates: [],
+      returnsByCryptoLog: {},
+      returnsByCryptoSimple: {},
+    };
+  }
+
+  const dateFilter = getDateFilter(period);
+  const placeholders = cryptoIds.map(() => '?').join(',');
+
+  const [logRows] = await Database.execute(
+    `SELECT crypto_id, date, log_return
+     FROM crypto_log_returns
+     WHERE crypto_id IN (${placeholders}) ${dateFilter}
+     ORDER BY date ASC`,
+    cryptoIds,
+  );
+  const [simpleRows] = await Database.execute(
+    `SELECT crypto_id, date, simple_return
+     FROM crypto_simple_returns
+     WHERE crypto_id IN (${placeholders}) ${dateFilter}
+     ORDER BY date ASC`,
+    cryptoIds,
+  );
+
+  const dateSet = new Set();
+  const logByDate = {};
+  for (const row of logRows) {
+    const dateStr =
+      row.date instanceof Date ? row.date.toISOString().slice(0, 10) : String(row.date);
+    dateSet.add(dateStr);
+    if (!logByDate[dateStr]) logByDate[dateStr] = {};
+    logByDate[dateStr][row.crypto_id] = parseFloat(row.log_return);
+  }
+  const simpleByDate = {};
+  for (const row of simpleRows) {
+    const dateStr =
+      row.date instanceof Date ? row.date.toISOString().slice(0, 10) : String(row.date);
+    dateSet.add(dateStr);
+    if (!simpleByDate[dateStr]) simpleByDate[dateStr] = {};
+    simpleByDate[dateStr][row.crypto_id] = parseFloat(row.simple_return);
+  }
+
+  const alignedDates = [...dateSet].sort();
+  const returnsByCryptoLog = {};
+  const returnsByCryptoSimple = {};
+  for (const id of cryptoIds) {
+    returnsByCryptoLog[id] = alignedDates.map((d) => logByDate[d]?.[id] ?? 0);
+    returnsByCryptoSimple[id] = alignedDates.map((d) => simpleByDate[d]?.[id] ?? 0);
+  }
+
+  return { alignedDates, returnsByCryptoLog, returnsByCryptoSimple };
+}
+
+/**
  * Get the latest beta for each crypto from crypto_beta.
  * Returns { [crypto_id]: beta }.
  */
@@ -442,12 +511,14 @@ export function computeAnalyticsBundle({
       const cvar99 = calculateCVaR(portfolioReturnsSimple365, 99);
       const sharpe = calculateSharpeRatio(portfolioReturnsLog365);
 
-      // 90-day window: returnStats live with their dispersion (dailyStd =
-      // 90d portfolio volatility), so mean/min/max stay on the same window.
-      const meanReturn = mean(portfolioReturnsSimple90);
+      // Return statistics:
+      //   - Best/Worst/Mean/Annualized → 365-day simple series so the
+      //     "Best Day (Xd)" / "Worst Day (Xd)" labels stay honest
+      //   - dailyStd → 90-day log std (= bundle.volatility.dailyVolatility)
+      const meanReturn = mean(portfolioReturnsSimple365);
       const dailyStd = standardDeviation(portfolioReturnsLog90);
-      const minReturn = Math.min(...portfolioReturnsSimple90);
-      const maxReturn = Math.max(...portfolioReturnsSimple90);
+      const minReturn = Math.min(...portfolioReturnsSimple365);
+      const maxReturn = Math.max(...portfolioReturnsSimple365);
 
       // 90-day window (per methodology: Skewness / Kurtosis)
       const skewness = calculateSkewness(portfolioReturnsLog90);
