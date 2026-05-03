@@ -20,11 +20,21 @@ import {
   Briefcase,
   TrendingDown,
   Gauge,
+  PieChart,
+  Users,
+  Coins,
 } from "lucide-react";
 
 const NAV_ITEMS = [
   { key: "Dashboard", href: "", icon: LayoutDashboard },
   { key: "News", href: "/news", icon: Newspaper },
+];
+
+const METRICS_NAV_ITEMS = [
+  { key: "Overview", href: "/metrics", icon: LayoutDashboard },
+  { key: "Users", href: "/metrics/users", icon: Users },
+  { key: "Portfolios", href: "/metrics/portfolios", icon: Briefcase },
+  { key: "Assets", href: "/metrics/assets", icon: Coins },
 ];
 
 const DATA_NAV_ITEMS = [
@@ -48,7 +58,9 @@ export function AdminSidebar() {
   const pathname = usePathname();
   const basePath = "/admin";
   const isDataSection = pathname.startsWith(`${basePath}/data`);
+  const isMetricsSection = pathname.startsWith(`${basePath}/metrics`);
   const [dataOpen, setDataOpen] = useState(isDataSection);
+  const [metricsOpen, setMetricsOpen] = useState(isMetricsSection);
 
   return (
     <aside className="w-64 min-h-screen bg-background border-r border-divider flex flex-col">
@@ -87,6 +99,55 @@ export function AdminSidebar() {
               </li>
             );
           })}
+
+          {/* Metrics section */}
+          <li>
+            <button
+              className={`flex items-center justify-between w-full gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+                isMetricsSection
+                  ? "bg-primary/10 text-primary border border-primary/20"
+                  : "text-default-500 hover:text-foreground hover:bg-default-100"
+              }`}
+              type="button"
+              onClick={() => setMetricsOpen(!metricsOpen)}
+            >
+              <span className="flex items-center gap-3">
+                <PieChart size={18} />
+                <span>Metrics</span>
+              </span>
+              {metricsOpen ? (
+                <ChevronDown size={14} />
+              ) : (
+                <ChevronRight size={14} />
+              )}
+            </button>
+
+            {metricsOpen && (
+              <ul className="mt-1 ml-4 space-y-0.5">
+                {METRICS_NAV_ITEMS.map((item) => {
+                  const href = `${basePath}${item.href}`;
+                  const isActive = pathname === href;
+                  const Icon = item.icon;
+
+                  return (
+                    <li key={item.key}>
+                      <NextLink
+                        className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                          isActive
+                            ? "text-primary bg-primary/5"
+                            : "text-default-400 hover:text-foreground hover:bg-default-100"
+                        }`}
+                        href={href}
+                      >
+                        <Icon size={14} />
+                        <span>{item.key}</span>
+                      </NextLink>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </li>
 
           {/* Data Validation section */}
           <li>
