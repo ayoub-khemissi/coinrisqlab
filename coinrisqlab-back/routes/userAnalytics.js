@@ -323,19 +323,23 @@ api.get('/user/portfolios/:id/performance', authenticateUser, async (req, res) =
       }
     }
 
-    // Benchmark 24h return from latest two index snapshots
-    const [benchmarkRows] = await Database.execute(
-      `SELECT index_level FROM index_history
-       WHERE index_config_id = 1
-       ORDER BY snapshot_date DESC, timestamp DESC
-       LIMIT 2`,
-      []
+    // Benchmark 24h return — current intraday value vs the latest snapshot
+    // 24h ago. Same convention as the public /index-details endpoint, so
+    // the chip matches what the Index page displays.
+    const [latestRow] = await Database.execute(
+      `SELECT index_level FROM index_history WHERE index_config_id = 1
+       ORDER BY timestamp DESC LIMIT 1`
+    );
+    const [anchor24hRow] = await Database.execute(
+      `SELECT index_level FROM index_history WHERE index_config_id = 1
+         AND timestamp <= DATE_SUB(NOW(), INTERVAL 1 DAY)
+       ORDER BY timestamp DESC LIMIT 1`
     );
 
     let benchmark24hReturn = 0;
-    if (benchmarkRows.length >= 2) {
-      const latest = parseFloat(benchmarkRows[0].index_level);
-      const prev = parseFloat(benchmarkRows[1].index_level);
+    if (latestRow.length > 0 && anchor24hRow.length > 0) {
+      const latest = parseFloat(latestRow[0].index_level);
+      const prev = parseFloat(anchor24hRow[0].index_level);
       benchmark24hReturn = prev > 0 ? ((latest - prev) / prev) * 100 : 0;
     }
 
@@ -738,7 +742,9 @@ api.get('/user/portfolios/:id/analytics-bundle', authenticateUser, async (req, r
 
     // Compute portfolio TWR (replays transactions, excludes capital flows)
     // and fetch the matching index history in parallel.
-    const [twr, indexResult, benchmarkResult] = await Promise.all([
+    // Benchmark 24h: latest intraday index_level vs latest snapshot 24h ago
+    // (same convention as the public /index-details endpoint).
+    const [twr, indexResult, latestRowResult, anchor24hRowResult] = await Promise.all([
       computePortfolioTWR(portfolioId, period),
       Database.execute(
         `SELECT snapshot_date, index_level FROM (
@@ -748,16 +754,19 @@ api.get('/user/portfolios/:id/analytics-bundle', authenticateUser, async (req, r
         []
       ),
       Database.execute(
-        `SELECT index_level FROM (
-           SELECT index_level, ROW_NUMBER() OVER (ORDER BY timestamp DESC) AS rn
-           FROM index_history WHERE index_config_id = 1
-         ) ranked WHERE rn <= 2`,
-        []
+        `SELECT index_level FROM index_history WHERE index_config_id = 1
+         ORDER BY timestamp DESC LIMIT 1`
+      ),
+      Database.execute(
+        `SELECT index_level FROM index_history WHERE index_config_id = 1
+           AND timestamp <= DATE_SUB(NOW(), INTERVAL 1 DAY)
+         ORDER BY timestamp DESC LIMIT 1`
       ),
     ]);
 
     const indexHistory = indexResult[0];
-    const benchmarkRows = benchmarkResult[0];
+    const latestRow = latestRowResult[0];
+    const anchor24hRow = anchor24hRowResult[0];
 
     // 24h returns — use percent_change_24h already in holdings (no extra query)
     let portfolio24hReturn = 0;
@@ -766,9 +775,9 @@ api.get('/user/portfolios/:id/analytics-bundle', authenticateUser, async (req, r
     }
 
     let benchmark24hReturn = 0;
-    if (benchmarkRows.length >= 2) {
-      const latest = parseFloat(benchmarkRows[0].index_level);
-      const prev = parseFloat(benchmarkRows[1].index_level);
+    if (latestRow.length > 0 && anchor24hRow.length > 0) {
+      const latest = parseFloat(latestRow[0].index_level);
+      const prev = parseFloat(anchor24hRow[0].index_level);
       benchmark24hReturn = prev > 0 ? ((latest - prev) / prev) * 100 : 0;
     }
 

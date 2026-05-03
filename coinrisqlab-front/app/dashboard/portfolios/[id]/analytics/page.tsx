@@ -530,14 +530,6 @@ export default function PortfolioAnalyticsPage() {
                 <div className="flex items-center gap-2 mb-4">
                   <Activity className="text-primary" size={20} />
                   <h3 className="font-semibold">Current Volatility</h3>
-                  <MetricHelp
-                    description="Standard deviation of daily portfolio returns. Measures how much the portfolio value fluctuates. Higher = riskier. Annualized = daily × √252."
-                    formula={
-                      "\\sigma = \\sqrt{\\frac{1}{n}\\sum_{i=1}^{n}(r_i - \\bar{r})^2}"
-                    }
-                    title="Current Volatility"
-                    window="90 days"
-                  />
                 </div>
                 <div className="space-y-2">
                   <div>
@@ -875,7 +867,7 @@ export default function PortfolioAnalyticsPage() {
                       <MetricHelp
                         description="Risk-adjusted return. > 1 = good, > 2 = excellent, < 0 = underperforming a risk-free rate. Measures excess return per unit of volatility."
                         formula={
-                          "\\mathrm{Sharpe} = \\frac{\\mu - r_f}{\\sigma} \\sqrt{252}"
+                          "\\mathrm{Sharpe} = \\frac{\\mu - r_f}{\\sigma} \\sqrt{365}"
                         }
                         title="Sharpe Ratio"
                         window="365 days"
