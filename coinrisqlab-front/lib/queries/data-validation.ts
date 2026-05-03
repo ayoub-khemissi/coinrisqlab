@@ -731,6 +731,69 @@ export async function getIndexConstituents(
   return rows;
 }
 
+// ─── Portfolio Constituents (live composition snapshot) ───────────────────
+// Same shape as the table on /dashboard/portfolios/[id]: per-holding
+// Asset / Quantity / Avg Buy Price / Current Price / Current Value / PnL /
+// Allocation, with totals derived live from market_data.
+export async function getPortfolioConstituents(portfolioId: number) {
+  const [rows] = await db.execute<RowDataPacket[]>(
+    `SELECT
+       c.id              AS crypto_id,
+       c.symbol          AS symbol,
+       c.name            AS name,
+       uph.quantity      AS quantity,
+       uph.avg_buy_price AS avg_buy_price,
+       uph.first_buy_date AS first_buy_date,
+       md.price_usd      AS current_price
+     FROM user_portfolio_holdings uph
+     INNER JOIN cryptocurrencies c ON uph.crypto_id = c.id
+     LEFT JOIN (
+       SELECT md1.crypto_id, md1.price_usd
+       FROM market_data md1
+       INNER JOIN (
+         SELECT crypto_id, MAX(timestamp) AS ts
+         FROM market_data
+         GROUP BY crypto_id
+       ) latest
+         ON latest.crypto_id = md1.crypto_id
+        AND latest.ts        = md1.timestamp
+     ) md ON md.crypto_id = c.id
+     WHERE uph.portfolio_id = ?
+     ORDER BY (uph.quantity * COALESCE(md.price_usd, 0)) DESC`,
+    [portfolioId],
+  );
+
+  // Derive value, pnl, allocation per row
+  const valued = rows.map((r) => {
+    const qty = parseFloat(r.quantity);
+    const px = r.current_price != null ? parseFloat(r.current_price) : 0;
+    const avg = parseFloat(r.avg_buy_price);
+    const current_value_usd = qty * px;
+    const pnl_usd = current_value_usd - qty * avg;
+    const pnl_pct = avg > 0 ? (px / avg - 1) * 100 : null;
+
+    return {
+      symbol: r.symbol,
+      name: r.name,
+      quantity: qty,
+      avg_buy_price_usd: avg,
+      current_price_usd: px,
+      current_value_usd,
+      pnl_usd,
+      pnl_pct,
+      first_buy_date: r.first_buy_date,
+    };
+  });
+
+  const totalValue = valued.reduce((s, h) => s + h.current_value_usd, 0);
+
+  return valued.map((h) => ({
+    ...h,
+    allocation_pct:
+      totalValue > 0 ? (h.current_value_usd / totalValue) * 100 : 0,
+  }));
+}
+
 // ─── User Portfolios List ───────────────────────────────────────────────────
 
 export async function listUserPortfolios() {

@@ -41,6 +41,7 @@ const DATA_NAV_ITEMS = [
   { key: "Correlation", href: "/data/correlation", icon: GitCompare },
   { key: "Index", href: "/data/index", icon: LineChart },
   { key: "Portfolio", href: "/data/portfolio-analytics", icon: Briefcase },
+  { key: "Portfolio Holdings", href: "/data/portfolio-constituents", icon: Briefcase },
 ];
 
 export function AdminSidebar() {
