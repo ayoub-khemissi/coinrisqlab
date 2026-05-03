@@ -96,6 +96,66 @@ api.put('/user/portfolios/:id', authenticateUser, async (req, res) => {
   }
 });
 
+// Duplicate portfolio (copies holdings + transactions under a new name).
+// Same plan check as POST /user/portfolios.
+api.post('/user/portfolios/:id/duplicate', authenticateUser, async (req, res) => {
+  try {
+    const sourceId = parseInt(req.params.id);
+    if (!(await verifyPortfolioOwnership(sourceId, req.user.id))) {
+      return res.status(404).json({ data: null, msg: 'Portfolio not found' });
+    }
+
+    const { name } = req.body;
+    if (!name || name.trim().length === 0) {
+      return res.status(400).json({ data: null, msg: 'Portfolio name is required' });
+    }
+
+    // Free plan: max 1 portfolio
+    if (req.user.plan === 'free') {
+      const [existing] = await Database.execute(
+        'SELECT COUNT(*) AS cnt FROM user_portfolios WHERE user_id = ?',
+        [req.user.id]
+      );
+      if (existing[0].cnt >= 1) {
+        return res.status(403).json({ data: null, msg: 'Free plan allows only 1 portfolio. Upgrade to Pro for unlimited.' });
+      }
+    }
+
+    const [src] = await Database.execute(
+      'SELECT description FROM user_portfolios WHERE id = ?',
+      [sourceId]
+    );
+    const description = src[0]?.description ?? null;
+
+    const [created] = await Database.execute(
+      'INSERT INTO user_portfolios (user_id, name, description) VALUES (?, ?, ?)',
+      [req.user.id, name.trim(), description]
+    );
+    const newId = created.insertId;
+
+    // Clone holdings
+    await Database.execute(
+      `INSERT INTO user_portfolio_holdings (portfolio_id, crypto_id, quantity, avg_buy_price, first_buy_date)
+       SELECT ?, crypto_id, quantity, avg_buy_price, first_buy_date
+       FROM user_portfolio_holdings WHERE portfolio_id = ?`,
+      [newId, sourceId]
+    );
+
+    // Clone transaction history (so the TWR / analytics replay matches the source)
+    await Database.execute(
+      `INSERT INTO user_transactions (portfolio_id, crypto_id, type, quantity, price_usd, fee_usd, timestamp, notes)
+       SELECT ?, crypto_id, type, quantity, price_usd, fee_usd, timestamp, notes
+       FROM user_transactions WHERE portfolio_id = ?`,
+      [newId, sourceId]
+    );
+
+    res.status(201).json({ data: { id: newId, name: name.trim(), description } });
+  } catch (error) {
+    log.error(`Duplicate portfolio error: ${error.message}`);
+    res.status(500).json({ data: null, msg: 'Failed to duplicate portfolio' });
+  }
+});
+
 // Delete portfolio
 api.delete('/user/portfolios/:id', authenticateUser, async (req, res) => {
   try {

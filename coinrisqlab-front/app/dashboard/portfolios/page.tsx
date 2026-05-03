@@ -22,6 +22,8 @@ import {
   TrendingUp,
   TrendingDown,
   Trash2,
+  Pencil,
+  Copy,
 } from "lucide-react";
 
 import { API_BASE_URL } from "@/config/constants";
@@ -36,8 +38,15 @@ export default function PortfoliosPage() {
   const [newName, setNewName] = useState("");
   const [creating, setCreating] = useState(false);
   const [deletingId, setDeletingId] = useState<number | null>(null);
+  const [renamingId, setRenamingId] = useState<number | null>(null);
+  const [renameValue, setRenameValue] = useState("");
+  const [duplicatingId, setDuplicatingId] = useState<number | null>(null);
+  const [duplicateName, setDuplicateName] = useState("");
+  const [submitting, setSubmitting] = useState(false);
   const { isOpen, onOpen, onClose } = useDisclosure();
   const deleteModal = useDisclosure();
+  const renameModal = useDisclosure();
+  const duplicateModal = useDisclosure();
 
   const { byPortfolio } = useLivePortfolioMetrics(holdings);
 
@@ -99,6 +108,53 @@ export default function PortfoliosPage() {
       window.dispatchEvent(new Event("portfolios:changed"));
     } catch {
       // ignore
+    }
+  };
+
+  const handleRename = async () => {
+    if (!renamingId || !renameValue.trim()) return;
+    setSubmitting(true);
+    try {
+      await fetch(`${API_BASE_URL}/user/portfolios/${renamingId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ name: renameValue.trim() }),
+      });
+      renameModal.onClose();
+      setRenamingId(null);
+      setRenameValue("");
+      fetchAll();
+      window.dispatchEvent(new Event("portfolios:changed"));
+    } catch {
+      // ignore
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleDuplicate = async () => {
+    if (!duplicatingId || !duplicateName.trim()) return;
+    setSubmitting(true);
+    try {
+      await fetch(
+        `${API_BASE_URL}/user/portfolios/${duplicatingId}/duplicate`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ name: duplicateName.trim() }),
+        },
+      );
+      duplicateModal.onClose();
+      setDuplicatingId(null);
+      setDuplicateName("");
+      fetchAll();
+      window.dispatchEvent(new Event("portfolios:changed"));
+    } catch {
+      // ignore
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -170,22 +226,55 @@ export default function PortfoliosPage() {
               key={p.id}
               className="cursor-pointer hover:border-primary transition-colors relative"
             >
-              <CardHeader className="pb-1 flex items-center justify-between">
-                <NextLink href={`/dashboard/portfolios/${p.id}`}>
-                  <h3 className="font-semibold">{p.name}</h3>
-                </NextLink>
-                <Button
-                  isIconOnly
-                  color="danger"
-                  size="sm"
-                  variant="light"
-                  onPress={() => {
-                    setDeletingId(p.id);
-                    deleteModal.onOpen();
-                  }}
+              <CardHeader className="pb-1 flex items-center justify-between gap-1">
+                <NextLink
+                  className="min-w-0 flex-1 truncate"
+                  href={`/dashboard/portfolios/${p.id}`}
                 >
-                  <Trash2 size={14} />
-                </Button>
+                  <h3 className="font-semibold truncate">{p.name}</h3>
+                </NextLink>
+                <div className="flex items-center gap-0.5 flex-shrink-0">
+                  <Button
+                    isIconOnly
+                    aria-label="Rename"
+                    size="sm"
+                    variant="light"
+                    onPress={() => {
+                      setRenamingId(p.id);
+                      setRenameValue(p.name);
+                      renameModal.onOpen();
+                    }}
+                  >
+                    <Pencil size={14} />
+                  </Button>
+                  <Button
+                    isIconOnly
+                    aria-label="Delete"
+                    color="danger"
+                    size="sm"
+                    variant="light"
+                    onPress={() => {
+                      setDeletingId(p.id);
+                      deleteModal.onOpen();
+                    }}
+                  >
+                    <Trash2 size={14} />
+                  </Button>
+                  <Button
+                    isIconOnly
+                    aria-label="Duplicate"
+                    isDisabled={!canCreate}
+                    size="sm"
+                    variant="light"
+                    onPress={() => {
+                      setDuplicatingId(p.id);
+                      setDuplicateName(`${p.name} (copy)`);
+                      duplicateModal.onOpen();
+                    }}
+                  >
+                    <Copy size={14} />
+                  </Button>
+                </div>
               </CardHeader>
               <CardBody
                 as={NextLink}
@@ -279,6 +368,64 @@ export default function PortfoliosPage() {
             </Button>
             <Button color="danger" onPress={handleDelete}>
               Delete
+            </Button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
+
+      {/* Rename Modal */}
+      <Modal isOpen={renameModal.isOpen} onClose={renameModal.onClose}>
+        <ModalContent>
+          <ModalHeader>Rename Portfolio</ModalHeader>
+          <ModalBody>
+            <Input
+              label="Portfolio Name"
+              value={renameValue}
+              onValueChange={setRenameValue}
+            />
+          </ModalBody>
+          <ModalFooter>
+            <Button variant="flat" onPress={renameModal.onClose}>
+              Cancel
+            </Button>
+            <Button
+              color="primary"
+              isDisabled={!renameValue.trim()}
+              isLoading={submitting}
+              onPress={handleRename}
+            >
+              Save
+            </Button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
+
+      {/* Duplicate Modal */}
+      <Modal isOpen={duplicateModal.isOpen} onClose={duplicateModal.onClose}>
+        <ModalContent>
+          <ModalHeader>Duplicate Portfolio</ModalHeader>
+          <ModalBody>
+            <p className="text-sm text-default-500 mb-2">
+              Holdings and transaction history will be copied to the new
+              portfolio.
+            </p>
+            <Input
+              label="New Portfolio Name"
+              value={duplicateName}
+              onValueChange={setDuplicateName}
+            />
+          </ModalBody>
+          <ModalFooter>
+            <Button variant="flat" onPress={duplicateModal.onClose}>
+              Cancel
+            </Button>
+            <Button
+              color="primary"
+              isDisabled={!duplicateName.trim()}
+              isLoading={submitting}
+              onPress={handleDuplicate}
+            >
+              Duplicate
             </Button>
           </ModalFooter>
         </ModalContent>
