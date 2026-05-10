@@ -95,6 +95,7 @@ export default function PortfolioAnalyticsPage() {
         csvEndpoint="/api/admin/data/portfolio-analytics"
         csvFilename="portfolio_analytics_export.csv"
         defaultDays={365}
+        endOffset={0}
         loading={loading}
         perCrypto={false}
         portfolios={portfolios}

@@ -27,6 +27,11 @@ interface DataFiltersProps {
   showPortfolioSelector?: boolean;
   /** Number of days the default date range should span (to - from + 1). */
   defaultDays?: number;
+  /** Days back from today for the default `to` value. Defaults to 1
+   *  (yesterday) which fits tables with daily lag. Set to 0 for tables
+   *  where the cron writes today's row at CURDATE() (e.g. portfolio
+   *  analytics, snapshots) so today's data is included by default. */
+  endOffset?: number;
   /** Metric key — when set, fetches DISTINCT window_days from BDD via
    *  /api/admin/data/windows?metric=… and renders a Select. Omit when the
    *  table has no window_days column (prices, returns, correlation, …). */
@@ -69,6 +74,7 @@ export function DataFilters({
   showDateRange = true,
   showPortfolioSelector = false,
   defaultDays,
+  endOffset = 1,
   metric,
   perCrypto,
   portfolios,
@@ -113,21 +119,21 @@ export function DataFilters({
     );
   }, [allCryptos, cryptoSearch]);
 
-  // Initialize default date range: to = yesterday, from = to - defaultDays + 1
+  // Initialize default date range: to = today - endOffset, from = to - defaultDays + 1
   useEffect(() => {
     if (!showDateRange) return;
     if (from || to) return; // already set
-    const yesterday = new Date();
+    const end = new Date();
 
-    yesterday.setUTCHours(0, 0, 0, 0);
-    yesterday.setUTCDate(yesterday.getUTCDate() - 1);
+    end.setUTCHours(0, 0, 0, 0);
+    end.setUTCDate(end.getUTCDate() - endOffset);
     const days = defaultDays && defaultDays > 0 ? defaultDays : 90;
-    const fromDate = new Date(yesterday);
+    const fromDate = new Date(end);
 
     fromDate.setUTCDate(fromDate.getUTCDate() - (days - 1));
-    setTo(isoDate(yesterday));
+    setTo(isoDate(end));
     setFrom(isoDate(fromDate));
-  }, [defaultDays, showDateRange, from, to]);
+  }, [defaultDays, endOffset, showDateRange, from, to]);
 
   // Fetch crypto list for the multi-pickers
   useEffect(() => {
