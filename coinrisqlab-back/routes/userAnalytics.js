@@ -286,8 +286,10 @@ api.get('/user/portfolios/:id/performance', authenticateUser, async (req, res) =
     // price effect from capital flows — see utils/userPortfolioPerformance.js)
     const twr = await computePortfolioTWR(portfolioId, period);
 
-    // Index history (one per day)
-    const indexDateFilter = getDateFilter(period, 'snapshot_date');
+    // Index history (one per day) — fetch one extra day before the period
+    // so the chart anchor (windowStart - 1) has an index value, matching the
+    // portfolio TWR series which always includes the day-before anchor.
+    const indexDateFilter = getDateFilter(period, 'snapshot_date', 1);
     const [indexHistory] = await Database.execute(
       `SELECT snapshot_date, index_level
        FROM index_history
@@ -738,7 +740,9 @@ api.get('/user/portfolios/:id/analytics-bundle', authenticateUser, async (req, r
 
     // ── Performance (TWR series + index) ─────────────────────────────────
     let period = '30d';
-    const dateFilter = getDateFilter(period, 'snapshot_date');
+    // +1 buffer day so the index series covers the chart's anchor day
+    // (= windowStart - 1) emitted by computePortfolioTWR.
+    const dateFilter = getDateFilter(period, 'snapshot_date', 1);
 
     // Compute portfolio TWR (replays transactions, excludes capital flows)
     // and fetch the matching index history in parallel.
