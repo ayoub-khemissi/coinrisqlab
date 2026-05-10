@@ -821,7 +821,9 @@ export async function getPortfolioAnalytics(
 
   const [rows] = await db.execute<RowDataPacket[]>(
     `SELECT upa.date, upa.window_days, upa.total_value_usd, upa.num_holdings, upa.data_points,
-       upa.daily_volatility, upa.annualized_volatility, upa.diversification_benefit,
+       upa.daily_volatility, upa.annualized_volatility, upa.weighted_avg_volatility,
+       upa.diversification_benefit,
+       upa.mean_daily_return, upa.daily_std, upa.min_return, upa.max_return, upa.annualized_return,
        upa.var_95, upa.var_99, upa.cvar_95, upa.cvar_99,
        upa.skewness, upa.kurtosis, upa.sharpe_ratio,
        upa.portfolio_beta_weighted, upa.beta_regression, upa.alpha_regression,
