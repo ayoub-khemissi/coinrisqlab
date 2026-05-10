@@ -352,36 +352,12 @@ export default function PortfolioAnalyticsPage() {
       {/* Performance vs Benchmark */}
       {performance && (
         <Card>
-          <CardHeader className="flex flex-col gap-2">
-            <div className="flex justify-between w-full">
-              <h3 className="text-sm font-semibold">
-                Performance vs CoinRisqLab 80
-              </h3>
-              <div className="flex gap-2">
-                <Chip
-                  color={
-                    performance.portfolioReturn >= 0 ? "success" : "danger"
-                  }
-                  size="sm"
-                  variant="flat"
-                >
-                  Portfolio: {performance.portfolioReturn >= 0 ? "+" : ""}
-                  {Number(performance.portfolioReturn).toFixed(2)}%
-                </Chip>
-                <Chip
-                  color={
-                    performance.benchmarkReturn >= 0 ? "success" : "danger"
-                  }
-                  size="sm"
-                  variant="flat"
-                >
-                  Index: {performance.benchmarkReturn >= 0 ? "+" : ""}
-                  {Number(performance.benchmarkReturn).toFixed(2)}%
-                </Chip>
-              </div>
-            </div>
+          <CardHeader className="flex justify-between w-full">
+            <h3 className="text-sm font-semibold">
+              Performance vs CoinRisqLab 80
+            </h3>
             {performance.portfolio24hReturn !== undefined && (
-              <div className="flex gap-2 w-full">
+              <div className="flex items-center gap-2">
                 <span className="text-xs text-default-500">24h Rolling:</span>
                 <Chip
                   color={
