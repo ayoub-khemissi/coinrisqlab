@@ -19,7 +19,7 @@ export async function GET(request: NextRequest) {
   const portfolioId = parseInt(sp.get("portfolioId") || "0");
   const from = sp.get("from") || "";
   const to = sp.get("to") || "";
-  const windowDays = parseInt(sp.get("window") || "90");
+  const windowDays = parseInt(sp.get("window") || "365");
   const limit = parseInt(sp.get("limit") || "50");
   const offset = parseInt(sp.get("offset") || "0");
   const format = sp.get("format");

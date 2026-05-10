@@ -2,7 +2,7 @@ import Database from '../lib/database.js';
 import log from '../lib/log.js';
 import {
   getPortfolioHoldings,
-  getAlignedReturns,
+  getAlignedReturnsFilled,
   getLatestBetaMap,
   getIndexLogReturnsMap,
   computeAnalyticsBundle,
@@ -31,14 +31,18 @@ import {
  * ON DUPLICATE KEY UPDATE makes it safe to re-run multiple times per day.
  *
  * Design notes:
- *   - `window_days` is always 90 (the target window) to keep the unique key stable;
- *     the actual number of observations used is stored in `data_points`.
+ *   - `window_days` is always 365 (the long-window canonical per methodology).
+ *     Note: each metric INSIDE a row uses its own methodology window —
+ *     short-window metrics (Vol / Skew / Kurto / Diversification) on 90d,
+ *     long-window metrics (VaR / CVaR / Sharpe / Beta / Alpha) on 365d.
+ *     The `window_days` column on the row is purely a unique-key
+ *     discriminator and signals that the row is the long-window snapshot.
  *   - `date` is always CURDATE() — there is no retroactive backfill because the
  *     portfolio composition at past dates is not reconstructible without replaying
  *     user_transactions (a separate workstream if ever needed).
  */
 
-const TARGET_WINDOW_DAYS = 90;
+const TARGET_WINDOW_DAYS = 365;
 
 /**
  * Convert non-finite numbers (NaN, ±Infinity) and undefined to null before
@@ -121,9 +125,12 @@ async function processPortfolio(portfolioId, indexReturnMap) {
 
   const cryptoIds = holdings.map((h) => h.crypto_id);
 
-  // 2. Fetch aligned returns (log + simple) + beta map in parallel
+  // 2. Fetch aligned returns (log + simple) + beta map in parallel.
+  //    Use the zero-fill 365d helper so the historization matches what the
+  //    /analytics-bundle endpoint serves to the user analytics page; the
+  //    bundle internally slices the last 90d for short-window metrics.
   const [{ returnsByCryptoLog, returnsByCryptoSimple, alignedDates }, betaMap] = await Promise.all([
-    getAlignedReturns(cryptoIds, '90d'),
+    getAlignedReturnsFilled(cryptoIds, '365d'),
     getLatestBetaMap(cryptoIds),
   ]);
 

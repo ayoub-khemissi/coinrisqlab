@@ -94,9 +94,8 @@ export default function PortfolioAnalyticsPage() {
         showPortfolioSelector
         csvEndpoint="/api/admin/data/portfolio-analytics"
         csvFilename="portfolio_analytics_export.csv"
-        defaultDays={90}
+        defaultDays={365}
         loading={loading}
-        metric="portfolio-analytics"
         perCrypto={false}
         portfolios={portfolios}
         showCryptoSearch={false}

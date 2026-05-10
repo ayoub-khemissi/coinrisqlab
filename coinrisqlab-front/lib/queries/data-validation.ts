@@ -28,7 +28,7 @@ const METRIC_WINDOWS_CONFIG: Record<
   sml: { table: "crypto_sml", canonical: 90 },
   ma: { table: "crypto_moving_averages", canonical: 90 },
   rsi: { table: "crypto_rsi", canonical: 14 },
-  "portfolio-analytics": { table: "user_portfolio_analytics", canonical: 90 },
+  "portfolio-analytics": { table: "user_portfolio_analytics", canonical: 365 },
 };
 
 export async function getMetricWindows(metric: string) {
