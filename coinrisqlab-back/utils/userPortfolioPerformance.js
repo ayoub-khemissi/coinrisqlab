@@ -264,6 +264,14 @@ export async function computePortfolioTWR(portfolioId, period = '30d') {
   }
 
   // Compute daily TWR
+  // Anchor convention: dates[0] (= windowStart - 1) is emitted as the 100
+  // baseline so that the chart's data point on `windowStart` itself shows
+  // the cumulative effect of the first daily return — e.g. if windowStart =
+  // 2026-04-10 then dates[0] = 2026-04-09 → series starts at 4/09 = 100,
+  // and the 4/10 point displays the +X% computed from the 4/09→4/10
+  // close-to-close move. Matches the convention Ahmed uses in his Excel
+  // (anchor row at the start of the audit window, not "100% on the first
+  // displayed return day").
   let cumValue = 100;
   const series = [];
   const dailyReturns = [];
@@ -272,12 +280,9 @@ export async function computePortfolioTWR(portfolioId, period = '30d') {
     const date = dates[i];
 
     if (i === 0) {
-      // Anchor day: rebased to 100, no daily return
-      // (We only emit it if it's >= windowStart.)
-      if (date >= isoDate(windowStart)) {
-        series.push({ date, value: cumValue });
-        dailyReturns.push({ date, pct: null });
-      }
+      // Anchor day = 100, no daily return
+      series.push({ date, value: cumValue });
+      dailyReturns.push({ date, pct: null });
       continue;
     }
 
@@ -304,20 +309,8 @@ export async function computePortfolioTWR(portfolioId, period = '30d') {
 
     cumValue = cumValue * (1 + dailyReturn);
 
-    if (date >= isoDate(windowStart)) {
-      series.push({ date, value: cumValue });
-      dailyReturns.push({ date, pct: dailyReturn * 100 });
-    }
-  }
-
-  // If the window started exactly on the first tx date and the first emitted
-  // value is not 100 (because we already accumulated a return on the anchor
-  // day), rebase the series so it always opens at 100.
-  if (series.length > 0 && series[0].value !== 100) {
-    const base = series[0].value;
-
-    for (const p of series) p.value = (p.value / base) * 100;
-    cumValue = series[series.length - 1].value;
+    series.push({ date, value: cumValue });
+    dailyReturns.push({ date, pct: dailyReturn * 100 });
   }
 
   const totalReturn = cumValue - 100;
