@@ -337,7 +337,7 @@ export function VolatilityPanel({
         </CardBody>
       </Card>
 
-      {/* Risk Levels Legend */}
+      {/* Risk Levels Legend — boundaries match the methodology table */}
       <Card>
         <CardBody className="p-4">
           <p className="text-sm font-semibold mb-3">Risk Levels</p>
@@ -345,25 +345,25 @@ export function VolatilityPanel({
             <div className="flex items-center gap-2">
               <div className="w-3 h-3 rounded-full bg-success" />
               <span className="text-sm">
-                Low (&lt;{mode === "annualized" ? "10%" : "0.5%"})
+                Low (&lt;{mode === "annualized" ? "25%" : "1.31%"})
               </span>
             </div>
             <div className="flex items-center gap-2">
               <div className="w-3 h-3 rounded-full bg-warning" />
               <span className="text-sm">
-                Medium ({mode === "annualized" ? "10-30%" : "0.5-1.5%"})
+                Medium ({mode === "annualized" ? "25-60%" : "1.31-3.14%"})
               </span>
             </div>
             <div className="flex items-center gap-2">
               <div className="w-3 h-3 rounded-full bg-orange-500" />
               <span className="text-sm">
-                High ({mode === "annualized" ? "30-60%" : "1.5-3%"})
+                High ({mode === "annualized" ? "60-90%" : "3.14-4.71%"})
               </span>
             </div>
             <div className="flex items-center gap-2">
               <div className="w-3 h-3 rounded-full bg-danger" />
               <span className="text-sm">
-                Extreme (&gt;{mode === "annualized" ? "60%" : "3%"})
+                Extreme (&gt;{mode === "annualized" ? "90%" : "4.71%"})
               </span>
             </div>
           </div>
