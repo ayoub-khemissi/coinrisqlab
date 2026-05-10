@@ -228,16 +228,38 @@ export async function computePortfolioTWR(portfolioId, period = '30d') {
     ? buildHoldingsTimeline(txRows, dates)
     : Object.fromEntries(dates.map((d) => [d, { ...staticHoldings }]));
 
-  // Forward-fill missing closes (some cryptos may not have a quote on
-  // weekends/holidays for certain feeds). For each crypto, walk the date
-  // list and reuse the last seen close.
+  // Forward + backward fill missing closes so every date in the window has a
+  // defined value for every constituent. This is what makes the daily return
+  // contribution of a "missing" crypto equal to 0% while keeping its weight
+  // intact in the value sums — same convention as Ahmed's Excel sheet
+  // (col M = IFERROR((L_t/L_{t-1})-1, 0) → 0 when the price column is blank).
+  //
+  // Without backward-fill, the value-ratio formula
+  //   return = Σ(qty × close_t) / Σ(qty × close_{t-1}) − 1
+  // would silently exclude the missing crypto from BOTH sums, effectively
+  // re-normalising the surviving cryptos to 100% weight and over-counting
+  // their returns by a factor 1/(1 − w_missing). On a 258-day stretch with
+  // RAVE (~8% weight) absent, that drift accumulates massively.
   for (const cid of cryptoIds) {
     const series = closeByCrypto[cid] || (closeByCrypto[cid] = {});
+
+    // Forward pass: fill gaps with the most recent past close
     let last = null;
 
     for (const d of dates) {
       if (series[d] != null) last = series[d];
       else if (last != null) series[d] = last;
+    }
+
+    // Backward pass: fill any leading gaps with the FIRST known close
+    // (i.e. the value the crypto had when it first started being tracked)
+    let next = null;
+
+    for (let i = dates.length - 1; i >= 0; i--) {
+      const d = dates[i];
+
+      if (series[d] != null) next = series[d];
+      else if (next != null) series[d] = next;
     }
   }
 
