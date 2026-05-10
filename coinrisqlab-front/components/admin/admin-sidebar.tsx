@@ -28,6 +28,7 @@ import {
 const NAV_ITEMS = [
   { key: "Dashboard", href: "", icon: LayoutDashboard },
   { key: "News", href: "/news", icon: Newspaper },
+  { key: "Users", href: "/users", icon: Users },
 ];
 
 const METRICS_NAV_ITEMS = [
