@@ -2,7 +2,7 @@
 
 import type { CorrelationMatrix, Portfolio } from "@/types/user";
 
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, memo } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { Card, CardBody, CardHeader } from "@heroui/card";
 import { Chip } from "@heroui/chip";
@@ -44,6 +44,93 @@ import { API_BASE_URL } from "@/config/constants";
 import { useUserAuth } from "@/lib/user-auth-context";
 import { ProUpgradeCta } from "@/components/dashboard/analytics/pro-upgrade-cta";
 import { MetricHelp } from "@/components/dashboard/metric-help";
+import {
+  useLivePortfolioValue,
+  type ConstituentForLive,
+} from "@/hooks/useLivePortfolioValue";
+
+// ─── Live USD leaf components ─────────────────────────────────────────────
+// Each component opens its own Binance subscription and renders ONLY its
+// own value. Charts and other heavy parents never re-render on price ticks
+// because the live state never reaches them.
+
+const LivePortfolioValue = memo(function LivePortfolioValue({
+  constituents,
+  className,
+}: {
+  constituents: ConstituentForLive[];
+  className?: string;
+}) {
+  const value = useLivePortfolioValue(constituents);
+
+  return (
+    <p className={className ?? "text-4xl font-bold"}>
+      {formatCryptoPrice(value)}
+    </p>
+  );
+});
+
+const LiveLossAmount = memo(function LiveLossAmount({
+  constituents,
+  varPct,
+  className,
+}: {
+  constituents: ConstituentForLive[];
+  varPct: number;
+  className?: string;
+}) {
+  const value = useLivePortfolioValue(constituents);
+  const loss = value * (varPct / 100);
+
+  if (value <= 0) return null;
+
+  return (
+    <p className={className}>{`−${formatCryptoPrice(loss)}`}</p>
+  );
+});
+
+const LiveStressedValue = memo(function LiveStressedValue({
+  constituents,
+  impactPct,
+  color,
+}: {
+  constituents: ConstituentForLive[];
+  impactPct: number;
+  color?: string;
+}) {
+  const value = useLivePortfolioValue(constituents);
+  const stressed = value * (1 + impactPct / 100);
+  const loss = value - stressed;
+  const lossPct = value > 0 ? (loss / value) * 100 : 0;
+
+  return (
+    <>
+      <div className="flex items-center justify-center gap-3 sm:gap-8 py-2">
+        <div className="text-center min-w-0 flex-shrink">
+          <p className="text-xs text-default-500 mb-1">Current</p>
+          <p className="text-lg sm:text-2xl font-bold truncate">
+            {formatCryptoPrice(value)}
+          </p>
+        </div>
+        <TrendingDown className="text-danger flex-shrink-0" size={24} />
+        <div className="text-center min-w-0 flex-shrink">
+          <p className="text-xs text-default-500 mb-1">Stressed</p>
+          <p
+            className="text-lg sm:text-2xl font-bold truncate"
+            style={color ? { color } : undefined}
+          >
+            {formatCryptoPrice(stressed)}
+          </p>
+        </div>
+      </div>
+      <div className="text-center mt-2">
+        <Chip color="danger" size="lg" variant="flat">
+          {lossPct.toFixed(2)}% loss ({formatCryptoPrice(loss)})
+        </Chip>
+      </div>
+    </>
+  );
+});
 
 const COLORS = [
   "#FF6B35",
@@ -810,9 +897,6 @@ export default function PortfolioAnalyticsPage() {
                         tone: "warning",
                       },
                     ].map((item) => {
-                      const portfolioValue = stressTest?.totalValue || 0;
-                      const lossAmount = portfolioValue * (item.value / 100);
-
                       return (
                         <div
                           key={item.label}
@@ -836,17 +920,17 @@ export default function PortfolioAnalyticsPage() {
                           >
                             -{Number(item.value).toFixed(2)}%
                           </p>
-                          {portfolioValue > 0 && (
-                            <p
+                          {volatility?.constituents?.length > 0 && (
+                            <LiveLossAmount
                               className={clsx(
                                 "text-sm font-semibold mt-1",
                                 item.tone === "warning"
                                   ? "text-warning"
                                   : "text-danger",
                               )}
-                            >
-                              −{formatCryptoPrice(lossAmount)}
-                            </p>
+                              constituents={volatility.constituents}
+                              varPct={Number(item.value)}
+                            />
                           )}
                           <p className="text-[10px] text-default-400 mt-1">
                             {item.desc}
@@ -1186,13 +1270,6 @@ export default function PortfolioAnalyticsPage() {
                 "china-mining-ban",
                 "ust-crash",
               ];
-              const totalVal = stressTest.totalValue || 0;
-              const stressedValue = activeScenario
-                ? activeScenario.newPrice
-                : 0;
-              const loss = totalVal - stressedValue;
-              const lossPercent = totalVal > 0 ? (loss / totalVal) * 100 : 0;
-
               return (
                 <div className="flex flex-col gap-4">
                   <Card>
@@ -1202,9 +1279,15 @@ export default function PortfolioAnalyticsPage() {
                           <p className="text-sm text-default-500 mb-1">
                             Portfolio Value
                           </p>
-                          <p className="text-4xl font-bold">
-                            {formatCryptoPrice(totalVal)}
-                          </p>
+                          {volatility?.constituents?.length > 0 ? (
+                            <LivePortfolioValue
+                              constituents={volatility.constituents}
+                            />
+                          ) : (
+                            <p className="text-4xl font-bold">
+                              {formatCryptoPrice(stressTest.totalValue || 0)}
+                            </p>
+                          )}
                         </div>
                         <div>
                           <p className="text-sm text-default-500 mb-1">
@@ -1326,42 +1409,23 @@ export default function PortfolioAnalyticsPage() {
                               Beta-adjusted loss for your portfolio:
                             </p>
                           </div>
-                          <div className="flex items-center justify-center gap-3 sm:gap-8 py-2">
-                            <div className="text-center min-w-0 flex-shrink">
-                              <p className="text-xs text-default-500 mb-1">
-                                Current
-                              </p>
-                              <p className="text-lg sm:text-2xl font-bold truncate">
-                                {formatCryptoPrice(totalVal)}
-                              </p>
-                            </div>
-                            <TrendingDown
-                              className="text-danger flex-shrink-0"
-                              size={24}
+                          {volatility?.constituents?.length > 0 ? (
+                            <LiveStressedValue
+                              color={
+                                STRESS_SCENARIO_COLORS[
+                                  activeScenario.id as StressScenarioId
+                                ] || "#EA3943"
+                              }
+                              constituents={volatility.constituents}
+                              impactPct={
+                                activeScenario.expectedImpact ??
+                                ((activeScenario.newPrice -
+                                  (stressTest.totalValue || 0)) /
+                                  (stressTest.totalValue || 1)) *
+                                  100
+                              }
                             />
-                            <div className="text-center min-w-0 flex-shrink">
-                              <p className="text-xs text-default-500 mb-1">
-                                Stressed
-                              </p>
-                              <p
-                                className="text-lg sm:text-2xl font-bold truncate"
-                                style={{
-                                  color:
-                                    STRESS_SCENARIO_COLORS[
-                                      activeScenario.id as StressScenarioId
-                                    ] || "#EA3943",
-                                }}
-                              >
-                                {formatCryptoPrice(stressedValue)}
-                              </p>
-                            </div>
-                          </div>
-                          <div className="text-center mt-2">
-                            <Chip color="danger" size="lg" variant="flat">
-                              {lossPercent.toFixed(2)}% loss (
-                              {formatCryptoPrice(loss)})
-                            </Chip>
-                          </div>
+                          ) : null}
                         </div>
                       )}
                     </CardBody>

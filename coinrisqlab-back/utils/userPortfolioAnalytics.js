@@ -436,6 +436,11 @@ export function computeAnalyticsBundle({
         name: h.crypto_name,
         image_url: h.image_url,
         weight: h.weight,
+        // Per-holding fundamentals — kept on the public payload so the
+        // front can recompute live USD values from Binance ticks (portfolio
+        // value, VaR loss in $, stressed value) without an extra fetch.
+        quantity: parseFloat(h.quantity),
+        current_price: h.current_price != null ? parseFloat(h.current_price) : null,
         daily_volatility: indivDailyVol,
         annualized_volatility: (indivAnnualVol * 100),
         current_value: (h.current_value || 0),
