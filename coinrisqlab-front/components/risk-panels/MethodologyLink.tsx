@@ -8,6 +8,8 @@ interface MethodologyLinkProps {
   section: string;
   label?: string;
   variant?: "compact" | "full";
+  /** Override the base methodology path. Defaults to /methodology/risk-metrics. */
+  basePath?: string;
 }
 
 /**
@@ -15,13 +17,15 @@ interface MethodologyLinkProps {
  * @param section - The anchor ID in the methodology page (e.g., "var", "beta", "sml")
  * @param label - Optional custom label (defaults to "Methodology")
  * @param variant - "compact" for icon-only on mobile, "full" for always showing text
+ * @param basePath - Override the methodology path (e.g., /methodology/volatility)
  */
 export function MethodologyLink({
   section,
   label = "Methodology",
   variant = "compact",
+  basePath = "/methodology/risk-metrics",
 }: MethodologyLinkProps) {
-  const href = `/methodology/risk-metrics#${section}`;
+  const href = `${basePath}#${section}`;
 
   if (variant === "compact") {
     return (

@@ -340,7 +340,14 @@ export function VolatilityPanel({
       {/* Risk Levels Legend — boundaries match the methodology table */}
       <Card>
         <CardBody className="p-4">
-          <p className="text-sm font-semibold mb-3">Risk Levels</p>
+          <div className="flex items-center justify-between mb-3 gap-2">
+            <p className="text-sm font-semibold">Risk Levels</p>
+            <MethodologyLink
+              basePath="/methodology/volatility"
+              section="risk-levels"
+              variant="full"
+            />
+          </div>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
             <div className="flex items-center gap-2">
               <div className="w-3 h-3 rounded-full bg-success" />
