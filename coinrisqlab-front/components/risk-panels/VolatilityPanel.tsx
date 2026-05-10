@@ -38,18 +38,19 @@ const PERIOD_MAP: Record<RiskPeriod, VolatilityPeriod> = {
   all: "all",
 };
 
-// Risk zones (annualized)
+// Risk zones (annualized) — boundaries match the Volatility methodology
+// classification table: Low < 25%, Medium 25-60%, High 60-90%, Extreme ≥ 90%
 const RISK_ZONES_ANNUAL = [
-  { value: 60, label: "Extreme", color: "#ef4444" },
-  { value: 30, label: "High", color: "#f97316" },
-  { value: 10, label: "Medium", color: "#eab308" },
+  { value: 90, label: "Extreme", color: "#ef4444" },
+  { value: 60, label: "High", color: "#f97316" },
+  { value: 25, label: "Medium", color: "#eab308" },
 ];
 
-// Risk zones (daily)
+// Risk zones (daily) — Low < 1.31%, Medium 1.31-3.14%, High 3.14-4.71%, Extreme ≥ 4.71%
 const RISK_ZONES_DAILY = [
-  { value: 3.0, label: "Extreme", color: "#ef4444" },
-  { value: 1.5, label: "High", color: "#f97316" },
-  { value: 0.5, label: "Medium", color: "#eab308" },
+  { value: 4.71, label: "Extreme", color: "#ef4444" },
+  { value: 3.14, label: "High", color: "#f97316" },
+  { value: 1.31, label: "Medium", color: "#eab308" },
 ];
 
 function getRiskLevel(volatility: number, isAnnualized: boolean) {
