@@ -2,6 +2,8 @@
 
 import { useState, useEffect } from "react";
 import { Select, SelectItem } from "@heroui/select";
+import { Button } from "@heroui/button";
+import { Search } from "lucide-react";
 
 import { DataTable } from "@/components/admin/data-validation/data-table";
 import { CsvDownloadButton } from "@/components/admin/data-validation/csv-download-button";
@@ -39,15 +41,22 @@ export default function PortfolioConstituentsPage() {
       .catch(() => {});
   }, []);
 
-  useEffect(() => {
+  const handleSearch = async () => {
     if (!portfolioId) return;
     setLoading(true);
-    fetch(`/api/admin/data/portfolio-constituents?portfolioId=${portfolioId}`)
-      .then((r) => r.json())
-      .then((d) => setRows(d.rows || []))
-      .catch(() => setRows([]))
-      .finally(() => setLoading(false));
-  }, [portfolioId]);
+    try {
+      const res = await fetch(
+        `/api/admin/data/portfolio-constituents?portfolioId=${portfolioId}`,
+      );
+      const d = await res.json();
+
+      setRows(d.rows || []);
+    } catch {
+      setRows([]);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -65,11 +74,21 @@ export default function PortfolioConstituentsPage() {
           }}
         >
           {portfolios.map((p) => (
-            <SelectItem key={String(p.id)}>
+            <SelectItem key={String(p.id)} textValue={`${p.name} (${p.email})`}>
               {p.name} ({p.email})
             </SelectItem>
           ))}
         </Select>
+        <Button
+          color="primary"
+          isDisabled={portfolioId == null}
+          isLoading={loading}
+          size="sm"
+          startContent={<Search size={16} />}
+          onPress={handleSearch}
+        >
+          Search
+        </Button>
         {portfolioId != null && (
           <CsvDownloadButton
             endpoint="/api/admin/data/portfolio-constituents"

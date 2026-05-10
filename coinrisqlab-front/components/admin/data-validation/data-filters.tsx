@@ -92,6 +92,15 @@ export function DataFilters({
   );
   const [cryptoSearch, setCryptoSearch] = useState("");
 
+  // Sync portfolioId once the parent's async fetch resolves — useState only
+  // captures the initial (empty) prop, so without this the Select would
+  // stay blank until the user manually opens the dropdown.
+  useEffect(() => {
+    if (portfolioId == null && portfolios && portfolios.length > 0) {
+      setPortfolioId(portfolios[0].id);
+    }
+  }, [portfolios, portfolioId]);
+
   const filteredCryptos = useMemo(() => {
     const q = cryptoSearch.trim().toLowerCase();
 
@@ -454,7 +463,7 @@ export function DataFilters({
             }}
           >
             {portfolios.map((p) => (
-              <SelectItem key={String(p.id)}>
+              <SelectItem key={String(p.id)} textValue={`${p.name} (${p.email})`}>
                 {p.name} ({p.email})
               </SelectItem>
             ))}
