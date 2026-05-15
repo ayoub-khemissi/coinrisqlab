@@ -330,12 +330,13 @@ function PortfolioDetailContent({
   // Dynamically recompute holdings values using Binance live prices
   const dynamicHoldings = useMemo(() => {
     return holdings.map((h) => {
+      const qty = Number(h.quantity);
       const livePrice = prices[h.symbol.toUpperCase()] ?? h.current_price;
-      const currentValue = Number(h.quantity) * livePrice;
+      const currentValue = qty * livePrice;
       const unrealizedPnl =
-        currentValue - Number(h.quantity) * Number(h.avg_buy_price);
+        qty > 0 ? currentValue - qty * Number(h.avg_buy_price) : 0;
       const pnlPercent =
-        Number(h.avg_buy_price) > 0
+        qty > 0 && Number(h.avg_buy_price) > 0
           ? ((livePrice - Number(h.avg_buy_price)) / Number(h.avg_buy_price)) *
             100
           : 0;
@@ -359,18 +360,28 @@ function PortfolioDetailContent({
     return dynamicHoldings.map((h) => ({
       ...h,
       allocation_pct:
-        totalValue > 0
+        totalValue > 0 && Number(h.quantity) > 0
           ? Number(((h.current_value / totalValue) * 100).toFixed(2))
           : 0,
     }));
   }, [dynamicHoldings, totalValue]);
 
-  const totalPnl = dynamicHoldingsWithAlloc.reduce(
+  // Total PnL combines unrealised gains on open positions with realised
+  // gains/losses crystallised by past sells (including those on closed lines
+  // with quantity=0). The realised side is read straight from the back
+  // (h.realized_pnl_usd) and never recomputed on the front.
+  const totalUnrealizedPnl = dynamicHoldingsWithAlloc.reduce(
     (s, h) => s + h.unrealized_pnl,
     0,
   );
+  const totalRealizedPnl = dynamicHoldingsWithAlloc.reduce(
+    (s, h) => s + Number(h.realized_pnl_usd || 0),
+    0,
+  );
+  const totalPnl = totalUnrealizedPnl + totalRealizedPnl;
   const totalCost = dynamicHoldingsWithAlloc.reduce(
-    (s, h) => s + Number(h.quantity) * Number(h.avg_buy_price),
+    (s, h) =>
+      s + (Number(h.quantity) > 0 ? Number(h.quantity) * Number(h.avg_buy_price) : 0),
     0,
   );
 
@@ -578,13 +589,19 @@ function PortfolioDetailContent({
               <TableColumn>Avg Price</TableColumn>
               <TableColumn>Price</TableColumn>
               <TableColumn>Value</TableColumn>
-              <TableColumn>PnL</TableColumn>
+              <TableColumn>Unrealized PnL</TableColumn>
+              <TableColumn>Realized PnL</TableColumn>
               <TableColumn>Alloc.</TableColumn>
               <TableColumn>Actions</TableColumn>
             </TableHeader>
             <TableBody emptyContent="No holdings yet. Add one!">
-              {dynamicHoldingsWithAlloc.map((h) => (
-                <TableRow key={h.id}>
+              {dynamicHoldingsWithAlloc.map((h) => {
+                const isClosed = Number(h.quantity) <= 0;
+                const realizedPnl = Number(h.realized_pnl_usd || 0);
+                const hasRealTxs = Number(h.real_tx_count || 0) > 0;
+
+                return (
+                <TableRow key={h.id} className={isClosed ? "opacity-60" : ""}>
                   <TableCell>
                     <div className="flex items-center gap-2">
                       {h.image_url && (
@@ -595,7 +612,14 @@ function PortfolioDetailContent({
                         />
                       )}
                       <div>
-                        <p className="font-medium">{h.symbol}</p>
+                        <div className="flex items-center gap-2">
+                          <p className="font-medium">{h.symbol}</p>
+                          {isClosed && (
+                            <Chip color="default" size="sm" variant="flat">
+                              Closed
+                            </Chip>
+                          )}
+                        </div>
                         <p className="text-xs text-default-400">
                           {h.crypto_name}
                         </p>
@@ -605,7 +629,7 @@ function PortfolioDetailContent({
                   <TableCell>{Number(h.quantity).toFixed(4)}</TableCell>
                   <TableCell>
                     <span className="font-mono">
-                      {formatCryptoPrice(h.avg_buy_price)}
+                      {isClosed ? "—" : formatCryptoPrice(h.avg_buy_price)}
                     </span>
                   </TableCell>
                   <TableCell>
@@ -616,22 +640,40 @@ function PortfolioDetailContent({
                   </TableCell>
                   <TableCell>
                     <span className="font-mono">
-                      {formatCryptoPrice(h.current_value)}
+                      {isClosed ? "$0.00" : formatCryptoPrice(h.current_value)}
                     </span>
                   </TableCell>
                   <TableCell>
-                    <span
-                      className={
-                        h.unrealized_pnl >= 0 ? "text-success" : "text-danger"
-                      }
-                    >
-                      {h.unrealized_pnl >= 0 ? "+" : ""}$
-                      {Math.abs(h.unrealized_pnl).toFixed(2)}
-                      <span className="text-xs ml-1">
-                        ({h.pnl_percent >= 0 ? "+" : ""}
-                        {h.pnl_percent.toFixed(1)}%)
+                    {isClosed ? (
+                      <span className="text-default-400">—</span>
+                    ) : (
+                      <span
+                        className={
+                          h.unrealized_pnl >= 0 ? "text-success" : "text-danger"
+                        }
+                      >
+                        {h.unrealized_pnl >= 0 ? "+" : ""}$
+                        {Math.abs(h.unrealized_pnl).toFixed(2)}
+                        <span className="text-xs ml-1">
+                          ({h.pnl_percent >= 0 ? "+" : ""}
+                          {h.pnl_percent.toFixed(1)}%)
+                        </span>
                       </span>
-                    </span>
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    {Math.abs(realizedPnl) < 0.005 ? (
+                      <span className="text-default-400">—</span>
+                    ) : (
+                      <span
+                        className={
+                          realizedPnl >= 0 ? "text-success" : "text-danger"
+                        }
+                      >
+                        {realizedPnl >= 0 ? "+" : ""}$
+                        {Math.abs(realizedPnl).toFixed(2)}
+                      </span>
+                    )}
                   </TableCell>
                   <TableCell>{h.allocation_pct}%</TableCell>
                   <TableCell>
@@ -646,19 +688,21 @@ function PortfolioDetailContent({
                       >
                         <Plus size={14} />
                       </Button>
-                      <Button
-                        isIconOnly
-                        size="sm"
-                        variant="light"
-                        onPress={() => {
-                          setEditingHolding(h);
-                          setEditQty(String(h.quantity));
-                          setEditAvgPrice(String(h.avg_buy_price));
-                          editHoldingModal.onOpen();
-                        }}
-                      >
-                        <Pencil size={14} />
-                      </Button>
+                      {!hasRealTxs && !isClosed && (
+                        <Button
+                          isIconOnly
+                          size="sm"
+                          variant="light"
+                          onPress={() => {
+                            setEditingHolding(h);
+                            setEditQty(String(h.quantity));
+                            setEditAvgPrice(String(h.avg_buy_price));
+                            editHoldingModal.onOpen();
+                          }}
+                        >
+                          <Pencil size={14} />
+                        </Button>
+                      )}
                       <Button
                         isIconOnly
                         color="danger"
@@ -671,7 +715,8 @@ function PortfolioDetailContent({
                     </div>
                   </TableCell>
                 </TableRow>
-              ))}
+              );
+              })}
             </TableBody>
           </Table>
         </Tab>

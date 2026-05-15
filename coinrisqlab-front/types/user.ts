@@ -25,6 +25,7 @@ export interface Holding {
   image_url: string | null;
   quantity: number;
   avg_buy_price: number;
+  realized_pnl_usd: number;
   first_buy_date: string | null;
   current_price: number;
   current_value: number;
@@ -32,6 +33,9 @@ export interface Holding {
   pnl_percent: number;
   percent_change_24h: number;
   allocation_pct: number;
+  /** Number of real Buy/Sell transactions (excludes the synthetic
+   *  "Initial position" tx). When > 0, Edit Holding is forbidden. */
+  real_tx_count: number;
 }
 
 export interface HoldingWithPortfolio extends Holding {

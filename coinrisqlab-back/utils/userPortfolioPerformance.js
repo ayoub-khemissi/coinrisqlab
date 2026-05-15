@@ -150,10 +150,12 @@ export async function computePortfolioTWR(portfolioId, period = '30d') {
     firstActivityDate = new Date(txRows[0].timestamp);
     firstActivityDate.setUTCHours(0, 0, 0, 0);
   } else {
+    // closed positions (quantity=0) don't contribute to live value
     const [holdingRows] = await Database.execute(
       `SELECT crypto_id, quantity, first_buy_date, created_at
        FROM user_portfolio_holdings
-       WHERE portfolio_id = ?`,
+       WHERE portfolio_id = ?
+         AND quantity > 0`,
       [portfolioId],
     );
 

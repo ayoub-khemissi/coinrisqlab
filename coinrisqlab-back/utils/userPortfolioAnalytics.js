@@ -77,7 +77,11 @@ export async function getPortfolioHoldings(portfolioId) {
       GROUP BY crypto_id
     ) latest ON latest.crypto_id = h.crypto_id
     LEFT JOIN market_data md ON md.crypto_id = latest.crypto_id AND md.timestamp = latest.max_ts
-    WHERE h.portfolio_id = ?`,
+    WHERE h.portfolio_id = ?
+      AND h.quantity > 0`,
+    // closed positions (qty=0) stay in user_portfolio_holdings for realised-PnL
+    // display but are excluded from analytics — they contribute zero weight and
+    // zero return to every metric.
     [portfolioId, portfolioId]
   );
 

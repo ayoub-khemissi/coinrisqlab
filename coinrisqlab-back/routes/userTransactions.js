@@ -15,19 +15,100 @@ async function verifyPortfolioOwnership(portfolioId, userId) {
 }
 
 /**
- * Recompute a holding's quantity and avg_buy_price from the full transaction
- * history. The single source of truth is `user_transactions` — holdings are a
- * derived cache. Called after every transaction insert/update/delete so the
- * holding stays in sync with the trade history.
+ * Walk the full transaction history chronologically and produce the current
+ * lot state. Returns null if any transaction would push qty negative
+ * (impossible state — the caller should reject the operation).
  *
- *   quantity      = sum(buy.qty) − sum(sell.qty) + sum(transfer.qty signed)
- *   avg_buy_price = sum(buy.qty × buy.price) / sum(buy.qty)   (cost-basis on buys)
+ * Convention:
+ *   - Buys add to the open lot. avg_buy_price = weighted average of the
+ *     OPEN-LOT buys only. When a previous lot was fully sold (qty hit 0)
+ *     and a new buy arrives, the cost basis RESETS — the new lot starts
+ *     fresh. This matches how a portfolio tracker like CoinGecko reports
+ *     "current avg buy price" after a full liquidation cycle.
+ *   - Sells reduce qty. Realised P&L is accumulated as
+ *     sellQty × (sellPrice − avg_buy_at_that_moment). This number is
+ *     CRYSTALLISED — it is never erased even if the line is later
+ *     re-opened with a new buy.
+ *   - Transfers don't move qty or cost basis (kept consistent with the
+ *     previous implementation).
  *
- * If the resulting quantity is ≤ 0 (full liquidation), the holding row is
- * deleted. If there's no buy at all (e.g. only sells from an external import
- * with no opening lot), avg_buy_price falls back to 0.
+ * Floating-point safety: tiny residuals (|qty| < EPSILON) are clamped
+ * to exactly 0.
  */
-async function recomputeHolding(portfolioId, cryptoId) {
+const QTY_EPSILON = 1e-12;
+
+function walkTransactions(txs) {
+  let totalQty = 0;
+  let openLotQty = 0;     // qty acquired since the last "qty=0" reset
+  let openLotCost = 0;    // cumulative USD cost of openLotQty
+  let realizedPnl = 0;
+  let firstBuyDate = null;
+  let invalid = false;
+
+  for (const t of txs) {
+    const q = parseFloat(t.quantity);
+    const p = parseFloat(t.price_usd);
+
+    if (t.type === 'buy') {
+      // If the previous lot was closed (qty=0), the new buy starts a fresh
+      // cost basis. Realised P&L stays — it's history.
+      if (totalQty <= QTY_EPSILON) {
+        openLotQty = q;
+        openLotCost = q * p;
+      } else {
+        openLotQty += q;
+        openLotCost += q * p;
+      }
+      totalQty += q;
+      if (firstBuyDate === null) firstBuyDate = t.timestamp;
+    } else if (t.type === 'sell') {
+      // Validate: cannot sell more than currently held. Caller decides
+      // how to react (reject the new operation, or allow with clamp).
+      if (q > totalQty + QTY_EPSILON) {
+        invalid = true;
+        break;
+      }
+      const avgAtSell = openLotQty > 0 ? openLotCost / openLotQty : 0;
+
+      realizedPnl += q * (p - avgAtSell);
+      totalQty -= q;
+      // Reduce the open lot's qty proportionally — the cost basis per unit
+      // stays the same so the avg doesn't drift on partial sells.
+      const reduction = openLotQty > 0 ? Math.min(q / openLotQty, 1) : 0;
+
+      openLotCost = openLotCost * (1 - reduction);
+      openLotQty = openLotQty * (1 - reduction);
+      // Clamp residuals
+      if (Math.abs(totalQty) < QTY_EPSILON) totalQty = 0;
+      if (Math.abs(openLotQty) < QTY_EPSILON) openLotQty = 0;
+      if (openLotQty === 0) openLotCost = 0;
+    } else if (t.type === 'transfer') {
+      // No-op on qty / cost basis (consistent with previous behaviour).
+    }
+  }
+
+  return {
+    invalid,
+    totalQty: Math.abs(totalQty) < QTY_EPSILON ? 0 : totalQty,
+    avgBuyPrice: openLotQty > 0 ? openLotCost / openLotQty : 0,
+    realizedPnl,
+    firstBuyDate,
+  };
+}
+
+/**
+ * Recompute a holding from the full transaction history. Holdings are a
+ * derived cache; user_transactions is the single source of truth.
+ *
+ * Throws an error with code='INVALID_TX_HISTORY' if the existing tx
+ * sequence is impossible (e.g. a sell larger than what was held at that
+ * moment) — the caller should surface that as a 400 to the user instead
+ * of silently producing a corrupt state.
+ *
+ * Lines with qty=0 are KEPT (not deleted) so realised P&L stays visible.
+ * The user can manually delete the row when they want it gone.
+ */
+export async function recomputeHolding(portfolioId, cryptoId) {
   const [txs] = await Database.execute(
     `SELECT type, quantity, price_usd, timestamp
      FROM user_transactions
@@ -36,36 +117,22 @@ async function recomputeHolding(portfolioId, cryptoId) {
     [portfolioId, cryptoId]
   );
 
-  let totalQty = 0;
-  let buyQtySum = 0;
-  let buyCostSum = 0;
-  let firstBuyDate = null;
+  const state = walkTransactions(txs);
 
-  for (const t of txs) {
-    const q = parseFloat(t.quantity);
-    const p = parseFloat(t.price_usd);
+  if (state.invalid) {
+    const err = new Error('Transaction sequence would push quantity below zero');
 
-    if (t.type === 'buy') {
-      totalQty += q;
-      buyQtySum += q;
-      buyCostSum += q * p;
-      if (firstBuyDate === null) firstBuyDate = t.timestamp;
-    } else if (t.type === 'sell') {
-      totalQty -= q;
-    } else if (t.type === 'transfer') {
-      // Transfers don't move the cost basis but contribute to qty if signed.
-      // Keeping behaviour consistent with the previous implementation: noop on qty.
-    }
+    err.code = 'INVALID_TX_HISTORY';
+    throw err;
   }
-
-  const avgBuyPrice = buyQtySum > 0 ? buyCostSum / buyQtySum : 0;
 
   const [existing] = await Database.execute(
     'SELECT id FROM user_portfolio_holdings WHERE portfolio_id = ? AND crypto_id = ?',
     [portfolioId, cryptoId]
   );
 
-  if (totalQty <= 0) {
+  if (txs.length === 0) {
+    // Last transaction was deleted → no history → drop the holding row.
     if (existing.length > 0) {
       await Database.execute(
         'DELETE FROM user_portfolio_holdings WHERE id = ?',
@@ -77,20 +144,51 @@ async function recomputeHolding(portfolioId, cryptoId) {
 
   if (existing.length > 0) {
     await Database.execute(
-      'UPDATE user_portfolio_holdings SET quantity = ?, avg_buy_price = ? WHERE id = ?',
-      [totalQty, avgBuyPrice, existing[0].id]
+      `UPDATE user_portfolio_holdings
+       SET quantity = ?, avg_buy_price = ?, realized_pnl_usd = ?
+       WHERE id = ?`,
+      [state.totalQty, state.avgBuyPrice, state.realizedPnl, existing[0].id]
     );
   } else {
-    const fbDate = firstBuyDate
-      ? new Date(firstBuyDate).toISOString().slice(0, 10)
+    const fbDate = state.firstBuyDate
+      ? new Date(state.firstBuyDate).toISOString().slice(0, 10)
       : new Date().toISOString().slice(0, 10);
 
     await Database.execute(
-      `INSERT INTO user_portfolio_holdings (portfolio_id, crypto_id, quantity, avg_buy_price, first_buy_date)
-       VALUES (?, ?, ?, ?, ?)`,
-      [portfolioId, cryptoId, totalQty, avgBuyPrice, fbDate]
+      `INSERT INTO user_portfolio_holdings
+         (portfolio_id, crypto_id, quantity, avg_buy_price, realized_pnl_usd, first_buy_date)
+       VALUES (?, ?, ?, ?, ?, ?)`,
+      [portfolioId, cryptoId, state.totalQty, state.avgBuyPrice, state.realizedPnl, fbDate]
     );
   }
+}
+
+/**
+ * Predict whether the next transaction would produce an invalid state
+ * (sell > current qty). Used by POST /transactions to reject sells before
+ * they're written. Returns true if the prospective tx is OK.
+ */
+async function wouldTxBeValid(portfolioId, cryptoId, type, quantity, timestamp) {
+  if (type !== 'sell') return true;
+  const [txs] = await Database.execute(
+    `SELECT type, quantity, price_usd, timestamp
+     FROM user_transactions
+     WHERE portfolio_id = ? AND crypto_id = ?
+     ORDER BY timestamp ASC, id ASC`,
+    [portfolioId, cryptoId]
+  );
+
+  // Insert the prospective sell at the right chronological spot
+  const projected = [
+    ...txs,
+    { type, quantity, price_usd: 0, timestamp: timestamp || new Date().toISOString() },
+  ].sort(
+    (a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime(),
+  );
+
+  const result = walkTransactions(projected);
+
+  return !result.invalid;
 }
 
 // ─── List Transactions ──────────────────────────────────────────────────────
@@ -190,8 +288,21 @@ api.post('/user/portfolios/:id/transactions', authenticateUser, async (req, res)
       }
     }
 
-    // Insert transaction
     const txTimestamp = timestamp || new Date().toISOString().slice(0, 19).replace('T', ' ');
+
+    // Reject sells that would push qty negative — you can't sell what you
+    // don't own. Buys are always allowed (limited only by the free-plan
+    // 10-crypto cap, checked above).
+    const ok = await wouldTxBeValid(portfolioId, crypto_id, type, quantity, txTimestamp);
+
+    if (!ok) {
+      return res.status(400).json({
+        data: null,
+        msg: 'Cannot sell more than the holding currently owns',
+      });
+    }
+
+    // Insert transaction
     const [result] = await Database.execute(
       `INSERT INTO user_transactions (portfolio_id, crypto_id, type, quantity, price_usd, fee_usd, timestamp, notes)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
@@ -221,15 +332,18 @@ api.put('/user/portfolios/:id/transactions/:txId', authenticateUser, async (req,
     const txId = parseInt(req.params.txId);
     const { quantity, price_usd, fee_usd, notes } = req.body;
 
-    // Need the crypto_id to know which holding to recompute after the update
+    // Snapshot the current tx so we can roll back if the update would
+    // produce an impossible state (e.g. a sell suddenly larger than what
+    // was held at that moment after the user edits a buy further upstream).
     const [txBefore] = await Database.execute(
-      'SELECT crypto_id FROM user_transactions WHERE id = ? AND portfolio_id = ?',
+      'SELECT crypto_id, quantity, price_usd, fee_usd, notes FROM user_transactions WHERE id = ? AND portfolio_id = ?',
       [txId, portfolioId]
     );
 
     if (txBefore.length === 0) {
       return res.status(404).json({ data: null, msg: 'Transaction not found' });
     }
+    const snapshot = txBefore[0];
 
     const [result] = await Database.execute(
       `UPDATE user_transactions
@@ -252,8 +366,26 @@ api.put('/user/portfolios/:id/transactions/:txId', authenticateUser, async (req,
       return res.status(404).json({ data: null, msg: 'Transaction not found' });
     }
 
-    // Sync the derived holding (qty + avg_buy_price) with the new history.
-    await recomputeHolding(portfolioId, txBefore[0].crypto_id);
+    try {
+      await recomputeHolding(portfolioId, snapshot.crypto_id);
+    } catch (err) {
+      if (err.code === 'INVALID_TX_HISTORY') {
+        // Roll back the update so the holding stays consistent
+        await Database.execute(
+          `UPDATE user_transactions
+           SET quantity = ?, price_usd = ?, fee_usd = ?, notes = ?
+           WHERE id = ?`,
+          [snapshot.quantity, snapshot.price_usd, snapshot.fee_usd, snapshot.notes, txId]
+        );
+        await recomputeHolding(portfolioId, snapshot.crypto_id);
+
+        return res.status(400).json({
+          data: null,
+          msg: 'Edit rejected: it would push a holding below zero quantity at some point in time',
+        });
+      }
+      throw err;
+    }
 
     res.json({ data: { id: txId } });
   } catch (error) {
@@ -273,15 +405,19 @@ api.delete('/user/portfolios/:id/transactions/:txId', authenticateUser, async (r
 
     const txId = parseInt(req.params.txId);
 
-    // Capture the crypto_id before deletion so we can recompute its holding after
+    // Snapshot the full row so we can re-insert it if removing it would
+    // create an impossible state (e.g. deleting a buy that an existing
+    // sell relied on).
     const [txBefore] = await Database.execute(
-      'SELECT crypto_id FROM user_transactions WHERE id = ? AND portfolio_id = ?',
+      `SELECT crypto_id, type, quantity, price_usd, fee_usd, timestamp, notes
+       FROM user_transactions WHERE id = ? AND portfolio_id = ?`,
       [txId, portfolioId]
     );
 
     if (txBefore.length === 0) {
       return res.status(404).json({ data: null, msg: 'Transaction not found' });
     }
+    const snapshot = txBefore[0];
 
     const [result] = await Database.execute(
       'DELETE FROM user_transactions WHERE id = ? AND portfolio_id = ?',
@@ -292,9 +428,36 @@ api.delete('/user/portfolios/:id/transactions/:txId', authenticateUser, async (r
       return res.status(404).json({ data: null, msg: 'Transaction not found' });
     }
 
-    // Sync the derived holding — may now have a smaller qty, a different
-    // avg_buy_price, or be deleted entirely if no positive qty remains.
-    await recomputeHolding(portfolioId, txBefore[0].crypto_id);
+    try {
+      await recomputeHolding(portfolioId, snapshot.crypto_id);
+    } catch (err) {
+      if (err.code === 'INVALID_TX_HISTORY') {
+        // Re-insert the row to keep history consistent
+        await Database.execute(
+          `INSERT INTO user_transactions
+             (id, portfolio_id, crypto_id, type, quantity, price_usd, fee_usd, timestamp, notes)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          [
+            txId,
+            portfolioId,
+            snapshot.crypto_id,
+            snapshot.type,
+            snapshot.quantity,
+            snapshot.price_usd,
+            snapshot.fee_usd,
+            snapshot.timestamp,
+            snapshot.notes,
+          ]
+        );
+        await recomputeHolding(portfolioId, snapshot.crypto_id);
+
+        return res.status(400).json({
+          data: null,
+          msg: 'Delete rejected: this transaction is required by a later sell',
+        });
+      }
+      throw err;
+    }
 
     res.json({ data: null, msg: 'Transaction deleted' });
   } catch (error) {
